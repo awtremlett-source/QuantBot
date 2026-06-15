@@ -1,0 +1,51 @@
+# ============================================================
+#  .gitignore  —  protect secrets and bulk data (Scar #1, #7)
+#  Created BEFORE any other file, per founding directive §2b.
+# ============================================================
+
+# === SECRETS — never commit (Scar #1) ===
+.env
+.env.local
+.env.*.local
+local_env.json
+*.pem
+*.key
+secrets/
+# ...but DO keep the template (names only, no values):
+!.env.example
+
+# === Bulk price data & archives (RAW/CLEAN files, parquet, zips, db) ===
+# (data_store/ holds CODE — the storage API — so it stays tracked.)
+data/
+var/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.parquet
+*.zip
+
+# === Logs & run artifacts ===
+logs/
+*.log
+
+# === Archived prior experiments & generated state (kept out of git) ===
+archive/
+pms_state/
+pms_artifacts/
+
+# === Python ===
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# === OS / editor noise ===
+.DS_Store
+Thumbs.db
