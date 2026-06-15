@@ -3,7 +3,7 @@
 Phase: 1 (Foundations).  Updated: 2026-06-15.
 
 ## Settled decisions
-- Repo root: c:\Users\mtrem\TRADING. Remote: github.com/AlexTreml/QuantBot.
+- Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
 - Prior work: ARCHIVED to archive/ (gitignored), building fresh.
 - Demo capital: £10,000 GBP. £100/day = 1%/day = fantasy; honesty anchor only.
 - Universe: focused ~100 liquid US names (specific list TBD via PROPOSE→GO).
@@ -17,9 +17,10 @@ Phase: 1 (Foundations).  Updated: 2026-06-15.
 - Decisions captured; prior work archived; §4 repo layout created.
 - Scaffolding: CLAUDE.md, STATE.md, GRAND_TODO.md, README.md,
   docs/EDUCATION.md#1, docs/FOUNDING_DIRECTIVE.md (verbatim).
+- First commit (314ab84) PUSHED to github.com/awtremlett-source/QuantBot (main).
+  This repo's LOCAL git identity: awtremlett-source <…@users.noreply.github.com>.
 
 ## In flight / next actions (in order)
-0. Push initial commit to GitHub (in progress this session).
 1. Python venv + requirements.txt (pandas numpy pyarrow requests scikit-learn
    statsmodels matplotlib pytest hypothesis ruff mypy); verify imports.
 2. Stooq PROPOSE doc: enumerate live db/h page (sizes/counts/disk) → operator GO.

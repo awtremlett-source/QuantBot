@@ -49,3 +49,8 @@ __pycache__/
 # === OS / editor noise ===
 .DS_Store
 Thumbs.db
+
+# === Operator's personal scratch (kept local, never committed) ===
+MYNOTEPAD.txt
+NOTES.txt
+*.private

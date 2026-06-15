@@ -6,7 +6,7 @@ Legend: [ ] open · [~] in progress · [x] done
 - [x] Safety rails: git, .gitignore, .env.example, SCARS.md, session log
 - [x] Onboarding decisions captured; clock resynced; prior work archived
 - [x] Repo scaffolding (CLAUDE/STATE/GRAND_TODO/README/EDUCATION/FOUNDING_DIRECTIVE)
-- [~] First GitHub push (this session)
+- [x] First GitHub push → github.com/awtremlett-source/QuantBot
 - [ ] venv + requirements.txt (pandas numpy pyarrow requests scikit-learn
       statsmodels matplotlib pytest hypothesis ruff mypy)
 - [ ] Stooq PROPOSE doc (enumerate db/h; sizes/counts/disk) → GO
