@@ -1,0 +1,12 @@
+yfinance==1.4.1
+pandas==3.0.2
+numpy==2.4.4
+pyarrow==24.0.0
+requests==2.33.1
+scikit-learn==1.8.0
+statsmodels==0.14.6
+matplotlib==3.10.8
+pytest==9.1.0
+hypothesis==6.155.3
+ruff==0.15.17
+mypy==2.1.0
