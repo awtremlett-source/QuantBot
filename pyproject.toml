@@ -1,0 +1,32 @@
+# Tooling config for the QuantBot quality gates:
+#   ruff check .        (lint)
+#   mypy --strict .     (types)
+#   python -m pytest -q (tests)
+
+[tool.ruff]
+target-version = "py313"
+# ruff already skips .gitignored paths (so .venv/ and archive/ are excluded);
+# nothing extra needed here.
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+# mypy does NOT honour .gitignore, so exclude the venv and the legacy archive/
+# (pre-QuantBot scripts) from `mypy --strict .` explicitly.
+exclude = [
+    '^\.venv/',
+    '^archive/',
+]
+
+# pandas ships no py.typed marker and we install no stub package, so silence its
+# missing-stubs error. Scoped to pandas only; this override IS used (pandas is
+# imported in data_store.store), so --strict's warn_unused_configs stays quiet.
+[[tool.mypy.overrides]]
+module = ["pandas"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+# Put the repo root on sys.path so `import data_store` resolves regardless of how
+# pytest is launched, and only collect from tests/.
+pythonpath = ["."]
+testpaths = ["tests"]
