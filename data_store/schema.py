@@ -76,11 +76,28 @@ CREATE TABLE IF NOT EXISTS sentiment_clean (
 )
 """
 
+# Append-only incident log for rows rejected at a write boundary (the "front
+# door"). Quarantine, never delete: a rejected row is preserved here verbatim
+# (as JSON in ``payload``) with a specific ``reason``, so nothing is silently
+# dropped and every rejection is auditable. ``event_time`` is nullable because a
+# row may be rejected precisely because its event_time was missing/unparseable.
+QUARANTINE = """
+CREATE TABLE IF NOT EXISTS quarantine (
+    domain        TEXT NOT NULL,
+    ticker        TEXT NOT NULL,
+    event_time    TEXT,
+    payload       TEXT NOT NULL,
+    reason        TEXT NOT NULL,
+    knowable_time TEXT NOT NULL
+)
+"""
+
 CREATE_TABLES: tuple[str, ...] = (
     PRICE_RAW,
     PRICE_CLEAN,
     SENTIMENT_RAW,
     SENTIMENT_CLEAN,
+    QUARANTINE,
 )
 
 # The four tables, by name, for index generation.
@@ -101,6 +118,10 @@ CREATE_INDEXES: tuple[str, ...] = tuple(
     f"ON {table} (ticker, {column})"
     for table in _TABLE_NAMES
     for column in ("event_time", "knowable_time")
+) + (
+    # quarantine is keyed differently (domain + ticker), so it indexes separately.
+    "CREATE INDEX IF NOT EXISTS idx_quarantine_domain_ticker "
+    "ON quarantine (domain, ticker)",
 )
 
 # Everything init_db needs to run, in order: tables first, then indexes.

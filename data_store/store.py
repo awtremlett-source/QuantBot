@@ -78,6 +78,23 @@ class Sentiment:
     source: str
 
 
+@dataclass(frozen=True, slots=True)
+class QuarantineRow:
+    """One rejected row, preserved verbatim for audit (quarantine, never delete).
+
+    ``payload`` is the rejected row serialised as JSON; ``reason`` is a specific,
+    machine-readable cause; ``event_time`` may be ``None`` if the row was rejected
+    for lacking a usable one.
+    """
+
+    domain: str
+    ticker: str
+    event_time: str | None
+    payload: str
+    reason: str
+    knowable_time: str
+
+
 # --------------------------------------------------------------------------- #
 # Connection management
 # --------------------------------------------------------------------------- #
@@ -146,6 +163,14 @@ _SENTIMENT_CLEAN_SQL = (
     "(ticker, event_time, metric, value, knowable_time, source) "
     "VALUES (?, ?, ?, ?, ?, ?) "
     "ON CONFLICT DO NOTHING"
+)
+
+# Quarantine is an append-only audit log (no UNIQUE constraint, so no
+# ON CONFLICT): re-running a rejecting ingest appends a fresh incident record.
+_QUARANTINE_SQL = (
+    "INSERT INTO quarantine "
+    "(domain, ticker, event_time, payload, reason, knowable_time) "
+    "VALUES (?, ?, ?, ?, ?, ?)"
 )
 
 
@@ -249,6 +274,30 @@ def write_sentiment_clean(conn: sqlite3.Connection, rows: Sequence[Sentiment]) -
                 r.value,
                 validate_iso(r.knowable_time),
                 r.source,
+            )
+            for r in rows
+        ],
+    )
+
+
+def write_quarantine(conn: sqlite3.Connection, rows: Sequence[QuarantineRow]) -> int:
+    """Append rejected rows to the quarantine log; return the number written.
+
+    Only ``knowable_time`` (our own stamp) is validated. ``event_time`` is stored
+    verbatim -- possibly ``None`` -- because the whole point of quarantine is to
+    preserve bad input as-is, so it must never be rejected for being malformed.
+    """
+    return _insert_many(
+        conn,
+        _QUARANTINE_SQL,
+        [
+            (
+                r.domain,
+                r.ticker,
+                r.event_time,
+                r.payload,
+                r.reason,
+                validate_iso(r.knowable_time),
             )
             for r in rows
         ],
