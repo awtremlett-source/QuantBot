@@ -92,12 +92,31 @@ CREATE TABLE IF NOT EXISTS quarantine (
 )
 """
 
+# Reference table of corporate actions (splits, dividends) used by the RAW->CLEAN
+# reconciliation to adjust the price series. Not a RAW/CLEAN price layer itself:
+# it is the small, separately-sourced fact set the cleaner reads alongside
+# ``price_raw`` to derive ``price_clean``. ``value`` is overloaded by
+# ``action_type`` -- a split ratio (e.g. 10.0 for 10-for-1) or a cash dividend
+# amount. UNIQUE keeps it idempotent across re-fetches of the same action.
+CORPORATE_ACTIONS = """
+CREATE TABLE IF NOT EXISTS corporate_actions (
+    ticker        TEXT NOT NULL,
+    event_time    TEXT NOT NULL,
+    action_type   TEXT NOT NULL,
+    value         REAL NOT NULL,
+    knowable_time TEXT NOT NULL,
+    source        TEXT NOT NULL,
+    UNIQUE (ticker, event_time, action_type, source)
+)
+"""
+
 CREATE_TABLES: tuple[str, ...] = (
     PRICE_RAW,
     PRICE_CLEAN,
     SENTIMENT_RAW,
     SENTIMENT_CLEAN,
     QUARANTINE,
+    CORPORATE_ACTIONS,
 )
 
 # The four tables, by name, for index generation.
@@ -122,6 +141,9 @@ CREATE_INDEXES: tuple[str, ...] = tuple(
     # quarantine is keyed differently (domain + ticker), so it indexes separately.
     "CREATE INDEX IF NOT EXISTS idx_quarantine_domain_ticker "
     "ON quarantine (domain, ticker)",
+    # corporate_actions is read by (ticker, event_time) when adjusting a series.
+    "CREATE INDEX IF NOT EXISTS idx_corporate_actions_ticker_event_time "
+    "ON corporate_actions (ticker, event_time)",
 )
 
 # Everything init_db needs to run, in order: tables first, then indexes.

@@ -79,6 +79,23 @@ class Sentiment:
 
 
 @dataclass(frozen=True, slots=True)
+class CorporateAction:
+    """One corporate action for a ticker, as fetched from a source.
+
+    ``value`` is interpreted by ``action_type``: for ``'split'`` it is the split
+    ratio (e.g. ``10.0`` for a 10-for-1 split); for ``'dividend'`` it is the cash
+    amount per share.
+    """
+
+    ticker: str
+    event_time: str
+    action_type: str
+    value: float
+    knowable_time: str
+    source: str
+
+
+@dataclass(frozen=True, slots=True)
 class QuarantineRow:
     """One rejected row, preserved verbatim for audit (quarantine, never delete).
 
@@ -161,6 +178,13 @@ _SENTIMENT_RAW_SQL = (
 _SENTIMENT_CLEAN_SQL = (
     "INSERT INTO sentiment_clean "
     "(ticker, event_time, metric, value, knowable_time, source) "
+    "VALUES (?, ?, ?, ?, ?, ?) "
+    "ON CONFLICT DO NOTHING"
+)
+
+_CORPORATE_ACTIONS_SQL = (
+    "INSERT INTO corporate_actions "
+    "(ticker, event_time, action_type, value, knowable_time, source) "
     "VALUES (?, ?, ?, ?, ?, ?) "
     "ON CONFLICT DO NOTHING"
 )
@@ -271,6 +295,31 @@ def write_sentiment_clean(conn: sqlite3.Connection, rows: Sequence[Sentiment]) -
                 r.ticker,
                 validate_iso(r.event_time),
                 r.metric,
+                r.value,
+                validate_iso(r.knowable_time),
+                r.source,
+            )
+            for r in rows
+        ],
+    )
+
+
+def write_corporate_actions(
+    conn: sqlite3.Connection, rows: Sequence[CorporateAction]
+) -> int:
+    """Insert corporate actions idempotently; return the number of new rows.
+
+    Timestamps are validated up front (fail-fast, all-or-nothing). Re-fetching the
+    same action is a no-op via ``ON CONFLICT DO NOTHING``.
+    """
+    return _insert_many(
+        conn,
+        _CORPORATE_ACTIONS_SQL,
+        [
+            (
+                r.ticker,
+                validate_iso(r.event_time),
+                r.action_type,
                 r.value,
                 validate_iso(r.knowable_time),
                 r.source,
