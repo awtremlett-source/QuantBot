@@ -7,12 +7,13 @@ Legend: [ ] open · [~] in progress · [x] done
 - [x] Onboarding decisions captured; clock resynced; prior work archived
 - [x] Repo scaffolding (CLAUDE/STATE/GRAND_TODO/README/EDUCATION/FOUNDING_DIRECTIVE)
 - [x] First GitHub push → github.com/awtremlett-source/QuantBot
-- [ ] venv + requirements.txt (pandas numpy pyarrow requests scikit-learn
+- [x] venv + requirements.txt (pandas numpy pyarrow requests scikit-learn
       statsmodels matplotlib pytest hypothesis ruff mypy)
-- [ ] Stooq PROPOSE doc (enumerate db/h; sizes/counts/disk) → GO
+- [x] Data sources locked: yfinance (price) + StockGeist (sentiment)
+- [x] data_store API: SQLite(WAL) RAW+CLEAN schema; single-writer law
+- [x] Front-door ingest (one writer; unit/scale/sanity; quarantine)
+- [ ] RAW→CLEAN reconciliation + split/dividend adjustment → populate price_clean (NEXT)
 - [ ] Universe: choose ~100 liquid US names → GO
-- [ ] data_store API: SQLite(WAL) RAW+CLEAN schema; single-writer law
-- [ ] Front-door ingest (one writer; unit/scale/sanity; manifest truth)
 - [ ] Count reconciliation (in-zip vs staged vs DB) + ±10% universe invariant
 - [ ] Integrity census v1 (CLEAN/SUSPECT/CORRUPT certificates) + data-quality meter
 - [ ] §7 firewall skeleton: purged+embargoed CV · CPCV · trials.jsonl · Deflated
