@@ -10,9 +10,13 @@ single-writer law) and routes any row that fails a sanity check to
 ``quarantine`` rather than to ``price_clean`` -- nothing reconciled is admitted
 unchecked, and nothing rejected is silently dropped.
 
-SCOPE: split adjustment ONLY. Dividend adjustment is deliberately OUT OF SCOPE
-in this brick (dividends are still fetched and persisted to ``corporate_actions``
-for a later refinement, but they do not yet affect prices). See
+KEY FACT: yfinance OHLC (``auto_adjust=False``) are ALREADY split-adjusted by
+Yahoo, so CLEAN is a VERIFIED COPY of RAW, not a re-adjusted series. The
+reconciler checks that the raw series is continuous across each known split
+(catching a source that did NOT pre-adjust) and copies it through; it does not
+re-divide. SCOPE: split handling only -- dividend adjustment is OUT OF SCOPE
+(dividends are still fetched and persisted to ``corporate_actions`` for a later
+refinement, but do not yet affect prices). See
 :func:`reconcile.clean_prices.reconcile`.
 
 Layout:

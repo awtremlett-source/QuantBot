@@ -1,12 +1,14 @@
-"""Deterministic, fully-OFFLINE tests for RAW->CLEAN split-adjusted reconciliation.
+"""Deterministic, fully-OFFLINE tests for RAW->CLEAN verify-and-copy reconciliation.
 
-yfinance is never called: :func:`reconcile.corporate_actions.fetch_actions` is
-mocked with canned actions, and an autouse fixture replaces the underlying
-``yf.Ticker`` with a tripwire that raises if any code path reaches it.
+yfinance OHLC are already split-adjusted, so reconcile VERIFIES continuity across
+splits and COPIES raw->clean (it must NOT re-divide). yfinance is never called:
+:func:`reconcile.corporate_actions.fetch_actions` is mocked, and an autouse
+fixture replaces the underlying ``yf.Ticker`` with a tripwire that raises if any
+code path reaches it.
 
-``now`` is pinned (monkeypatched) so ``knowable_time`` is deterministic. The
-price_raw fixture is seeded directly through the store write API (so we can also
-plant a deliberately bad row that the front door would never have admitted).
+The price_raw fixture is seeded directly through the store write API so we can
+plant rows the front door would never have admitted (a bad row; an UNADJUSTED
+cliff at a split).
 """
 
 from __future__ import annotations
@@ -20,41 +22,35 @@ import pytest
 
 from data_store import store
 from reconcile import clean_prices, corporate_actions
-from reconcile.clean_prices import AppliedSplit, QuarantineReason
+from reconcile.clean_prices import QuarantineReason, UnadjustedSplitError
 
 # Pinned "now" for the run -> the knowable_time stamp on everything written.
 _FIXED_NOW = "2024-06-20T00:00:00Z"
 _RAW_KNOWABLE = "2024-06-19T00:00:00Z"
 
-# A 10-for-1 split, and a dividend we expect to be PERSISTED but NOT applied
-# (dividend adjustment is out of scope for this brick).
 _SPLIT_DATE = "2024-06-10T00:00:00Z"
 _SPLIT_RATIO = 10.0
 _DIV_DATE = "2024-06-05T00:00:00Z"
 
-# Raw bars spanning the split: 4 BEFORE at close ~1000, 4 ON/AFTER at close ~100.
-_PRE_SPLIT: list[tuple[str, float]] = [
-    ("2024-06-03T00:00:00Z", 1000.0),
-    ("2024-06-04T00:00:00Z", 1010.0),
-    ("2024-06-05T00:00:00Z", 1020.0),
-    ("2024-06-06T00:00:00Z", 1030.0),
+# Raw bars as an ALREADY split-adjusted source delivers them: a continuous
+# ~100-level series straight across the split date (NOT a 1000 -> 100 cliff).
+_ADJUSTED_RAW: list[tuple[str, float]] = [
+    ("2024-06-05T00:00:00Z", 99.0),
+    ("2024-06-06T00:00:00Z", 100.0),
+    ("2024-06-07T00:00:00Z", 101.0),  # last bar before the split
+    ("2024-06-10T00:00:00Z", 100.0),  # split date
+    ("2024-06-11T00:00:00Z", 101.0),
+    ("2024-06-12T00:00:00Z", 102.0),
 ]
-_POST_SPLIT: list[tuple[str, float]] = [
-    ("2024-06-10T00:00:00Z", 104.0),  # on the split date -> factor 1 (not divided)
-    ("2024-06-11T00:00:00Z", 105.0),
-    ("2024-06-12T00:00:00Z", 106.0),
-    ("2024-06-13T00:00:00Z", 107.0),
-]
-_PRE_VOLUME = 1_000_000
-_POST_VOLUME = 5_000_000
+_VOLUME = 1_000_000
 
 
 def _raw_bar(
     event_time: str,
     close: float,
-    volume: int,
+    volume: int = _VOLUME,
     *,
-    span: float = 5.0,
+    span: float = 2.0,
     ticker: str = "NVDA",
 ) -> store.PriceRaw:
     """A consistent OHLCV raw bar centred on ``close`` (open=close, high/low +/-span)."""
@@ -71,17 +67,18 @@ def _raw_bar(
     )
 
 
-def _seed_raw(db: Path, extra: Sequence[store.PriceRaw] = ()) -> None:
-    """Seed price_raw with the split-spanning fixture (plus any ``extra`` rows)."""
-    rows = [_raw_bar(et, close, _PRE_VOLUME) for et, close in _PRE_SPLIT]
-    rows += [_raw_bar(et, close, _POST_VOLUME, span=1.0) for et, close in _POST_SPLIT]
-    rows += list(extra)
+def _seed_raw(db: Path, bars: Sequence[store.PriceRaw]) -> None:
+    """Seed price_raw with ``bars`` through the real store write API."""
     store.init_db(db)
     conn = store.connect(db)
     try:
-        store.write_price_raw(conn, rows)
+        store.write_price_raw(conn, list(bars))
     finally:
         conn.close()
+
+
+def _adjusted_bars(extra: Sequence[store.PriceRaw] = ()) -> list[store.PriceRaw]:
+    return [_raw_bar(et, close) for et, close in _ADJUSTED_RAW] + list(extra)
 
 
 def _split_action(ticker: str = "NVDA") -> corporate_actions.ActionRecord:
@@ -133,16 +130,14 @@ def fetch_calls(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     return calls
 
 
-def test_split_adjusts_to_a_continuous_series(
-    db: Path, fetch_calls: list[str]
-) -> None:
-    _seed_raw(db)
+def test_clean_is_a_verified_copy_of_raw(db: Path, fetch_calls: list[str]) -> None:
+    _seed_raw(db, _adjusted_bars())
     summary = clean_prices.reconcile(["NVDA"], db)
 
-    # Reconciliation counts and the per-run invariant.
+    # Counts and the per-run invariant.
     assert summary.requested_tickers == ("NVDA",)
-    assert summary.rows_raw == 8
-    assert summary.rows_written_clean == 8
+    assert summary.rows_raw == 6
+    assert summary.rows_written_clean == 6
     assert summary.rows_quarantined == 0
     assert summary.rows_skipped_duplicate == 0
     assert summary.rows_raw == (
@@ -151,81 +146,81 @@ def test_split_adjusts_to_a_continuous_series(
         + summary.rows_quarantined
     )
 
-    # Offline proof: our mock was used exactly once; real network never touched.
+    # Offline proof.
     assert fetch_calls == ["NVDA"]
 
-    # splits_applied lists exactly the one split (event_time + ratio).
-    assert summary.splits_applied == (
-        AppliedSplit(event_time=_SPLIT_DATE, ratio=_SPLIT_RATIO),
-    )
+    # The split passed the continuity check with a small across-boundary move.
+    assert len(summary.splits_checked) == 1
+    check = summary.splits_checked[0]
+    assert check.event_time == _SPLIT_DATE
+    assert check.ratio == _SPLIT_RATIO
+    assert check.status == "pass"
+    assert check.across_split_move_pct is not None
+    assert check.across_split_move_pct < 35.0  # 101 -> 100 is ~1%
+
+    # max daily move reflects only the ~1% real moves, NOT a split cliff.
+    assert summary.max_abs_daily_close_move_pct is not None
+    assert summary.max_abs_daily_close_move_pct < 5.0
 
     conn = store.connect(db)
     try:
         clean = {
-            row[0]: (row[1], row[2], row[3])  # event_time -> (close, volume, adj_close)
+            row[0]: (row[1], row[2], row[3], row[4])
             for row in conn.execute(
-                "SELECT event_time, close, volume, adj_close "
-                "FROM price_clean ORDER BY event_time"
+                "SELECT event_time, open, high, low, close FROM price_clean"
             )
         }
-        # knowable_time stamped once per run.
-        stamps = {
-            row[0] for row in conn.execute("SELECT knowable_time FROM price_clean")
+        adj = {
+            row[0]: (row[1], row[2])
+            for row in conn.execute(
+                "SELECT event_time, close, adj_close FROM price_clean"
+            )
         }
-        assert stamps == {_FIXED_NOW}
-        # Both corporate actions persisted; the dividend is stored, not applied.
-        action_types = {
-            row[0] for row in conn.execute("SELECT action_type FROM corporate_actions")
+        raw = {
+            row[0]: (row[1], row[2], row[3], row[4])
+            for row in conn.execute(
+                "SELECT event_time, open, high, low, close FROM price_raw"
+            )
         }
-        assert action_types == {"split", "dividend"}
+        # corporate actions persisted (split + dividend); dividend not applied.
         assert conn.execute(
             "SELECT COUNT(*) FROM corporate_actions"
         ).fetchone()[0] == 2
     finally:
         conn.close()
 
-    # Pre-split CLEAN closes are raw/10 (~100); the dividend did NOT shift them.
-    assert clean["2024-06-03T00:00:00Z"][0] == pytest.approx(100.0)
-    assert clean["2024-06-06T00:00:00Z"][0] == pytest.approx(103.0)
-    # Post-split closes are unchanged (~100) -> the series is continuous.
-    assert clean["2024-06-10T00:00:00Z"][0] == pytest.approx(104.0)
-    assert clean["2024-06-13T00:00:00Z"][0] == pytest.approx(107.0)
-
-    # Split-only: adj_close == close on every row.
-    for _event_time, (close, _volume, adj_close) in clean.items():
+    # CLEAN == RAW, bar for bar -- no re-division.
+    assert clean == raw
+    # Pre-split closes are NOT divided by 10 (would be ~10 if double-adjusted).
+    assert clean["2024-06-07T00:00:00Z"][3] == pytest.approx(101.0)
+    assert clean["2024-06-10T00:00:00Z"][3] == pytest.approx(100.0)
+    # adj_close == close (splits-only; dividends out of scope).
+    for _event_time, (close, adj_close) in adj.items():
         assert adj_close == pytest.approx(close)
-
-    # Pre-split adjusted volume = raw_volume * 10; post-split volume unchanged.
-    assert clean["2024-06-03T00:00:00Z"][1] == _PRE_VOLUME * 10
-    assert clean["2024-06-10T00:00:00Z"][1] == _POST_VOLUME
-
-    # The adjusted series moves only ~1%/day -- nowhere near the ~90% fake drop
-    # an UNADJUSTED 1030 -> 104 boundary would show.
-    assert summary.max_abs_daily_close_move_pct is not None
-    assert summary.max_abs_daily_close_move_pct < 5.0
-    assert summary.max_abs_daily_close_move_date is not None
 
 
 def test_second_identical_run_is_idempotent(
     db: Path, fetch_calls: list[str]
 ) -> None:
-    _seed_raw(db)
+    _seed_raw(db, _adjusted_bars())
     first = clean_prices.reconcile(["NVDA"], db)
     second = clean_prices.reconcile(["NVDA"], db)
 
-    assert first.rows_written_clean == 8
+    assert first.rows_written_clean == 6
     assert first.rows_skipped_duplicate == 0
 
-    # Re-running writes nothing new; all 8 valid rows report as skipped duplicates.
-    assert second.rows_raw == 8
+    # Unchanged re-run writes nothing new and reports all rows as skipped.
+    assert second.rows_raw == 6
     assert second.rows_written_clean == 0
-    assert second.rows_skipped_duplicate == 8
+    assert second.rows_skipped_duplicate == 6
     assert second.rows_quarantined == 0
 
     conn = store.connect(db)
     try:
-        assert conn.execute("SELECT COUNT(*) FROM price_clean").fetchone()[0] == 8
-        # corporate_actions write is idempotent too: still 2 rows, not 4.
+        assert conn.execute("SELECT COUNT(*) FROM price_clean").fetchone()[0] == 6
+        # No churn: an unchanged re-run does NOT archive anything to quarantine.
+        assert conn.execute("SELECT COUNT(*) FROM quarantine").fetchone()[0] == 0
+        # corporate_actions write is idempotent too.
         assert conn.execute(
             "SELECT COUNT(*) FROM corporate_actions"
         ).fetchone()[0] == 2
@@ -235,35 +230,68 @@ def test_second_identical_run_is_idempotent(
     assert fetch_calls == ["NVDA", "NVDA"]
 
 
+def test_unadjusted_split_is_flagged_and_raises(
+    db: Path, fetch_calls: list[str]
+) -> None:
+    # Raw data that still has the ~10x cliff (source did NOT pre-adjust).
+    cliff = [
+        _raw_bar("2024-06-06T00:00:00Z", 1010.0, span=10.0),
+        _raw_bar("2024-06-07T00:00:00Z", 1000.0, span=10.0),  # before the split
+        _raw_bar("2024-06-10T00:00:00Z", 100.0),  # on the split -> 10x cliff
+        _raw_bar("2024-06-11T00:00:00Z", 101.0),
+    ]
+    _seed_raw(db, cliff)
+
+    with pytest.raises(UnadjustedSplitError) as excinfo:
+        clean_prices.reconcile(["NVDA"], db)
+    assert "did not pre-adjust" in str(excinfo.value)
+
+    conn = store.connect(db)
+    try:
+        # No CLEAN written for the ticker -- we refused to publish.
+        assert conn.execute("SELECT COUNT(*) FROM price_clean").fetchone()[0] == 0
+        # Exactly the two boundary rows quarantined, with the specific reason.
+        boundary = {
+            row[0]: row[1]
+            for row in conn.execute("SELECT event_time, reason FROM quarantine")
+        }
+        assert boundary == {
+            "2024-06-07T00:00:00Z": QuarantineReason.UNADJUSTED_SPLIT_SUSPECTED.value,
+            "2024-06-10T00:00:00Z": QuarantineReason.UNADJUSTED_SPLIT_SUSPECTED.value,
+        }
+        # price_raw is untouched (system of record).
+        assert conn.execute("SELECT COUNT(*) FROM price_raw").fetchone()[0] == 4
+    finally:
+        conn.close()
+
+
 def test_bad_raw_row_is_quarantined_not_written_to_clean(
     db: Path, fetch_calls: list[str]
 ) -> None:
-    # A negative-close row planted straight into price_raw (the front door would
-    # have caught it, but the cleaner must defend itself too). It sits before the
-    # split, so factor 10 still applies -> adjusted close -0.5, still non-positive.
-    bad = _raw_bar("2024-06-07T00:00:00Z", -5.0, _PRE_VOLUME)
-    _seed_raw(db, extra=[bad])
+    # A negative-close row planted straight into price_raw, placed AWAY from the
+    # split boundary so it does not perturb the continuity check (which uses the
+    # last raw close before the split date).
+    bad = _raw_bar("2024-06-04T00:00:00Z", -5.0)
+    _seed_raw(db, _adjusted_bars(extra=[bad]))
 
     summary = clean_prices.reconcile(["NVDA"], db)
 
-    assert summary.rows_raw == 9
-    assert summary.rows_written_clean == 8
+    assert summary.rows_raw == 7
+    assert summary.rows_written_clean == 6
     assert summary.rows_quarantined == 1
     assert summary.rows_skipped_duplicate == 0
 
     conn = store.connect(db)
     try:
-        # The bad row is NOT in price_clean.
         in_clean = conn.execute(
             "SELECT COUNT(*) FROM price_clean WHERE event_time = ?",
-            ("2024-06-07T00:00:00Z",),
+            ("2024-06-04T00:00:00Z",),
         ).fetchone()[0]
         assert in_clean == 0
 
-        # It IS in quarantine, domain 'price_clean', with the specific reason.
         row = conn.execute(
             "SELECT domain, reason, payload FROM quarantine WHERE event_time = ?",
-            ("2024-06-07T00:00:00Z",),
+            ("2024-06-04T00:00:00Z",),
         ).fetchone()
         assert row[0] == "price_clean"
         assert row[1] == QuarantineReason.NON_POSITIVE_PRICE.value
@@ -272,24 +300,62 @@ def test_bad_raw_row_is_quarantined_not_written_to_clean(
         conn.close()
 
 
+def test_rebuild_replaces_changed_clean_rows_and_archives_old(
+    db: Path, fetch_calls: list[str]
+) -> None:
+    # Pre-populate price_clean with WRONG values (simulating the old double-adjusted
+    # rows), then reconcile and confirm they are replaced and archived.
+    _seed_raw(db, _adjusted_bars())
+    store.init_db(db)
+    conn = store.connect(db)
+    try:
+        wrong = [
+            store.PriceClean(
+                ticker="NVDA",
+                event_time=et,
+                open=close / 10,
+                high=close / 10,
+                low=close / 10,
+                close=close / 10,  # the old ÷10 bug
+                volume=_VOLUME,
+                adj_close=close / 10,
+                knowable_time=_RAW_KNOWABLE,
+                source="yfinance",
+            )
+            for et, close in _ADJUSTED_RAW
+        ]
+        store.write_price_clean(conn, wrong)
+    finally:
+        conn.close()
+
+    summary = clean_prices.reconcile(["NVDA"], db)
+
+    # All six rows are rebuilt (the wrong data differed from the fresh copy).
+    assert summary.rows_written_clean == 6
+    assert summary.rows_skipped_duplicate == 0
+
+    conn = store.connect(db)
+    try:
+        # CLEAN now holds the correct (un-divided) closes.
+        close_07 = conn.execute(
+            "SELECT close FROM price_clean WHERE event_time = ?",
+            ("2024-06-07T00:00:00Z",),
+        ).fetchone()[0]
+        assert close_07 == pytest.approx(101.0)
+        assert conn.execute("SELECT COUNT(*) FROM price_clean").fetchone()[0] == 6
+
+        # The six wrong rows were archived (quarantine-never-delete), not dropped.
+        n_superseded = conn.execute(
+            "SELECT COUNT(*) FROM quarantine WHERE reason = ?",
+            (QuarantineReason.SUPERSEDED_BY_REBUILD.value,),
+        ).fetchone()[0]
+        assert n_superseded == 6
+    finally:
+        conn.close()
+
+
 def test_real_fetch_path_makes_no_network_call() -> None:
-    # Only the autouse network tripwire is active here (fetch_actions is NOT mocked).
-    # The real fetch_actions must fail fast as ActionsFetchError, never reach the net.
+    # Only the autouse network tripwire is active (fetch_actions is NOT mocked).
     with pytest.raises(corporate_actions.ActionsFetchError) as excinfo:
         corporate_actions.fetch_actions("NVDA")
     assert "network access attempted" in str(excinfo.value)
-
-
-def test_split_factor_compounds_multiple_splits() -> None:
-    # Factor math in isolation: two splits, ratios 2 then 4.
-    splits = [
-        AppliedSplit(event_time="2024-03-01T00:00:00Z", ratio=2.0),
-        AppliedSplit(event_time="2024-09-01T00:00:00Z", ratio=4.0),
-    ]
-    # A bar before BOTH splits is divided by 2 * 4 = 8.
-    assert clean_prices.split_factor("2024-01-01T00:00:00Z", splits) == 8.0
-    # Between the two splits: only the later (ratio 4) is strictly after.
-    assert clean_prices.split_factor("2024-06-01T00:00:00Z", splits) == 4.0
-    # On/after both splits: factor 1.
-    assert clean_prices.split_factor("2024-09-01T00:00:00Z", splits) == 1.0
-    assert clean_prices.split_factor("2024-12-01T00:00:00Z", splits) == 1.0

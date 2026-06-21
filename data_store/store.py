@@ -266,6 +266,56 @@ def write_price_clean(conn: sqlite3.Connection, rows: Sequence[PriceClean]) -> i
     )
 
 
+def replace_price_clean(
+    conn: sqlite3.Connection,
+    ticker: str,
+    fresh_rows: Sequence[PriceClean],
+    superseded: Sequence[QuarantineRow],
+) -> int:
+    """Atomically rebuild one ticker's CLEAN rows (archive -> delete -> insert).
+
+    In ONE transaction: append ``superseded`` (the rows being replaced) to
+    quarantine, delete the ticker's existing ``price_clean`` rows, then insert
+    ``fresh_rows``. All-or-nothing -- any error rolls back the whole rebuild, so
+    ``price_clean`` is never left half-written. This is how a re-derived series
+    replaces an out-of-date one while honouring quarantine-never-delete. Returns
+    the number of fresh rows written (all of them: the delete clears conflicts).
+    """
+    fresh_params = [
+        (
+            r.ticker,
+            validate_iso(r.event_time),
+            r.open,
+            r.high,
+            r.low,
+            r.close,
+            r.volume,
+            r.adj_close,
+            validate_iso(r.knowable_time),
+            r.source,
+        )
+        for r in fresh_rows
+    ]
+    superseded_params = [
+        (
+            q.domain,
+            q.ticker,
+            q.event_time,
+            q.payload,
+            q.reason,
+            validate_iso(q.knowable_time),
+        )
+        for q in superseded
+    ]
+    with conn:  # one transaction: archive + delete + insert, or nothing at all
+        if superseded_params:
+            conn.executemany(_QUARANTINE_SQL, superseded_params)
+        conn.execute("DELETE FROM price_clean WHERE ticker = ?", (ticker,))
+        if fresh_params:
+            conn.executemany(_PRICE_CLEAN_SQL, fresh_params)
+    return len(fresh_rows)
+
+
 def write_sentiment_raw(conn: sqlite3.Connection, rows: Sequence[Sentiment]) -> int:
     """Insert raw sentiment rows idempotently; return the number of new rows."""
     return _insert_many(

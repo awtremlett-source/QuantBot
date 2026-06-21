@@ -8,8 +8,8 @@ tests mock :func:`fetch_actions` and run fully offline.
 Contract: :func:`fetch_actions` returns a list of :class:`ActionRecord` dicts
 (possibly empty -- a ticker may legitimately have no actions), or raises
 :class:`ActionsFetchError`. Both splits and dividends are returned; the caller
-decides what to do with each ``action_type`` (the current cleaner adjusts on
-splits only and merely persists dividends).
+decides what to do with each ``action_type`` (the current cleaner uses splits to
+verify the source's continuity and merely persists dividends).
 """
 
 from __future__ import annotations

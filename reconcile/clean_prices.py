@@ -1,24 +1,32 @@
-"""RAW->CLEAN price reconciliation: split-adjust raw bars and write price_clean.
+"""RAW->CLEAN price reconciliation: VERIFY the source's split adjustment, then copy.
 
-This is the bridge from ingested data (``price_raw``) to the series the rest of
-the system reads (``price_clean``, served by ``read_price_asof``). For each
-ticker it:
+yfinance's OHLC (``auto_adjust=False``) are ALREADY split-adjusted by Yahoo, so
+the RAW series is continuous across splits. This brick therefore does NOT
+re-adjust prices -- doing so would double-adjust and create a fake ~ratio-sized
+cliff at each split (this exact bug was caught in testing by the move meter). It:
 
 1. fetches corporate actions and persists them to ``corporate_actions`` (the only
    network call in the whole brick), then
-2. reads that ticker's raw bars and its persisted splits from the store, and
-3. split-adjusts every bar, re-runs the same row sanity checks ingest uses, and
-   routes each adjusted bar to ``price_clean`` (valid) or ``quarantine`` (bad).
+2. VERIFIES, per known split, that the raw series is CONTINUOUS across the split
+   date -- a source that pre-adjusted shows a small move; one that did NOT shows a
+   ~ratio-sized cliff, then
+3. copies the validated RAW bars into ``price_clean`` (the series
+   ``read_price_asof`` serves), re-running the same row sanity battery ingest uses.
 
-SPLIT ADJUSTMENT ONLY -- this is deliberate scope. A bar's ``split_factor`` is the
-product of every split ratio whose action ``event_time`` is STRICTLY AFTER the
-bar: bars before a 10-for-1 split divide by 10, bars on/after keep factor 1. The
-adjusted close is written to both ``close`` and ``adj_close``.
+If a split's boundary shows a large discontinuity (> ``_CONTINUITY_THRESHOLD_PCT``)
+the source did NOT pre-adjust it (or the data is bad): the boundary rows are
+quarantined (``unadjusted_split_suspected``) and the run RAISES. We refuse to
+publish a CLEAN series we cannot trust rather than guess an adjustment.
 
-LATER REFINEMENT (out of scope here): dividend adjustment. Dividends ARE fetched
-and persisted to ``corporate_actions``, but they do not yet affect prices. When
-added, ``adj_close`` will carry the split+dividend (total-return) close while
-``close`` stays split-only -- which is why they are separate columns today.
+``adj_close == close`` for now (splits only). DIVIDEND adjustment is a later
+refinement and will use Yahoo's ``Adj Close`` (split+dividend) column -- which is
+why ``close`` and ``adj_close`` are separate columns today.
+
+REBUILD: re-running replaces a ticker's CLEAN rows atomically -- the old rows are
+archived to quarantine (``superseded_by_rebuild``) and deleted before the fresh
+rows are written (quarantine-never-delete). An UNCHANGED re-run is a no-op
+(idempotent): identical data writes nothing and is reported as skipped duplicates.
+``price_raw`` is the system of record and is never modified here.
 """
 
 from __future__ import annotations
@@ -40,28 +48,53 @@ logger = logging.getLogger(__name__)
 # Domain tag stored on every quarantine row this module writes.
 _DOMAIN = "price_clean"
 
+# A close-to-close move larger than this across a split boundary means the source
+# did NOT pre-adjust the split (a 10-for-1 split shows ~900% otherwise). Well
+# above any plausible single-day market move, so it never false-positives on real
+# volatility, yet far below a split cliff.
+_CONTINUITY_THRESHOLD_PCT = 35.0
+
+# SplitCheck.status values.
+_STATUS_PASS = "pass"
+_STATUS_FLAGGED = "flagged"
+
 
 class QuarantineReason(StrEnum):
-    """Why an adjusted bar was rejected from price_clean (checked in order).
+    """Why a row was sent to quarantine by the reconciler (sanity reasons first).
 
-    These mirror the ingest reasons (same string values) so a rejection means the
-    same thing wherever it is raised. The ingest-only reasons (future bar, suspect
-    jump, duplicate-in-batch, malformed event_time) cannot occur here: the input
-    is already-validated RAW rows, one per session, read from the store.
+    The four price-sanity reasons mirror ingest (same string values) so a
+    rejection means the same thing wherever it is raised. The last two are
+    reconcile-specific bookkeeping reasons, not row defects.
     """
 
     NAN_OR_INF_PRICE = "nan_or_inf_price"
     NON_POSITIVE_PRICE = "non_positive_price"
     OHLC_INCONSISTENT = "ohlc_inconsistent"
     BAD_VOLUME = "negative_or_nan_volume"
+    UNADJUSTED_SPLIT_SUSPECTED = "unadjusted_split_suspected"
+    SUPERSEDED_BY_REBUILD = "superseded_by_rebuild"
+
+
+class UnadjustedSplitError(RuntimeError):
+    """Raised when a split's boundary shows a discontinuity the source left in.
+
+    The reconciler refuses to write CLEAN for the affected ticker and quarantines
+    the boundary rows first -- a loud failure, never a silent wrong series.
+    """
 
 
 @dataclass(frozen=True, slots=True)
-class AppliedSplit:
-    """A split that affected the series: its action time and ratio."""
+class SplitCheck:
+    """The continuity verdict for one known split.
+
+    ``across_split_move_pct`` is ``None`` when the split falls outside the loaded
+    bar range (no boundary to test). ``status`` is ``"pass"`` or ``"flagged"``.
+    """
 
     event_time: str
     ratio: float
+    across_split_move_pct: float | None
+    status: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,11 +104,11 @@ class ReconciliationSummary:
     Invariant (per run):
         rows_raw == rows_written_clean + rows_skipped_duplicate + rows_quarantined
 
-    ``max_abs_daily_close_move_pct`` is the largest absolute day-over-day percent
-    move in the ADJUSTED close series (with the ``event_time`` it occurred on); it
-    is ``None`` when there are fewer than two valid bars. A correctly split-
-    adjusted series shows only small moves -- a ~90% jump would betray an unadjusted
-    split.
+    ``rows_quarantined`` counts only RAW rows that failed a sanity check -- NOT the
+    boundary rows of a flagged split, nor rows archived by a rebuild (those are
+    separate bookkeeping). ``max_abs_daily_close_move_pct`` (with its
+    ``event_time``) is the largest day-over-day move in the CLEAN close series; on
+    a correctly pre-adjusted source it reflects only real volatility.
     """
 
     requested_tickers: tuple[str, ...]
@@ -83,9 +116,17 @@ class ReconciliationSummary:
     rows_written_clean: int
     rows_quarantined: int
     rows_skipped_duplicate: int
-    splits_applied: tuple[AppliedSplit, ...]
+    splits_checked: tuple[SplitCheck, ...]
     max_abs_daily_close_move_pct: float | None
     max_abs_daily_close_move_date: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class _Split:
+    """A persisted split: its action time and ratio."""
+
+    event_time: str
+    ratio: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,17 +143,6 @@ class _RawBar:
 
 
 @dataclass(frozen=True, slots=True)
-class _AdjustedBar:
-    """A split-adjusted OHLCV bar, pre-sanity-check."""
-
-    open: float
-    high: float
-    low: float
-    close: float
-    volume: int
-
-
-@dataclass(frozen=True, slots=True)
 class _DailyMove:
     """A day-over-day percent close move and the event_time it landed on."""
 
@@ -120,19 +150,9 @@ class _DailyMove:
     event_time: str
 
 
-def split_factor(event_time: str, splits: Sequence[AppliedSplit]) -> float:
-    """Return the divisor for a bar at ``event_time`` given ``splits``.
-
-    The factor is the product of every split ratio whose action event_time is
-    STRICTLY AFTER ``event_time``. A bar before two splits (ratios 2 then 4) gets
-    factor 8; a bar on/after all splits gets factor 1. (Canonical UTC ISO sorts
-    chronologically as plain text, so the comparison is a string comparison.)
-    """
-    factor = 1.0
-    for split in splits:
-        if split.event_time > event_time:
-            factor *= split.ratio
-    return factor
+# A CLEAN row's comparable signature (everything but knowable_time), keyed by
+# event_time -- used to decide whether a rebuild is actually needed.
+_Signature = tuple[float, float, float, float, int, float, str]
 
 
 def _is_nonfinite(value: float) -> bool:
@@ -140,23 +160,41 @@ def _is_nonfinite(value: float) -> bool:
     return math.isnan(value) or math.isinf(value)
 
 
-def _adjust(bar: _RawBar, factor: float) -> _AdjustedBar:
-    """Split-adjust ``bar``: prices divided by ``factor``, volume scaled up by it."""
-    return _AdjustedBar(
-        open=bar.open / factor,
-        high=bar.high / factor,
-        low=bar.low / factor,
-        close=bar.close / factor,
-        volume=round(bar.volume * factor),
+def _json_safe(payload: dict[str, object]) -> dict[str, object]:
+    """Return a JSON-serialisable copy of ``payload`` (non-finite floats -> text)."""
+    safe: dict[str, object] = {}
+    for key, value in payload.items():
+        if isinstance(value, float) and not math.isfinite(value):
+            safe[key] = repr(value)
+        else:
+            safe[key] = value
+    return safe
+
+
+def _quarantine(
+    ticker: str,
+    event_time: str,
+    payload: dict[str, object],
+    reason: str,
+    knowable_time: str,
+) -> store.QuarantineRow:
+    """Build a QuarantineRow with ``payload`` serialised as JSON."""
+    return store.QuarantineRow(
+        domain=_DOMAIN,
+        ticker=ticker,
+        event_time=event_time,
+        payload=json.dumps(_json_safe(payload), sort_keys=True),
+        reason=reason,
+        knowable_time=knowable_time,
     )
 
 
-def _classify_clean_row(bar: _AdjustedBar) -> QuarantineReason | None:
+def _classify_clean_row(bar: _RawBar) -> QuarantineReason | None:
     """Return why ``bar`` should be quarantined, or ``None`` if it is valid.
 
-    The same battery ingest applies at the RAW boundary, re-run on the ADJUSTED
-    values -- defense in depth, since adjustment (or a bad row written straight to
-    price_raw) could yield a non-finite, non-positive, or inconsistent bar.
+    The same battery ingest applies at the RAW boundary, re-run here as defense in
+    depth (a row written straight to price_raw could be non-finite, non-positive,
+    or inconsistent).
     """
     prices = (bar.open, bar.high, bar.low, bar.close)
     if any(_is_nonfinite(price) for price in prices):
@@ -171,50 +209,17 @@ def _classify_clean_row(bar: _AdjustedBar) -> QuarantineReason | None:
     return None
 
 
-def _json_safe(payload: dict[str, object]) -> dict[str, object]:
-    """Return a JSON-serialisable copy of ``payload`` (non-finite floats -> text)."""
-    safe: dict[str, object] = {}
-    for key, value in payload.items():
-        if isinstance(value, float) and not math.isfinite(value):
-            safe[key] = repr(value)
-        else:
-            safe[key] = value
-    return safe
-
-
-def _quarantine_row(
-    ticker: str,
-    bar: _RawBar,
-    adjusted: _AdjustedBar,
-    factor: float,
-    reason: QuarantineReason,
-    knowable_time: str,
-) -> store.QuarantineRow:
-    """Build a QuarantineRow preserving both the raw bar and the adjustment."""
-    payload: dict[str, object] = {
-        "ticker": ticker,
+def _sanity_payload(bar: _RawBar) -> dict[str, object]:
+    """Audit payload for a sanity-rejected bar (the raw values, verbatim)."""
+    return {
         "event_time": bar.event_time,
-        "raw_open": bar.open,
-        "raw_high": bar.high,
-        "raw_low": bar.low,
-        "raw_close": bar.close,
-        "raw_volume": bar.volume,
-        "split_factor": factor,
-        "adj_open": adjusted.open,
-        "adj_high": adjusted.high,
-        "adj_low": adjusted.low,
-        "adj_close": adjusted.close,
-        "adj_volume": adjusted.volume,
+        "open": bar.open,
+        "high": bar.high,
+        "low": bar.low,
+        "close": bar.close,
+        "volume": bar.volume,
         "source": bar.source,
     }
-    return store.QuarantineRow(
-        domain=_DOMAIN,
-        ticker=ticker,
-        event_time=bar.event_time,
-        payload=json.dumps(_json_safe(payload), sort_keys=True),
-        reason=reason.value,
-        knowable_time=knowable_time,
-    )
 
 
 def _read_raw_bars(conn: sqlite3.Connection, ticker: str) -> list[_RawBar]:
@@ -238,7 +243,7 @@ def _read_raw_bars(conn: sqlite3.Connection, ticker: str) -> list[_RawBar]:
     ]
 
 
-def _read_splits(conn: sqlite3.Connection, ticker: str) -> list[AppliedSplit]:
+def _read_splits(conn: sqlite3.Connection, ticker: str) -> list[_Split]:
     """Read ``ticker``'s persisted splits from corporate_actions, ascending."""
     cursor = conn.execute(
         "SELECT event_time, value FROM corporate_actions "
@@ -246,13 +251,127 @@ def _read_splits(conn: sqlite3.Connection, ticker: str) -> list[AppliedSplit]:
         (ticker, corporate_actions.ACTION_SPLIT),
     )
     return [
-        AppliedSplit(event_time=str(row[0]), ratio=float(row[1]))
+        _Split(event_time=str(row[0]), ratio=float(row[1]))
         for row in cursor.fetchall()
     ]
 
 
+def _read_clean_signatures(
+    conn: sqlite3.Connection, ticker: str
+) -> dict[str, _Signature]:
+    """Existing CLEAN rows for ``ticker`` as event_time -> data signature.
+
+    ``knowable_time`` is deliberately excluded: an unchanged re-run must compare
+    equal so it is a no-op and does NOT churn the point-in-time stamp.
+    """
+    cursor = conn.execute(
+        "SELECT event_time, open, high, low, close, volume, adj_close, source "
+        "FROM price_clean WHERE ticker = ? ORDER BY event_time ASC",
+        (ticker,),
+    )
+    return {
+        str(row[0]): (
+            float(row[1]),
+            float(row[2]),
+            float(row[3]),
+            float(row[4]),
+            int(row[5]),
+            float(row[6]),
+            str(row[7]),
+        )
+        for row in cursor.fetchall()
+    }
+
+
+def _signature_payload(event_time: str, sig: _Signature) -> dict[str, object]:
+    """Audit payload for a superseded CLEAN row, reconstructed from its signature."""
+    return {
+        "event_time": event_time,
+        "open": sig[0],
+        "high": sig[1],
+        "low": sig[2],
+        "close": sig[3],
+        "volume": sig[4],
+        "adj_close": sig[5],
+        "source": sig[6],
+    }
+
+
+def _boundary_bars(
+    raw_bars: Sequence[_RawBar], split_event_time: str
+) -> tuple[_RawBar | None, _RawBar | None]:
+    """Return (last bar strictly before the split, first bar on/after it).
+
+    Either side is ``None`` if the split falls outside the loaded range. Bars are
+    assumed ascending by event_time. (Canonical UTC ISO sorts chronologically as
+    plain text, so comparisons are string comparisons.)
+    """
+    before: _RawBar | None = None
+    after: _RawBar | None = None
+    for bar in raw_bars:
+        if bar.event_time < split_event_time:
+            before = bar
+        else:
+            after = bar
+            break
+    return before, after
+
+
+def _verify_splits(
+    conn: sqlite3.Connection,
+    ticker: str,
+    raw_bars: Sequence[_RawBar],
+    splits: Sequence[_Split],
+    knowable_time: str,
+) -> list[SplitCheck]:
+    """Confirm the raw series is continuous across every known split.
+
+    Returns one :class:`SplitCheck` per split. On a discontinuity beyond the
+    threshold the boundary rows are quarantined and :class:`UnadjustedSplitError`
+    is raised (the source did not pre-adjust -- we refuse to publish CLEAN).
+    """
+    checks: list[SplitCheck] = []
+    for split in splits:
+        before, after = _boundary_bars(raw_bars, split.event_time)
+        if before is None or after is None or after.close <= 0:
+            # No testable boundary (split outside the range, or a non-positive
+            # close that the row sanity check will catch on its own).
+            checks.append(SplitCheck(split.event_time, split.ratio, None, _STATUS_PASS))
+            continue
+
+        move = abs(before.close - after.close) / after.close * 100.0
+        if move > _CONTINUITY_THRESHOLD_PCT:
+            checks.append(
+                SplitCheck(split.event_time, split.ratio, move, _STATUS_FLAGGED)
+            )
+            boundary = [
+                _quarantine(
+                    ticker,
+                    bar.event_time,
+                    {
+                        **_sanity_payload(bar),
+                        "split_event_time": split.event_time,
+                        "split_ratio": split.ratio,
+                        "across_split_move_pct": move,
+                    },
+                    QuarantineReason.UNADJUSTED_SPLIT_SUSPECTED.value,
+                    knowable_time,
+                )
+                for bar in (before, after)
+            ]
+            store.write_quarantine(conn, boundary)
+            raise UnadjustedSplitError(
+                f"{ticker}: raw close moves {move:.1f}% across the {split.ratio}"
+                f"-for-1 split on {split.event_time} (threshold "
+                f"{_CONTINUITY_THRESHOLD_PCT}%) -- source did not pre-adjust; "
+                f"refusing to write CLEAN. Boundary rows quarantined."
+            )
+        checks.append(SplitCheck(split.event_time, split.ratio, move, _STATUS_PASS))
+    return checks
+
+
 def _max_close_move(rows: Sequence[store.PriceClean]) -> _DailyMove | None:
-    """Largest abs day-over-day percent close move across the adjusted series."""
+    """Largest abs day-over-day percent close move across the CLEAN series."""
     best: _DailyMove | None = None
     for i in range(1, len(rows)):
         prev_close = rows[i - 1].close
@@ -278,8 +397,9 @@ def _persist_actions(
 ) -> None:
     """Fetch ``ticker``'s corporate actions and persist them (fetch is the only net).
 
-    A fetch failure is logged and re-raised -- never swallowed. We fail loud here
-    rather than silently produce a possibly-wrong adjustment from missing splits.
+    A fetch failure is logged and re-raised -- never swallowed. Both splits and
+    dividends are stored; dividends are kept for the later dividend-adjustment
+    refinement and do not affect prices today.
     """
     try:
         fetched = corporate_actions.fetch_actions(ticker)
@@ -302,16 +422,56 @@ def _persist_actions(
         store.write_corporate_actions(conn, actions)
 
 
+def _write_or_rebuild_clean(
+    conn: sqlite3.Connection,
+    ticker: str,
+    clean_rows: Sequence[store.PriceClean],
+    knowable_time: str,
+) -> int:
+    """Write ``clean_rows``, rebuilding atomically only if the data has changed.
+
+    If the existing CLEAN rows already match (same data, ignoring knowable_time),
+    this is a no-op and returns 0 (idempotent). Otherwise the existing rows are
+    archived to quarantine and replaced atomically. Returns rows written.
+    """
+    existing = _read_clean_signatures(conn, ticker)
+    fresh: dict[str, _Signature] = {
+        r.event_time: (
+            r.open,
+            r.high,
+            r.low,
+            r.close,
+            r.volume,
+            r.adj_close,
+            r.source,
+        )
+        for r in clean_rows
+    }
+    if existing == fresh:
+        return 0  # identical data already present -- nothing to do
+
+    superseded = [
+        _quarantine(
+            ticker,
+            event_time,
+            _signature_payload(event_time, sig),
+            QuarantineReason.SUPERSEDED_BY_REBUILD.value,
+            knowable_time,
+        )
+        for event_time, sig in existing.items()
+    ]
+    return store.replace_price_clean(conn, ticker, list(clean_rows), superseded)
+
+
 def reconcile(
     tickers: Sequence[str], db_path: store.DbPath
 ) -> ReconciliationSummary:
-    """Reconcile RAW->CLEAN (split-adjusted) for ``tickers``; return the summary.
+    """Reconcile RAW->CLEAN (verify-and-copy) for ``tickers``; return the summary.
 
-    ``knowable_time`` is stamped once, at the start of the run, so every row this
-    run writes (corporate actions and clean bars) shares one consistent "as of"
-    instant. Per ticker: persist corporate actions, then derive the clean series
-    from the store (price_raw + persisted splits). Idempotent: re-running writes
-    no new clean rows and reports them as skipped duplicates.
+    ``knowable_time`` is stamped once at the start of the run, so every row this
+    run writes shares one consistent "as of" instant. Per ticker: persist
+    corporate actions, verify split continuity (raises on a discontinuity), then
+    copy the validated raw bars into ``price_clean`` (rebuilding if they changed).
     """
     requested = tuple(tickers)
     knowable_time = now_utc_iso()
@@ -321,50 +481,52 @@ def reconcile(
     rows_valid = 0
     rows_quarantined = 0
     rows_written_clean = 0
-    splits_applied: list[AppliedSplit] = []
+    splits_checked: list[SplitCheck] = []
     max_move: _DailyMove | None = None
 
     conn = store.connect(db_path)
     try:
         for ticker in requested:
             _persist_actions(conn, ticker, knowable_time)
-
             splits = _read_splits(conn, ticker)
             raw_bars = _read_raw_bars(conn, ticker)
             rows_raw += len(raw_bars)
             if not raw_bars:
                 continue
 
-            # A split is "applied" iff at least one bar precedes it (the earliest
-            # bar is strictly before it -> the strict-after test divides that bar).
-            earliest = raw_bars[0].event_time
-            splits_applied.extend(s for s in splits if s.event_time > earliest)
+            # Verify the source pre-adjusted every known split (raises if not).
+            splits_checked.extend(
+                _verify_splits(conn, ticker, raw_bars, splits, knowable_time)
+            )
 
+            # CLEAN is a validated COPY of RAW -- no re-adjustment.
             clean_rows: list[store.PriceClean] = []
             quarantine_rows: list[store.QuarantineRow] = []
             for bar in raw_bars:
-                factor = split_factor(bar.event_time, splits)
-                adjusted = _adjust(bar, factor)
-                reason = _classify_clean_row(adjusted)
+                reason = _classify_clean_row(bar)
                 if reason is None:
                     clean_rows.append(
                         store.PriceClean(
                             ticker=ticker,
                             event_time=bar.event_time,
-                            open=adjusted.open,
-                            high=adjusted.high,
-                            low=adjusted.low,
-                            close=adjusted.close,
-                            volume=adjusted.volume,
-                            adj_close=adjusted.close,  # split-only: == close
+                            open=bar.open,
+                            high=bar.high,
+                            low=bar.low,
+                            close=bar.close,
+                            volume=bar.volume,
+                            adj_close=bar.close,  # splits-only; dividends later
                             knowable_time=knowable_time,
                             source=bar.source,
                         )
                     )
                 else:
                     quarantine_rows.append(
-                        _quarantine_row(
-                            ticker, bar, adjusted, factor, reason, knowable_time
+                        _quarantine(
+                            ticker,
+                            bar.event_time,
+                            _sanity_payload(bar),
+                            reason.value,
+                            knowable_time,
                         )
                     )
 
@@ -372,9 +534,10 @@ def reconcile(
             rows_quarantined += len(quarantine_rows)
             if quarantine_rows:
                 store.write_quarantine(conn, quarantine_rows)
-            if clean_rows:
-                rows_written_clean += store.write_price_clean(conn, clean_rows)
 
+            rows_written_clean += _write_or_rebuild_clean(
+                conn, ticker, clean_rows, knowable_time
+            )
             max_move = _larger_move(max_move, _max_close_move(clean_rows))
     finally:
         conn.close()
@@ -385,7 +548,7 @@ def reconcile(
         rows_written_clean=rows_written_clean,
         rows_quarantined=rows_quarantined,
         rows_skipped_duplicate=rows_valid - rows_written_clean,
-        splits_applied=tuple(splits_applied),
+        splits_checked=tuple(splits_checked),
         max_abs_daily_close_move_pct=None if max_move is None else max_move.pct,
         max_abs_daily_close_move_date=(
             None if max_move is None else max_move.event_time
