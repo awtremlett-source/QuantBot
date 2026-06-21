@@ -12,12 +12,12 @@ Legend: [ ] open · [~] in progress · [x] done
 - [x] Data sources locked: yfinance (price) + StockGeist (sentiment)
 - [x] data_store API: SQLite(WAL) RAW+CLEAN schema; single-writer law
 - [x] Front-door ingest (one writer; unit/scale/sanity; quarantine)
-- [ ] RAW→CLEAN reconciliation + split/dividend adjustment → populate price_clean (NEXT)
+- [x] RAW→CLEAN reconciliation (verify-and-copy; split-adjusted source) → price_clean
+- [ ] §7 validation firewall skeleton + known-null birth-certificate test (NEXT — before
+      any strategy): purged+embargoed CV · CPCV · trials.jsonl · Deflated Sharpe · PBO · placebo
 - [ ] Universe: choose ~100 liquid US names → GO
 - [ ] Count reconciliation (in-zip vs staged vs DB) + ±10% universe invariant
 - [ ] Integrity census v1 (CLEAN/SUSPECT/CORRUPT certificates) + data-quality meter
-- [ ] §7 firewall skeleton: purged+embargoed CV · CPCV · trials.jsonl · Deflated
-      Sharpe · PBO · placebo battery · known-null birth certificate
 - [ ] FIRST LIGHT: chart any ticker + first daily digest
 - [ ] Telegram bot live (BotFather → .env → "hello")
 EXIT: firewall passes its known-null test; census ≥95% CLEAN on active universe.

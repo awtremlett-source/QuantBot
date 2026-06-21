@@ -31,6 +31,7 @@ CURRENT PHASE: 1 (Foundations) — safety rails done; building the data layer + 
 ## Locked decisions (rationale → STATE.md)
 - Data: Price=yfinance (daily OHLCV, ~15-min delay; fine at 4h). Sentiment=StockGeist
   (free 10k cr/mo). Sources decoupled, point-in-time. Real-time deferred.
+  yfinance OHLC already split-adjusted; RAW->CLEAN verifies continuity, never re-divides (SCARS).
 - Cadence/budget: 4h poll floor over ~100 names (~4,200 cr/mo); spare=emergency reserve.
   Severity-weighted: calm 4h / mild ~2h / severe 1h+. Guard: global credit ceiling +
   optional weekly rationing.

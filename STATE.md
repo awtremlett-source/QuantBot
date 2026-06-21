@@ -40,12 +40,17 @@ Phase: 1 (Foundations).  Updated: 2026-06-21.
 - FIRST LIGHT: live NVDA ingest = 618 daily RAW bars, 0 quarantined. Idempotency
   verified (re-run wrote 0, skipped 618). Point-in-time read mechanism verified via
   knowable_time on RAW rows.
+- RAW→CLEAN reconcile brick complete (verify-and-copy; yfinance OHLC are ALREADY
+  split-adjusted, so CLEAN is a validated copy, NOT re-divided — see SCARS #22).
+  Committed + pushed (2f83ee7). Live NVDA rebuild = 618 CLEAN rows; continuity check
+  pass (2024-06-10 10:1 split = 0.74% boundary move); max daily move 18.72% on
+  2025-04-09. read_price_asof returns 618 continuous bars ($48 era → $207 latest).
+  618 old double-adjusted rows archived to quarantine (superseded_by_rebuild).
 
 ## Known gap / next
-- Ingest writes price_raw ONLY; price_clean is empty by design, so read_price_asof
-  returns nothing until a RAW→CLEAN step exists.
-- NEXT BRICK = RAW→CLEAN reconciliation + split/dividend adjustment (bridge from
-  ingested data to data the strategies/backtester can read).
+- CLEAN gap CLOSED: read_price_asof now serves the reconciled, split-adjusted series.
+- NEXT BRICK = §7 validation firewall skeleton + known-null birth-certificate test
+  (BEFORE any strategy).
 
 ## Open flags
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
