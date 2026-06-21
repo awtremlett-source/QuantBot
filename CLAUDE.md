@@ -6,15 +6,12 @@ North star £100/day net — honesty FIRST (£10k → 1%/day = fantasy; anchor o
 Operator is a complete beginner: teach before building; define every term on first
 use; decisions arrive as `DECISION REQUESTED` with a recommended default.
 CURRENT PHASE: 1 (Foundations) — safety rails done; building the data layer + the
-§7 validation firewall BEFORE any strategy. Capital £10,000 GBP. Universe: focused
-~100 liquid US names. Machine: sometimes-off laptop → loops must be catch-up-safe.
+§7 validation firewall BEFORE any strategy. Machine: sometimes-off laptop → loops
+must be catch-up-safe.
 
-## Commands
-- Tests:      python -m pytest -q
-- Lint/types: ruff check . && mypy --strict .
-- Ingest:     (planned) python -m ingest ...
-- Paper loop: (planned) python -m execution.paper_loop
-(venv: .venv — activate before running.)
+## Commands (venv: .venv — activate first)
+- Tests: python -m pytest -q · Lint/types: ruff check . && mypy --strict .
+- Planned: python -m ingest ... · python -m execution.paper_loop
 
 ## Architecture map (one line per area; files fill in as built)
 - ingest/      ONLY writer to the data store (front door, §5); unit/scale checks here
@@ -22,7 +19,7 @@ CURRENT PHASE: 1 (Foundations) — safety rails done; building the data layer + 
 - research/    §7 firewall, backtester, labelers, feature builders
 - strategies/  one file per strategy + trigger_fixture / anti_fixture
 - risk/        sizing (1% rule wins), ratchet exits, killswitch
-- execution/   T212 demo client + paper book (fill at NEXT-bar open − slippage)
+- execution/   T212 demo client + paper book
 - monitors/    meters, canary, daily digest
 - tools/       operational scripts
 - tests/       mirrors tree; tests/museum/ = incident regression fixtures
@@ -58,7 +55,7 @@ CURRENT PHASE: 1 (Foundations) — safety rails done; building the data layer + 
 - Birth-certificate: monitors prove red-on-broken before trusted (#9)
 
 ## Token rules (§12)
-This file ≤4k chars; GRAND_TODO ≤10k (archive DONE rows). grep-then-read-range;
+This file ≤4k chars; GRAND_TODO ≤10k (archive DONE). grep-then-read-range;
 never cat data files (head/tail/count). Update STATE.md at session end. Make
 surgical edits to this file — never full rewrites.
 
