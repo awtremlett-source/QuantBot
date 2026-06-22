@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-06-21.
+Phase: 1 (Foundations).  Updated: 2026-06-23.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -49,8 +49,12 @@ Phase: 1 (Foundations).  Updated: 2026-06-21.
 
 ## Known gap / next
 - CLEAN gap CLOSED: read_price_asof now serves the reconciled, split-adjusted series.
-- NEXT BRICK = §7 validation firewall skeleton + known-null birth-certificate test
-  (BEFORE any strategy).
+- §7 VALIDATION FIREWALL = MANDATORY 3-part gate, ALL required BEFORE any strategy
+  (firewall must demonstrably fail a worthless strategy):
+  1. [x] Backtest tests — honest engine + no-lookahead spy guard (research/backtester.py). DONE.
+  2. [ ] Walk-forward tests — scored ONLY on data not trained on (purged+embargoed CV). NEXT BRICK.
+  3. [ ] Monte Carlo / known-null tests — randomize/shuffle many times; worthless strategy MUST
+        score worthless (Deflated Sharpe, PBO, placebo). The birth-certificate. NEXT BRICK.
 
 ## Open flags
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).

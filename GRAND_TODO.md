@@ -13,8 +13,14 @@ Legend: [ ] open · [~] in progress · [x] done
 - [x] data_store API: SQLite(WAL) RAW+CLEAN schema; single-writer law
 - [x] Front-door ingest (one writer; unit/scale/sanity; quarantine)
 - [x] RAW→CLEAN reconciliation (verify-and-copy; split-adjusted source) → price_clean
-- [ ] §7 validation firewall skeleton + known-null birth-certificate test (NEXT — before
-      any strategy): purged+embargoed CV · CPCV · trials.jsonl · Deflated Sharpe · PBO · placebo
+- [~] §7 VALIDATION FIREWALL — MANDATORY: all three required BEFORE any strategy is built,
+      and the firewall must demonstrably FAIL a worthless strategy:
+  - [x] Backtest tests — honest engine + no-lookahead spy guard (research/backtester.py)
+  - [ ] Walk-forward tests — strategies scored ONLY on data they were not trained on
+        (purged + embargoed CV · CPCV)
+  - [ ] Monte Carlo / known-null tests — randomize/shuffle data or trades many times to
+        measure luck; a random/worthless strategy MUST score worthless (deflated by number
+        of trials: trials.jsonl · Deflated Sharpe · PBO · placebo). The firewall's birth-certificate.
 - [ ] Universe: choose ~100 liquid US names → GO
 - [ ] Count reconciliation (in-zip vs staged vs DB) + ±10% universe invariant
 - [ ] Integrity census v1 (CLEAN/SUSPECT/CORRUPT certificates) + data-quality meter
