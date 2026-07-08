@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-06-23.
+Phase: 1 (Foundations).  Updated: 2026-07-08.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -27,6 +27,16 @@ Phase: 1 (Foundations).  Updated: 2026-06-23.
   time, continuous severity blending, early-and-small sizing, blunt stress rules.
 - Validation (locked): walk-forward + final untouched holdout; backtests simulate live
   data delay; Deflated Sharpe (penalised by number of trials).
+- Plan-review principles (locked 2026-07-08):
+  - Judge strategies on RISK-ADJUSTED terms (Sharpe, max drawdown), NOT raw total return
+    (buy-and-hold NVDA is a rigged benchmark long-only cannot beat on total return).
+  - Prove ONE simple ALWAYS-ON strategy through the firewall BEFORE any regime-switching;
+    add regime-switching only if it beats the always-on strategy out-of-sample.
+  - Sentiment = v2: collect StockGeist now to build history, but OUT of v1 buy/sell decisions.
+  - Emergency-polling / intraday cadence SHELVED until/unless the system goes intraday.
+  - Pull NVDA history back to ~2015 before strategy work (real stress/downtrend regimes).
+  - Deflate at the SWEEP level (count all ~100 tickers as trials) OR keep a final cross-ticker
+    holdout tested once.
 
 ## Done
 - Safety rails: git init, .gitignore (verified: .env blocked, template kept),
