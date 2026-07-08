@@ -68,6 +68,22 @@ class BacktestResult:
 
 
 @dataclass(frozen=True, slots=True)
+class Stats:
+    """Headline performance stats derived from a per-bar returns series.
+
+    Daily-bar convention (252/yr). ``total_return``/``annualized_return`` compound
+    the returns; ``annualized_sharpe`` is mean/std*sqrt(252) (0.0 when std is 0 or
+    fewer than two returns); ``max_drawdown`` is the worst peak-to-trough drop as a
+    negative fraction (0.0 if never underwater).
+    """
+
+    total_return: float
+    annualized_return: float
+    annualized_sharpe: float
+    max_drawdown: float
+
+
+@dataclass(frozen=True, slots=True)
 class _SimResult:
     """Internal: the net and gross equity curves from one simulation pass."""
 
@@ -193,6 +209,30 @@ def _max_drawdown(equity: pd.Series) -> float:
     return float(drawdown.min())
 
 
+def compute_stats(returns: pd.Series) -> Stats:
+    """Headline stats from GENUINE per-bar fractional returns.
+
+    ``returns`` must be the true bar-to-bar returns (``r_i = equity_i/equity_{i-1}
+    - 1``) with NO synthetic leading 0.0. Shared by :func:`run_backtest` and
+    :func:`research.walk_forward.walk_forward` so their definitions can never drift.
+
+    The drawdown is measured on a normalized equity path with a leading ``1.0`` peak
+    prepended, so a drop on the very first return is counted (dropping it would hide
+    an opening loss).
+    """
+    n = len(returns)
+    if n == 0:
+        return Stats(0.0, 0.0, 0.0, 0.0)
+    growth = float((1.0 + returns).prod())
+    equity = pd.concat([pd.Series([1.0]), (1.0 + returns).cumprod()], ignore_index=True)
+    return Stats(
+        total_return=growth - 1.0,
+        annualized_return=_annualized_return(growth, n),
+        annualized_sharpe=_annualized_sharpe(returns),
+        max_drawdown=_max_drawdown(equity),
+    )
+
+
 def run_backtest(
     strategy: Strategy,
     prices: pd.DataFrame,
@@ -221,14 +261,15 @@ def run_backtest(
     returns.name = "return"
 
     final_equity = float(sim.net_equity_curve[-1])
-    total_return_net = final_equity / starting_equity - 1.0
     total_return_gross = float(sim.gross_equity_curve[-1]) / starting_equity - 1.0
-    annualized_return_net = _annualized_return(
-        final_equity / starting_equity, len(equity_curve) - 1
-    )
-    # Sharpe over the genuine bar-to-bar returns (drop the leading 0.0).
-    annualized_sharpe_net = _annualized_sharpe(returns.iloc[1:])
-    max_drawdown = _max_drawdown(equity_curve)
+    # NET stats come from the shared helper, fed the genuine bar-to-bar returns
+    # (the equity curve's pct_change minus its leading synthetic 0.0). run_backtest
+    # and walk_forward therefore share one definition and cannot drift.
+    stats = compute_stats(returns.iloc[1:])
+    total_return_net = stats.total_return
+    annualized_return_net = stats.annualized_return
+    annualized_sharpe_net = stats.annualized_sharpe
+    max_drawdown = stats.max_drawdown
 
     logger.info(
         "backtest: net=%.4f gross=%.4f sharpe=%.2f max_dd=%.4f trades=%d final=%.2f",

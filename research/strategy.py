@@ -14,7 +14,8 @@ future; it only ever receives past-and-current bars.
 
 from __future__ import annotations
 
-from typing import Protocol
+from collections.abc import Sequence
+from typing import Any, Protocol
 
 import pandas as pd
 
@@ -55,3 +56,64 @@ class BuyAndHold:
 
     def decide(self, history: pd.DataFrame) -> float:
         return 1.0 if len(history) >= 1 else 0.0
+
+
+class TunableStrategy(Protocol):
+    """A family of strategies parameterised by a small grid, for fitting.
+
+    ``param_grid`` enumerates every parameter combination to try; ``build`` turns
+    one combination into a concrete :class:`Strategy`. Walk-forward fitting searches
+    ``param_grid`` on TRAIN data ONLY, then grades the chosen ``build`` result on
+    unseen TEST data -- so the grid is the only place parameters are ever chosen.
+    """
+
+    def param_grid(self) -> list[dict[str, Any]]:
+        """Return every parameter combination to evaluate, in a fixed order."""
+        ...
+
+    def build(self, params: dict[str, Any]) -> Strategy:
+        """Return a concrete :class:`Strategy` for one parameter combination."""
+        ...
+
+
+class _SmaTrendRule:
+    """Long (weight 1) while the last close sits above its ``lookback``-bar SMA.
+
+    Needs at least ``lookback`` bars to form the average; before that it stays flat
+    (weight 0). Uses only past-and-current closes, so it is lookahead-free like every
+    :class:`Strategy`.
+    """
+
+    def __init__(self, lookback: int) -> None:
+        if lookback < 1:
+            raise ValueError(f"lookback must be >= 1, got {lookback}")
+        self._lookback = lookback
+
+    def decide(self, history: pd.DataFrame) -> float:
+        if len(history) < self._lookback:
+            return 0.0
+        closes = history["close"]
+        sma = float(closes.iloc[-self._lookback :].mean())
+        last_close = float(closes.iloc[-1])
+        return 1.0 if last_close > sma else 0.0
+
+
+class SmaTrendStrategy:
+    """Tunable SMA-trend family over a set of candidate ``lookback`` windows.
+
+    Reference :class:`TunableStrategy` for the walk-forward tests: ``param_grid``
+    ranges over the ``lookbacks`` supplied at construction and ``build`` returns the
+    matching moving-average rule.
+    """
+
+    def __init__(self, lookbacks: Sequence[int]) -> None:
+        chosen = list(lookbacks)
+        if not chosen:
+            raise ValueError("SmaTrendStrategy needs at least one lookback")
+        self._lookbacks = chosen
+
+    def param_grid(self) -> list[dict[str, Any]]:
+        return [{"lookback": lb} for lb in self._lookbacks]
+
+    def build(self, params: dict[str, Any]) -> Strategy:
+        return _SmaTrendRule(int(params["lookback"]))
