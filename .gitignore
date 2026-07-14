@@ -25,6 +25,8 @@ var/
 *.sqlite3
 *.parquet
 *.zip
+# Trial log (append-only run tally; lives under data/ but pin the pattern too).
+*.jsonl
 
 # === Logs & run artifacts ===
 logs/

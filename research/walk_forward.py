@@ -27,6 +27,8 @@ from typing import Any
 
 import pandas as pd
 
+from data_store.timeutils import now_utc_iso
+from research import trial_log
 from research.backtester import (
     BacktestResult,
     Stats,
@@ -136,7 +138,9 @@ def fit_best(
     best_score = -math.inf
     for params in grid:
         strategy = tunable.build(params)
-        result = run_backtest(strategy, train_prices, **backtest_kwargs)
+        # log_path=None: grid-search candidates are counted via total_trials, not
+        # written to the trial log one-by-one (walk_forward logs a single summary).
+        result = run_backtest(strategy, train_prices, log_path=None, **backtest_kwargs)
         score = _score(result, selection_metric)
         # Strictly-greater replaces, so the FIRST combo at the top score keeps it.
         # The `is None` guard also seeds the first iteration even if its score is
@@ -176,6 +180,7 @@ def walk_forward(
     step: int | None = None,
     mode: str = "anchored",
     selection_metric: str = "sharpe",
+    log_path: str | None = trial_log.DEFAULT_TRIAL_LOG,
     **backtest_kwargs: Any,
 ) -> WalkForwardResult:
     """Roll a fit/grade window over ``prices`` and return the stitched OOS record.
@@ -186,6 +191,11 @@ def walk_forward(
     returns. ``step`` defaults to ``test_size`` and MUST be ``>= test_size`` so TEST
     windows never overlap. ``**backtest_kwargs`` (costs, starting equity) flow into
     BOTH the fit and the grade so they share one cost model.
+
+    One summary record is appended to the trial log at ``log_path`` per run (the
+    RISK-ADJUSTED out-of-sample Sharpe, plus the honest ``total_trials`` count);
+    the many internal grid-search backtests are silenced (they log ``None``). Pass
+    ``log_path=None`` to disable logging entirely.
     """
     if train_size < 1:
         raise ValueError(f"train_size must be >= 1, got {train_size}")
@@ -230,7 +240,11 @@ def walk_forward(
         # GRADE OUT-OF-SAMPLE: replay full history up to and INCLUDING the test
         # window so indicators warm up on real prior bars (the next-open fill still
         # blocks intrabar lookahead), then keep only the test-window per-bar returns.
-        graded = run_backtest(fit.best_strategy, prices.iloc[:test_hi], **backtest_kwargs)
+        # log_path=None: this grading run is folded into the single walk-forward
+        # summary logged below, not counted as a standalone backtest trial.
+        graded = run_backtest(
+            fit.best_strategy, prices.iloc[:test_hi], log_path=None, **backtest_kwargs
+        )
         oos_returns = graded.returns.iloc[test_lo:test_hi]
 
         folds.append(
@@ -280,4 +294,28 @@ def walk_forward(
         result.oos_max_drawdown,
         result.total_trials,
     )
+
+    if log_path is not None:
+        # One summary trial per walk-forward run. metric_value is the RISK-ADJUSTED
+        # out-of-sample Sharpe; params carry total_trials so the deflation count
+        # includes every grid combination tried across all folds.
+        trial_record: dict[str, Any] = {
+            "utc_time": now_utc_iso(),
+            "kind": "walk_forward",
+            "strategy_name": type(tunable).__name__,
+            "params": {
+                "mode": mode,
+                "train_size": train_size,
+                "test_size": test_size,
+                "step": step_size,
+                "selection_metric": selection_metric,
+                "num_folds": result.num_folds,
+                "total_trials": result.total_trials,
+            },
+            "metric_name": "oos_annualized_sharpe",
+            "metric_value": result.oos_annualized_sharpe,
+            "n_bars": int(len(stitched)),
+        }
+        trial_log.log_trial(trial_record, path=log_path)
+
     return result

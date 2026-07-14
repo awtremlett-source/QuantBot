@@ -32,9 +32,12 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
+from typing import Any
 
 import pandas as pd
 
+from data_store.timeutils import now_utc_iso
+from research import trial_log
 from research.strategy import Strategy
 
 logger = logging.getLogger(__name__)
@@ -240,6 +243,7 @@ def run_backtest(
     slippage_pct: float = 0.0005,
     cost_multiplier: float = 1.0,
     starting_equity: float = 10000.0,
+    log_path: str | None = trial_log.DEFAULT_TRIAL_LOG,
 ) -> BacktestResult:
     """Backtest ``strategy`` over ``prices`` (CLEAN series); return the result.
 
@@ -248,6 +252,12 @@ def run_backtest(
     output of :func:`data_store.store.read_price_asof`. Costs (``slippage_pct``,
     ``commission_pct``, scaled by ``cost_multiplier``) are charged inside the run;
     the gross figure re-runs the identical decisions with zero costs.
+
+    Every run appends ONE record to the append-only trial log at ``log_path`` (the
+    honest tally behind Deflated Sharpe -- this run IS a trial). The recorded metric
+    is the RISK-ADJUSTED ``annualized_sharpe_net``, not raw return. Pass
+    ``log_path=None`` to disable logging (unit tests, and internal grid-search /
+    Monte-Carlo runs that log their own single summary instead).
     """
     _validate(prices)
 
@@ -280,6 +290,25 @@ def run_backtest(
         sim.num_trades,
         final_equity,
     )
+
+    if log_path is not None:
+        # One append-only trial record per run. The metric is risk-adjusted (Sharpe),
+        # so the tally deflation later reads counts by the same yardstick verdicts use.
+        trial_record: dict[str, Any] = {
+            "utc_time": now_utc_iso(),
+            "kind": "backtest",
+            "strategy_name": type(strategy).__name__,
+            "params": {
+                "commission_pct": commission_pct,
+                "slippage_pct": slippage_pct,
+                "cost_multiplier": cost_multiplier,
+                "starting_equity": starting_equity,
+            },
+            "metric_name": "annualized_sharpe_net",
+            "metric_value": annualized_sharpe_net,
+            "n_bars": int(len(prices)),
+        }
+        trial_log.log_trial(trial_record, path=log_path)
 
     return BacktestResult(
         equity_curve=equity_curve,
