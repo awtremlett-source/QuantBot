@@ -64,14 +64,19 @@ Phase: 1 (Foundations).  Updated: 2026-07-14.
   not raw return); every run_backtest/walk_forward/monte_carlo run auto-appends one
   record to data/trials.jsonl (gitignored) so Deflated Sharpe counts EVERY try.
   60 tests green; ruff + mypy --strict clean.
+- NVDA history extended to 2015 (live run 2026-07-14): 2,898 CLEAN bars (2015-01-02 →
+  2026-07-14), both in-window splits pass continuity (2021 4:1 = 0.90%, 2024 10:1 =
+  0.74%), COVID crash bar −18.4% present, max daily move 29.81% (2016-11-11 earnings
+  pop, verified real). Reconcile rebuild-style supersede confirmed working as designed:
+  old 618 CLEAN rows archived to quarantine (superseded_by_rebuild now 1,236 = 618+618)
+  before atomic replace; summary's rows_quarantined counts validation only.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
   Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
-- NEXT ACTION: re-ingest NVDA history back to ~2015 so stress/downtrend regimes have REAL
-  examples (2018 selloff, 2020 COVID crash, 2022 bear) — then the FIRST ALWAYS-ON strategy
-  (Phase 2 sequencing) through the firewall.
+- NEXT ACTION: FIRST ALWAYS-ON strategy (Phase 2 sequencing) through the firewall.
+  Storm data is in: 2018 selloff, 2020 COVID crash, 2022 bear all in CLEAN.
 
 ## Open flags
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).

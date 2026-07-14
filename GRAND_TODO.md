@@ -27,8 +27,8 @@ Legend: [ ] open · [~] in progress · [x] done
   - [ ] Cross-ticker generalization: run an NVDA-fitted strategy UNTOUCHED (no re-tuning)
         on 2–3 other tickers; still working = real pattern, not a curve-fit.
 - [ ] NEAR-TERM (before ANY real strategy):
-  - [ ] Re-ingest NVDA history back to ~2015 so stress/downtrend regimes have REAL examples
-        (2018 selloff, 2020 COVID crash, 2022 bear). Split handling already covers older splits.
+  - [x] Re-ingest NVDA history back to ~2015 — DONE 2026-07-14: 2,898 CLEAN bars from
+        2015-01-02; splits pass; COVID crash / 2018 / 2022 storm data in.
   - [x] Judge strategies on RISK-ADJUSTED terms — wired: walk-forward selection metric and
         Monte-Carlo verdict are both Sharpe-based, not raw return.
   - [x] Auto append-only TRIAL LOG — research/trial_log.py; run_backtest/walk_forward/
