@@ -13,6 +13,7 @@ serve the CLEAN tables only.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -22,6 +23,8 @@ import pandas as pd
 
 from data_store import schema
 from data_store.timeutils import validate_iso
+
+logger = logging.getLogger(__name__)
 
 # Accepted forms for a database location.
 DbPath = str | Path
@@ -110,6 +113,54 @@ class QuarantineRow:
     payload: str
     reason: str
     knowable_time: str
+
+
+@dataclass(frozen=True, slots=True)
+class PaperOrder:
+    """One paper-book order: a decision that changed the target weight.
+
+    ``decision_event_time`` is the completed bar the signal was computed on;
+    the order fills at the NEXT bar's open. ``id`` is ``None`` until inserted.
+    """
+
+    ticker: str
+    decision_event_time: str
+    target_weight: float
+    created_knowable_time: str
+    status: str
+    id: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PaperFill:
+    """One executed paper fill: which bar's open filled an order, and the deltas."""
+
+    order_id: int
+    fill_event_time: str
+    fill_price: float
+    shares_delta: float
+    cash_delta: float
+    knowable_time: str
+
+
+@dataclass(frozen=True, slots=True)
+class PaperState:
+    """The paper book's mutable working state for one ticker (NOT journal)."""
+
+    ticker: str
+    shares: float
+    cash: float
+    last_decided_event_time: str
+
+
+@dataclass(frozen=True, slots=True)
+class PaperEquity:
+    """One mark-to-market equity point: ``equity = cash + shares * close``."""
+
+    ticker: str
+    event_time: str
+    equity: float
+    close: float
 
 
 # --------------------------------------------------------------------------- #
@@ -464,3 +515,202 @@ def read_sentiment_asof(
         params.append(validate_iso(end))
     sql += " ORDER BY event_time ASC"
     return pd.read_sql_query(sql, conn, params=params)
+
+
+# --------------------------------------------------------------------------- #
+# Paper-book API (execution layer)
+#
+# TRANSACTION CONTRACT: unlike the batch write_* functions above (which commit
+# internally), these execute WITHOUT committing -- the paper loop owns the
+# transaction so each processed bar (settle + equity + order + state advance)
+# commits atomically, and --dry-run can roll everything back. Journal law: the
+# only UPDATE on journal tables is the pending -> filled transition;
+# paper_state is mutable working state, not journal.
+# --------------------------------------------------------------------------- #
+def insert_paper_order(conn: sqlite3.Connection, order: PaperOrder) -> int | None:
+    """Insert one order; return its id, or ``None`` if that decision bar already
+    has an order (UNIQUE(ticker, decision_event_time) -- idempotent re-runs).
+
+    A skipped duplicate is logged, never silent: in normal operation the loop's
+    catch-up cursor prevents re-deciding a bar, so a duplicate means a re-run
+    over already-journaled ground and the original order stands.
+    """
+    validate_iso(order.decision_event_time)
+    validate_iso(order.created_knowable_time)
+    cur = conn.execute(
+        "INSERT INTO paper_orders "
+        "(ticker, decision_event_time, target_weight, created_knowable_time, status) "
+        "VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+        (
+            order.ticker,
+            order.decision_event_time,
+            order.target_weight,
+            order.created_knowable_time,
+            order.status,
+        ),
+    )
+    if cur.rowcount == 0:
+        logger.info(
+            "paper order already journaled for %s @ %s; keeping the original",
+            order.ticker,
+            order.decision_event_time,
+        )
+        return None
+    return int(cur.lastrowid) if cur.lastrowid is not None else None
+
+
+def read_pending_paper_orders(
+    conn: sqlite3.Connection, ticker: str
+) -> list[PaperOrder]:
+    """Return ``ticker``'s pending orders, oldest decision first."""
+    rows = conn.execute(
+        "SELECT id, ticker, decision_event_time, target_weight, "
+        "created_knowable_time, status FROM paper_orders "
+        "WHERE ticker = ? AND status = 'pending' ORDER BY decision_event_time ASC",
+        (ticker,),
+    ).fetchall()
+    return [
+        PaperOrder(
+            id=int(r[0]),
+            ticker=str(r[1]),
+            decision_event_time=str(r[2]),
+            target_weight=float(r[3]),
+            created_knowable_time=str(r[4]),
+            status=str(r[5]),
+        )
+        for r in rows
+    ]
+
+
+def read_last_paper_order(conn: sqlite3.Connection, ticker: str) -> PaperOrder | None:
+    """Return the most recent non-cancelled order (the commanded weight), if any."""
+    row = conn.execute(
+        "SELECT id, ticker, decision_event_time, target_weight, "
+        "created_knowable_time, status FROM paper_orders "
+        "WHERE ticker = ? AND status != 'cancelled' "
+        "ORDER BY decision_event_time DESC LIMIT 1",
+        (ticker,),
+    ).fetchone()
+    if row is None:
+        return None
+    return PaperOrder(
+        id=int(row[0]),
+        ticker=str(row[1]),
+        decision_event_time=str(row[2]),
+        target_weight=float(row[3]),
+        created_knowable_time=str(row[4]),
+        status=str(row[5]),
+    )
+
+
+def fill_paper_order(conn: sqlite3.Connection, fill: PaperFill) -> None:
+    """Journal one fill and flip its order pending -> filled (the ONE allowed
+    UPDATE on a journal table). Raises if the order is not currently pending --
+    filling a non-pending order is a bug, never a condition to paper over.
+    """
+    validate_iso(fill.fill_event_time)
+    validate_iso(fill.knowable_time)
+    cur = conn.execute(
+        "UPDATE paper_orders SET status = 'filled' "
+        "WHERE id = ? AND status = 'pending'",
+        (fill.order_id,),
+    )
+    if cur.rowcount != 1:
+        raise ValueError(
+            f"order {fill.order_id} is not pending; refusing to journal a fill"
+        )
+    conn.execute(
+        "INSERT INTO paper_fills "
+        "(order_id, fill_event_time, fill_price, shares_delta, cash_delta, "
+        "knowable_time) VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            fill.order_id,
+            fill.fill_event_time,
+            fill.fill_price,
+            fill.shares_delta,
+            fill.cash_delta,
+            fill.knowable_time,
+        ),
+    )
+
+
+def read_paper_fills(conn: sqlite3.Connection, ticker: str) -> list[PaperFill]:
+    """Return every fill for ``ticker``'s orders, oldest fill bar first."""
+    rows = conn.execute(
+        "SELECT f.order_id, f.fill_event_time, f.fill_price, f.shares_delta, "
+        "f.cash_delta, f.knowable_time FROM paper_fills f "
+        "JOIN paper_orders o ON o.id = f.order_id "
+        "WHERE o.ticker = ? ORDER BY f.fill_event_time ASC",
+        (ticker,),
+    ).fetchall()
+    return [
+        PaperFill(
+            order_id=int(r[0]),
+            fill_event_time=str(r[1]),
+            fill_price=float(r[2]),
+            shares_delta=float(r[3]),
+            cash_delta=float(r[4]),
+            knowable_time=str(r[5]),
+        )
+        for r in rows
+    ]
+
+
+def read_paper_state(conn: sqlite3.Connection, ticker: str) -> PaperState | None:
+    """Return the paper book's working state for ``ticker`` (``None`` = first run)."""
+    row = conn.execute(
+        "SELECT ticker, shares, cash, last_decided_event_time "
+        "FROM paper_state WHERE ticker = ?",
+        (ticker,),
+    ).fetchone()
+    if row is None:
+        return None
+    return PaperState(
+        ticker=str(row[0]),
+        shares=float(row[1]),
+        cash=float(row[2]),
+        last_decided_event_time=str(row[3]),
+    )
+
+
+def write_paper_state(conn: sqlite3.Connection, state: PaperState) -> None:
+    """Create or update the singleton working state for ``state.ticker``."""
+    validate_iso(state.last_decided_event_time)
+    conn.execute(
+        "INSERT INTO paper_state (ticker, shares, cash, last_decided_event_time) "
+        "VALUES (?, ?, ?, ?) ON CONFLICT (ticker) DO UPDATE SET "
+        "shares = excluded.shares, cash = excluded.cash, "
+        "last_decided_event_time = excluded.last_decided_event_time",
+        (state.ticker, state.shares, state.cash, state.last_decided_event_time),
+    )
+
+
+def insert_paper_equity(conn: sqlite3.Connection, row: PaperEquity) -> bool:
+    """Insert one equity mark; return False if that bar is already marked
+    (UNIQUE(ticker, event_time) -- idempotent re-runs over journaled ground).
+    """
+    validate_iso(row.event_time)
+    cur = conn.execute(
+        "INSERT INTO paper_equity (ticker, event_time, equity, close) "
+        "VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING",
+        (row.ticker, row.event_time, row.equity, row.close),
+    )
+    return cur.rowcount == 1
+
+
+def read_paper_equity(conn: sqlite3.Connection, ticker: str) -> list[PaperEquity]:
+    """Return every equity mark for ``ticker``, oldest bar first."""
+    rows = conn.execute(
+        "SELECT ticker, event_time, equity, close FROM paper_equity "
+        "WHERE ticker = ? ORDER BY event_time ASC",
+        (ticker,),
+    ).fetchall()
+    return [
+        PaperEquity(
+            ticker=str(r[0]),
+            event_time=str(r[1]),
+            equity=float(r[2]),
+            close=float(r[3]),
+        )
+        for r in rows
+    ]

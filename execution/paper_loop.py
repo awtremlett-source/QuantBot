@@ -1,0 +1,320 @@
+"""The catch-up-safe daily paper loop: decide -> journal -> settle -> mark.
+
+Safe to run at any time, on any day, as many times as you like (sometimes-off
+laptop law). Each run:
+
+1. KILLSWITCH -- if ``STOP_NEW_TRADES`` exists at the repo root, the fact is
+   journaled to the log and NO new orders are placed; pending fills still settle
+   and equity still marks (stopping the book blind would be worse).
+2. SYNC -- ingest with ``end = today`` (EXCLUSIVE, so only COMPLETED daily bars
+   ever enter; today's in-progress bar arrives tomorrow), then reconcile RAW ->
+   CLEAN. Skipped under ``--dry-run``.
+3. STATE -- load the book; on the very first run, start all-cash with the
+   decision cursor at the SECOND-LATEST completed bar, so exactly one decision
+   (the latest bar) happens and 2015->now is never replayed as live trades.
+4-6. PER BAR, in order, one transaction per bar (crash = resume mid-catch-up):
+   settle pending orders at this bar's open, mark equity at its close, then
+   decide from history up to AND INCLUDING this bar only -- the backtester's
+   exact discipline. N dark days = N honest replayed decisions, each order
+   filling at its own historical next open.
+7. DIGEST -- one line: date, position, equity, drawdown-from-peak, orders;
+   plus a WARNING if drawdown breaches the validated worst (-48.8%).
+
+Belt-and-braces: bars dated today or later are excluded from decisions even if
+they somehow reached CLEAN (defense in depth against partial bars).
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sqlite3
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Protocol
+
+import pandas as pd
+
+from data_store import store
+from data_store.timeutils import now_utc_iso
+from execution import paper_book
+from execution.config import CONFIG, VALIDATED_WORST_DRAWDOWN, PaperConfig
+from research.strategy import Strategy
+
+logger = logging.getLogger(__name__)
+
+# Presence of this file at the repo root stops all NEW orders (killswitch).
+KILLSWITCH_FILE = "STOP_NEW_TRADES"
+
+
+class IngestFn(Protocol):
+    """Anything shaped like ingest.front_door.ingest (tests inject fakes)."""
+
+    def __call__(
+        self,
+        tickers: Sequence[str],
+        db_path: store.DbPath,
+        start: str | None = None,
+        end: str | None = None,
+    ) -> object: ...
+
+
+class ReconcileFn(Protocol):
+    """Anything shaped like reconcile.clean_prices.reconcile."""
+
+    def __call__(self, tickers: Sequence[str], db_path: store.DbPath) -> object: ...
+
+
+@dataclass(frozen=True, slots=True)
+class LoopDigest:
+    """What one loop run did, in numbers. ``as_of_bar`` is the latest decided bar."""
+
+    ticker: str
+    as_of_bar: str
+    shares: float
+    cash: float
+    equity: float
+    drawdown_from_peak: float
+    bars_processed: int
+    orders_placed: int
+    orders_filled: int
+    killswitch: bool
+    dry_run: bool
+
+    def line(self) -> str:
+        """The one-line human digest."""
+        flags = ("  KILLSWITCH" if self.killswitch else "") + (
+            "  DRY-RUN (rolled back)" if self.dry_run else ""
+        )
+        return (
+            f"PAPER {self.ticker} @ {self.as_of_bar[:10]} | "
+            f"shares={self.shares:.6f} cash={self.cash:.2f} "
+            f"equity={self.equity:.2f} | dd_from_peak={self.drawdown_from_peak:+.2%} | "
+            f"bars={self.bars_processed} placed={self.orders_placed} "
+            f"filled={self.orders_filled}{flags}"
+        )
+
+
+def _default_ingest(
+    tickers: Sequence[str],
+    db_path: store.DbPath,
+    start: str | None = None,
+    end: str | None = None,
+) -> object:
+    """Live ingest, imported lazily so offline tests never touch yfinance."""
+    from ingest.front_door import ingest
+
+    return ingest(tickers, db_path, start=start, end=end)
+
+
+def _default_reconcile(tickers: Sequence[str], db_path: store.DbPath) -> object:
+    """Live RAW->CLEAN reconcile, imported lazily (offline tests inject fakes)."""
+    from reconcile.clean_prices import reconcile
+
+    return reconcile(tickers, db_path)
+
+
+def _completed_bars(
+    conn: sqlite3.Connection, ticker: str, now: str, today: str
+) -> pd.DataFrame:
+    """Point-in-time CLEAN bars, restricted to bars from BEFORE today (UTC).
+
+    ``read_price_asof`` enforces the knowable_time guard; the extra calendar
+    filter guarantees no decision is ever made on today's (possibly partial)
+    bar even if one reached the store.
+    """
+    prices = store.read_price_asof(conn, ticker, now)
+    completed = prices[prices["event_time"].str[:10] < today]
+    return completed.reset_index(drop=True)
+
+
+def run_once(
+    conn: sqlite3.Connection,
+    config: PaperConfig,
+    now: str,
+    *,
+    killswitch: bool = False,
+    dry_run: bool = False,
+    strategy: Strategy | None = None,
+) -> LoopDigest:
+    """Run one loop pass against an open connection; return the digest.
+
+    Pure paper logic: no network, no filesystem checks -- callers supply ``now``
+    (canonical UTC ISO), the killswitch verdict, and optionally a strategy
+    override (tests). Transactions: one commit per processed bar in live mode;
+    ``dry_run`` rolls everything back at the end and reports what WOULD happen.
+    """
+    ticker = config.ticker
+    today = now[:10]
+    the_strategy = strategy if strategy is not None else config.build_strategy()
+    if killswitch:
+        # Journal the fact loudly; the run continues (settles + marks) below.
+        logger.warning(
+            "KILLSWITCH active (%s present): placing NO new orders for %s",
+            KILLSWITCH_FILE,
+            ticker,
+        )
+
+    prices = _completed_bars(conn, ticker, now, today)
+    state = store.read_paper_state(conn, ticker)
+    if state is None:
+        state = paper_book.init_state(conn, ticker, config.starting_equity, prices)
+        if not dry_run:
+            conn.commit()
+
+    # Positions (not labels) of every completed bar still owing a decision.
+    pending_positions = prices.index[
+        prices["event_time"] > state.last_decided_event_time
+    ]
+
+    orders_placed = 0
+    orders_filled = 0
+    current_weight = paper_book.commanded_weight(conn, ticker)
+
+    for pos in pending_positions:
+        bar = prices.iloc[pos]
+        bar_event_time = str(bar["event_time"])
+
+        # (a) Settle orders decided before this bar at THIS bar's open.
+        state, fills = paper_book.settle_pending_at_bar(
+            conn,
+            ticker,
+            bar_event_time,
+            float(bar["open"]),
+            state,
+            config.slippage_pct,
+            now,
+        )
+        orders_filled += fills
+
+        # (b) Mark equity at this bar's close (after the day's fills, like the
+        # backtester).
+        paper_book.mark_equity(conn, state, bar_event_time, float(bar["close"]))
+
+        # (c) Decide for the NEXT bar from history up to AND INCLUDING this bar
+        # ONLY -- the same no-lookahead slice the backtester uses.
+        weight = paper_book.clamp_weight(the_strategy.decide(prices.iloc[: pos + 1]))
+        if not killswitch and abs(weight - current_weight) > paper_book.WEIGHT_EPS:
+            if paper_book.place_order(conn, ticker, bar_event_time, weight, now):
+                orders_placed += 1
+            current_weight = weight
+
+        # (d) Advance the cursor; commit the whole bar atomically.
+        state = store.PaperState(
+            ticker=ticker,
+            shares=state.shares,
+            cash=state.cash,
+            last_decided_event_time=bar_event_time,
+        )
+        store.write_paper_state(conn, state)
+        if not dry_run:
+            conn.commit()
+
+    # Digest numbers are computed BEFORE a dry-run rollback so they describe
+    # what the run would have journaled.
+    last_close = float(prices["close"].iloc[-1]) if len(prices) else 0.0
+    equity = state.cash + state.shares * last_close
+    drawdown = paper_book.drawdown_from_peak(conn, ticker)
+    digest = LoopDigest(
+        ticker=ticker,
+        as_of_bar=state.last_decided_event_time,
+        shares=state.shares,
+        cash=state.cash,
+        equity=equity,
+        drawdown_from_peak=drawdown,
+        bars_processed=len(pending_positions),
+        orders_placed=orders_placed,
+        orders_filled=orders_filled,
+        killswitch=killswitch,
+        dry_run=dry_run,
+    )
+    if dry_run:
+        conn.rollback()
+    return digest
+
+
+def run_paper(
+    db_path: store.DbPath,
+    config: PaperConfig = CONFIG,
+    *,
+    dry_run: bool = False,
+    strategy: Strategy | None = None,
+    ingest_fn: IngestFn = _default_ingest,
+    reconcile_fn: ReconcileFn = _default_reconcile,
+    now: str | None = None,
+    killswitch_dir: Path = Path("."),
+) -> LoopDigest:
+    """One full loop run: killswitch check, data sync, book pass, digest.
+
+    ``now`` defaults to the wall clock (tests inject a fixed instant).
+    ``ingest_fn`` / ``reconcile_fn`` are the live network sync by default; tests
+    inject fakes. Sync is skipped entirely under ``dry_run`` (offline what-if).
+    """
+    the_now = now if now is not None else now_utc_iso()
+    today = the_now[:10]
+    killswitch = (killswitch_dir / KILLSWITCH_FILE).exists()
+
+    if not dry_run:
+        # end = today EXCLUSIVE: today's in-progress bar must never enter RAW.
+        ingest_fn([config.ticker], db_path, start=None, end=today)
+        reconcile_fn([config.ticker], db_path)
+
+    store.init_db(db_path)  # idempotent; ensures the paper tables exist
+    conn = store.connect(db_path)
+    try:
+        digest = run_once(
+            conn,
+            config,
+            the_now,
+            killswitch=killswitch,
+            dry_run=dry_run,
+            strategy=strategy,
+        )
+    finally:
+        conn.close()
+
+    print(digest.line())
+    if digest.drawdown_from_peak <= VALIDATED_WORST_DRAWDOWN:
+        warning = (
+            f"WARNING: drawdown {digest.drawdown_from_peak:+.2%} has breached the "
+            f"validated worst ({VALIDATED_WORST_DRAWDOWN:+.2%}) -- the book is "
+            f"outside anything validation promised. Review before continuing."
+        )
+        logger.warning(warning)
+        print(warning)
+    return digest
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI: ``python -m execution.paper_loop --db data/quantbot.db [--dry-run]``."""
+    parser = argparse.ArgumentParser(
+        prog="paper_loop",
+        description="Catch-up-safe daily paper-trading loop (local book).",
+    )
+    parser.add_argument(
+        "--db",
+        required=True,
+        metavar="PATH",
+        help="Path to the SQLite database, e.g. data/quantbot.db",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="No data sync; run the book pass but roll back every write.",
+    )
+    args = parser.parse_args(argv)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+
+    db_path = Path(args.db)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    run_paper(db_path, dry_run=bool(args.dry_run))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover -- covered via execution.__main__
+    raise SystemExit(main())
