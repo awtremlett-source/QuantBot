@@ -70,13 +70,19 @@ Phase: 1 (Foundations).  Updated: 2026-07-14.
   pop, verified real). Reconcile rebuild-style supersede confirmed working as designed:
   old 618 CLEAN rows archived to quarantine (superseded_by_rebuild now 1,236 = 618+618)
   before atomic replace; summary's rows_quarantined counts validation only.
+- FIRST VALIDATED STRATEGY — NVDA always-on SMA-200 accepted as Phase 2 candidate
+  (2026-07-14). Walk-forward 9 folds / 45 trials, lookback 200 chosen 7/9; stitched OOS
+  (2018→2026, 2,142 bars): sharpe +1.19, max DD −48.8% (vs B&H −66.4%). Firewall:
+  full-series MC p=0.003; stricter matched-window MC (null mean +0.61) p=0.007,
+  99.4th pct — PASSED BOTH. Trial log = 5 records. Caveats logged: single-ticker,
+  Deflated Sharpe pending, paper = upper bound.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
   Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
-- NEXT ACTION: FIRST ALWAYS-ON strategy (Phase 2 sequencing) through the firewall.
-  Storm data is in: 2018 selloff, 2020 COVID crash, 2022 bear all in CLEAN.
+- NEXT ACTION: paper-trading loop for SMA-200 (execution/paper_loop) —
+  signal→order→fill journal from trade one. Catch-up-safe (sometimes-off laptop).
 
 ## Open flags
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).

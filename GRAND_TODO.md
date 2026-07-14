@@ -45,7 +45,10 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 - SEQUENCING: prove ONE simple ALWAYS-ON strategy through the FULL firewall FIRST.
   Regime-switching is UNPROVEN (adds knobs/lag/switching costs, often fails to beat a single
   strategy once tested honestly) — add it ONLY if it beats the always-on strategy OUT-OF-SAMPLE.
-- [~] NVDA always-on SMA trend strategy through the full firewall (IN PROGRESS — this run)
+- [x] NVDA always-on SMA trend strategy through the full firewall (validated 2026-07-14,
+      both MC gates)
+- [ ] Paper loop: SMA-200 NVDA (catch-up-safe, trade journal from first trade)
+- [ ] Deflated Sharpe formally applied to the logged trials
 - [ ] SPY/QQQ above 200-day MA + vol-target (~10% ann.), else cash (subsequent)
 - [ ] Run through firewall (discipline), then paper it; show the equity curve
 
