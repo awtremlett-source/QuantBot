@@ -47,7 +47,10 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
   strategy once tested honestly) — add it ONLY if it beats the always-on strategy OUT-OF-SAMPLE.
 - [x] NVDA always-on SMA trend strategy through the full firewall (validated 2026-07-14,
       both MC gates)
-- [ ] Paper loop: SMA-200 NVDA (catch-up-safe, trade journal from first trade)
+- [x] Paper loop: SMA-200 NVDA (live 2026-07-14) — book ≡ backtester birth certificate;
+      killswitch/catch-up/resume/partial-bar all test-proven
+- [ ] ingest: re-fetch-and-supersede trailing RAW bars (frozen partial-bar fix)
+- [ ] monitors: prove drawdown warning red-on-broken (#9)
 - [ ] Deflated Sharpe formally applied to the logged trials
 - [ ] SPY/QQQ above 200-day MA + vol-target (~10% ann.), else cash (subsequent)
 - [ ] Run through firewall (discipline), then paper it; show the equity curve

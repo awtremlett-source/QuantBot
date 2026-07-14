@@ -76,15 +76,23 @@ Phase: 1 (Foundations).  Updated: 2026-07-14.
   full-series MC p=0.003; stricter matched-window MC (null mean +0.61) p=0.007,
   99.4th pct — PASSED BOTH. Trial log = 5 records. Caveats logged: single-ticker,
   Deflated Sharpe pending, paper = upper bound.
+- PAPER LOOP LIVE (2026-07-14): first decision journaled — NVDA above SMA-200, pending
+  buy at next open, £10k cash. Book ≡ backtester to 1e-9 (birth certificate).
+  Killswitch, catch-up, crash-resume, partial-bar exclusion all test-proven.
+  (execution/: frozen config law — any change = new strategy = full firewall re-run.
+  69 tests green; ruff + mypy --strict clean.)
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
   Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
-- NEXT ACTION: paper-trading loop for SMA-200 (execution/paper_loop) —
-  signal→order→fill journal from trade one. Catch-up-safe (sometimes-off laptop).
+- NEXT ACTION: run the loop daily (python -m execution.paper_loop --db data/quantbot.db);
+  fix brick for the frozen partial RAW bar (see Open flags).
 
 ## Open flags
+- Frozen partial RAW bar 2026-07-14 (mid-session ingest snapshot; fill unaffected, one
+  equity mark stale) — fix brick: re-fetch-and-supersede trailing N RAW bars, PROPOSE→GO.
+- Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
 - Daily auto clock-sync task still to set up (admin).
 - gh CLI not installed → use plain git for GitHub ops.

@@ -11,7 +11,7 @@ must be catch-up-safe.
 
 ## Commands (venv: .venv — activate first)
 - Tests: python -m pytest -q · Lint/types: ruff check . && mypy --strict .
-- Planned: python -m ingest ... · python -m execution.paper_loop
+- Run: python -m ingest/reconcile --tickers T --db PATH · python -m execution.paper_loop --db data/quantbot.db [--dry-run]
 
 ## Architecture map (one line per area; files fill in as built)
 - ingest/      ONLY writer to the data store (front door, §5); unit/scale checks here
