@@ -13,27 +13,27 @@ Legend: [ ] open · [~] in progress · [x] done
 - [x] data_store API: SQLite(WAL) RAW+CLEAN schema; single-writer law
 - [x] Front-door ingest (one writer; unit/scale/sanity; quarantine)
 - [x] RAW→CLEAN reconciliation (verify-and-copy; split-adjusted source) → price_clean
-- [~] §7 VALIDATION FIREWALL — MANDATORY: all three required BEFORE any strategy is built,
-      and the firewall must demonstrably FAIL a worthless strategy:
+- [x] §7 VALIDATION FIREWALL — all three parts built; birth certificate passed 2026-07-14:
+      coin-flip rejected p=0.85, exploitable pattern passed p=0.005.
   - [x] Backtest tests — honest engine + no-lookahead spy guard (research/backtester.py)
-  - [ ] Walk-forward tests — strategies scored ONLY on data they were not trained on
-        (purged + embargoed CV · CPCV)
-  - [ ] Monte Carlo / known-null tests — randomize/shuffle data or trades many times to
-        measure luck; a random/worthless strategy MUST score worthless (deflated by number
-        of trials: trials.jsonl · Deflated Sharpe · PBO · placebo). The firewall's birth-certificate.
-  - [ ] DESIGN — sweep-level (portfolio) multiple testing: running the pipeline over ~100
-        tickers and keeping winners = ~100 extra lottery tickets. Count the WHOLE sweep as
-        trials, OR reserve one untouched cross-ticker holdout stretch tested ONCE at the very end.
-  - [ ] DESIGN — cross-ticker generalization: run an NVDA-fitted strategy UNTOUCHED (no
-        re-tuning) on 2–3 other tickers; still working = real pattern, not a curve-fit.
+  - [x] Walk-forward tests — no-fit-on-test guard, anchored/rolling (research/walk_forward.py;
+        purged/embargoed CPCV deferred to a later hardening pass)
+  - [x] Monte Carlo / known-null tests — coin-flip null distribution + significance gate
+        (research/monte_carlo.py); verdict on RISK-ADJUSTED Sharpe; feeds trials.jsonl
+- [ ] FIREWALL DESIGN follow-ups (needed before the ~100-ticker sweep, not before NVDA):
+  - [ ] Sweep-level (portfolio) multiple testing: ~100 tickers × keep-winners = ~100 extra
+        lottery tickets. Count the WHOLE sweep as trials, OR reserve one untouched
+        cross-ticker holdout stretch tested ONCE at the very end.
+  - [ ] Cross-ticker generalization: run an NVDA-fitted strategy UNTOUCHED (no re-tuning)
+        on 2–3 other tickers; still working = real pattern, not a curve-fit.
 - [ ] NEAR-TERM (before ANY real strategy):
   - [ ] Re-ingest NVDA history back to ~2015 so stress/downtrend regimes have REAL examples
         (2018 selloff, 2020 COVID crash, 2022 bear). Split handling already covers older splits.
-  - [ ] Judge strategies on RISK-ADJUSTED terms (Sharpe, max drawdown), NOT raw total return:
-        buy-and-hold NVDA (+343%, ~4.4x near-straight-up) is a rigged benchmark a long-only
-        strategy structurally cannot beat on total return.
-  - [ ] Auto append-only TRIAL LOG — every backtest/fit run recorded, so Deflated Sharpe counts
-        EVERY try (incl. casual tweak-and-reruns). Feeds trials.jsonl in the firewall.
+  - [x] Judge strategies on RISK-ADJUSTED terms — wired: walk-forward selection metric and
+        Monte-Carlo verdict are both Sharpe-based, not raw return.
+  - [x] Auto append-only TRIAL LOG — research/trial_log.py; run_backtest/walk_forward/
+        monte_carlo auto-append to data/trials.jsonl (gitignored), so Deflated Sharpe
+        counts EVERY try.
 - [ ] Universe: choose ~100 liquid US names → GO
 - [ ] Count reconciliation (in-zip vs staged vs DB) + ±10% universe invariant
 - [ ] Integrity census v1 (CLEAN/SUSPECT/CORRUPT certificates) + data-quality meter

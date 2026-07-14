@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-07-08.
+Phase: 1 (Foundations).  Updated: 2026-07-14.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -56,15 +56,22 @@ Phase: 1 (Foundations).  Updated: 2026-07-08.
   pass (2024-06-10 10:1 split = 0.74% boundary move); max daily move 18.72% on
   2025-04-09. read_price_asof returns 618 continuous bars ($48 era → $207 latest).
   618 old double-adjusted rows archived to quarantine (superseded_by_rebuild).
+- §7 VALIDATION FIREWALL COMPLETE (3/3). Backtester (8994d7a) + walk-forward (34956c4)
+  + Monte-Carlo known-null gate & append-only trial log (fd7d893). BIRTH CERTIFICATE
+  PASSED 2026-07-14: coin-flip REJECTED (p=0.85), FlatStrategy rejected (p=0.19),
+  exploitable-pattern strategy PASSED (p=0.005) — the firewall demonstrably fails a
+  worthless strategy without rejecting everything. Verdicts are RISK-ADJUSTED (Sharpe,
+  not raw return); every run_backtest/walk_forward/monte_carlo run auto-appends one
+  record to data/trials.jsonl (gitignored) so Deflated Sharpe counts EVERY try.
+  60 tests green; ruff + mypy --strict clean.
 
 ## Known gap / next
-- CLEAN gap CLOSED: read_price_asof now serves the reconciled, split-adjusted series.
-- §7 VALIDATION FIREWALL = MANDATORY 3-part gate, ALL required BEFORE any strategy
-  (firewall must demonstrably fail a worthless strategy):
-  1. [x] Backtest tests — honest engine + no-lookahead spy guard (research/backtester.py). DONE.
-  2. [ ] Walk-forward tests — scored ONLY on data not trained on (purged+embargoed CV). NEXT BRICK.
-  3. [ ] Monte Carlo / known-null tests — randomize/shuffle many times; worthless strategy MUST
-        score worthless (Deflated Sharpe, PBO, placebo). The birth-certificate. NEXT BRICK.
+- §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
+  Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
+  holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
+- NEXT ACTION: re-ingest NVDA history back to ~2015 so stress/downtrend regimes have REAL
+  examples (2018 selloff, 2020 COVID crash, 2022 bear) — then the FIRST ALWAYS-ON strategy
+  (Phase 2 sequencing) through the firewall.
 
 ## Open flags
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
