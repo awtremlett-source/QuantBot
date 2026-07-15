@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-07-14.
+Phase: 1 (Foundations).  Updated: 2026-07-15.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -81,17 +81,24 @@ Phase: 1 (Foundations).  Updated: 2026-07-14.
   Killswitch, catch-up, crash-resume, partial-bar exclusion all test-proven.
   (execution/: frozen config law — any change = new strategy = full firewall re-run.
   69 tests green; ruff + mypy --strict clean.)
+- Partial-bar fix live (2026-07-15): 07-14 bar superseded to official (close
+  211.24→211.80, vol 71M→118M), bonus 07-13 volume revision caught; old rows archived
+  to quarantine (never deleted). Trailing 7-day re-fetch window on every ingest;
+  rows_superseded in the summary.
+- FOUND+FIXED same night: loop read CLEAN as-of its PRE-sync clock, so a rebuild
+  night made it silently process nothing (bars=0) — now re-reads the clock post-sync;
+  fail-first test proven red on old code, green on fix.
+- FIRST FILL (2026-07-15): order #1 settled at 07-14 open — fill 208.3041 (open
+  208.20 + 0.05% slippage), 48.030740 shares, cash −5.00, equity 10,167.91 at close
+  211.80. 76 tests green.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
   Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
-- NEXT ACTION: run the loop daily (python -m execution.paper_loop --db data/quantbot.db);
-  fix brick for the frozen partial RAW bar (see Open flags).
+- NEXT ACTION: run the loop daily (python -m execution.paper_loop --db data/quantbot.db).
 
 ## Open flags
-- Frozen partial RAW bar 2026-07-14 (mid-session ingest snapshot; fill unaffected, one
-  equity mark stale) — fix brick: re-fetch-and-supersede trailing N RAW bars, PROPOSE→GO.
 - Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
 - Daily auto clock-sync task still to set up (admin).

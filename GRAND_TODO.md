@@ -49,7 +49,8 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
       both MC gates)
 - [x] Paper loop: SMA-200 NVDA (live 2026-07-14) — book ≡ backtester birth certificate;
       killswitch/catch-up/resume/partial-bar all test-proven
-- [ ] ingest: re-fetch-and-supersede trailing RAW bars (frozen partial-bar fix)
+- [x] ingest: re-fetch-and-supersede trailing RAW bars (frozen partial-bar fix; live
+      2026-07-15 — 07-14 bar healed to official values, old rows archived)
 - [ ] monitors: prove drawdown warning red-on-broken (#9)
 - [ ] Deflated Sharpe formally applied to the logged trials
 - [ ] SPY/QQQ above 200-day MA + vol-target (~10% ann.), else cash (subsequent)
