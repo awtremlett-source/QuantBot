@@ -98,9 +98,11 @@ Phase: 1 (Foundations).  Updated: 2026-07-15.
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
   Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
-- NEXT ACTION: run the loop each MORNING (python -m execution.paper_loop --db
-  data/quantbot.db) — it processes yesterday's bar. A bar counts finished once its
-  date is fully in the past (UTC), so e.g. 07-15's bar becomes readable after 1am UK.
+- NEXT ACTIONS: (a) daily MORNING loop (python -m execution.paper_loop --db
+  data/quantbot.db — processes yesterday's bar; a bar counts finished once its date
+  is fully past UTC, so 07-15's bar is readable after 1am UK). (b) Strategy
+  deepening per docs/MANIFEST.md graduation rubric. NO export / NO ticker #2 until
+  the rubric passes (all 7 conditions).
 
 ## Open flags
 - Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).

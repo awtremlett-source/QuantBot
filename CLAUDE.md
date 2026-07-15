@@ -60,5 +60,6 @@ never cat data files (head/tail/count). Update STATE.md at session end. Make
 surgical edits to this file — never full rewrites.
 
 ## Pointers
-Resume → STATE.md · Backlog → GRAND_TODO.md · History → docs/sessions/ ·
+Resume → STATE.md · Backlog → GRAND_TODO.md · Manifest → docs/MANIFEST.md ·
+History → docs/sessions/ ·
 Constitution → docs/FOUNDING_DIRECTIVE.md · Curriculum → docs/EDUCATION.md

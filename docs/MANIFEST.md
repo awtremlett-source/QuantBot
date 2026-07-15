@@ -1,0 +1,49 @@
+# MANIFEST — QuantBot system inventory (single page)
+
+Updated: 2026-07-15. What exists, what is proven, and what must be true before
+this logic leaves NVDA or this laptop.
+
+## ENVIRONMENT
+- Python 3.13.7 in .venv; 12 pinned deps (requirements.txt).
+- Windows 10 laptop, sometimes-off → every loop is catch-up-safe by design.
+
+## DATA
+- NVDA: 2,898 CLEAN daily bars, 2015-01-02 → present. Splits pass continuity
+  (2021 4:1 boundary move 0.90%; 2024 10:1 move 0.74%).
+- RAW self-heals: trailing re-fetch-and-supersede on every ingest;
+  quarantine-never-delete throughout. DB: data/quantbot.db (SQLite WAL, gitignored).
+
+## VALIDATED STRATEGY
+- NVDA SMA-200 always-on, long-only (execution/config.py — FROZEN: any change =
+  new strategy = full firewall re-run).
+- Stitched OOS 2018→2026: sharpe +1.19, maxDD −48.8% (vs buy-and-hold −66.4%).
+- Monte Carlo: full-series p=0.003; matched-window p=0.007 (99.4th pct).
+- Next refit due 2027-07-14.
+
+## FIREWALL
+- Backtester (no-lookahead spy) · walk-forward (no-fit-on-test spy) · Monte Carlo
+  known-null gate (coin-flip REJECTED p=0.85; exploitable pattern PASSED p=0.005 —
+  it fails junk without failing everything).
+- Trial log: data/trials.jsonl, append-only — every try counts toward Deflated Sharpe.
+
+## PAPER
+- Live since 2026-07-14. First fill: 48.030740 sh @ 208.3041 (07-14 open + slippage).
+- Daily rhythm — each MORNING (processes yesterday's bar):
+  `python -m execution.paper_loop --db data/quantbot.db`
+
+## LAWS
+- docs/SCARS.md — 23, binding on every session and every loop.
+
+## OPEN FLAGS
+- monitors red-on-broken proof (#9) · journal backup policy (data/ not in git) ·
+  Deflated Sharpe pending · cash-floor sizing (firewall-gated).
+
+## GRADUATION RUBRIC — before this logic moves to ticker #2 or another device (ALL required)
+1. ≥1 month clean daily paper runs, incl. at least one real catch-up after dark days.
+2. Deflated Sharpe formally applied to the logged trials.
+3. Challenger experiment complete: ≥1 alternative strategy through the full firewall.
+4. Regime-switcher experiment DECIDED: adopted only if it beats SMA-200 OOS,
+   else rejected-and-recorded.
+5. Cross-ticker generalization test run (NVDA-fit strategy untouched on 2–3 tickers).
+6. Monitors brick live with red-on-broken proof.
+7. Journal backup policy in place.

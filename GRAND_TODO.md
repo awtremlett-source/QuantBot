@@ -55,6 +55,13 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
       MUST re-run the full firewall before adoption
 - [ ] monitors: prove drawdown warning red-on-broken (#9)
 - [ ] Deflated Sharpe formally applied to the logged trials
+- STRATEGY DEEPENING (NVDA — before any ticker #2; rubric = docs/MANIFEST.md):
+  - [ ] Challenger 1: mean-reversion strategy through the FULL firewall (validated
+        spare part; not live)
+  - [ ] Regime-switcher experiment: SMA-200 + challenger, severity-gated; judged vs
+        SMA-200 OOS; adopt ONLY if it wins, else record the rejection
+  - [ ] Journal backup policy: data/ journal + trials.jsonl protected off-laptop
+  - (Deflated Sharpe + monitors items above = rubric conditions 2 and 6 — not duplicated)
 - [ ] SPY/QQQ above 200-day MA + vol-target (~10% ann.), else cash (subsequent)
 - [ ] Run through firewall (discipline), then paper it; show the equity curve
 
