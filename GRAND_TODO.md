@@ -64,6 +64,12 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
   - [ ] Regime-switcher experiment: SMA-200 + challenger, severity-gated; judged vs
         SMA-200 OOS; adopt ONLY if it wins, else record the rejection
   - [ ] Journal backup policy: data/ journal + trials.jsonl protected off-laptop
+  - [ ] Monthly health report (measure, never refit): rolling OOS-vs-live tracking,
+        drawdown vs validated envelope, regime-fire counts, trade/cost tally —
+        diagnostics feed the ANNUAL refit; no parameter changes outside the annual
+        cycle (or firewall-approved cadence change).
+  - [ ] Refit-cadence experiment (after switcher): same walk-forward, monthly step
+        vs annual step, OOS decides — adopt faster cadence ONLY if it wins.
   - (Deflated Sharpe + monitors items above = rubric conditions 2 and 6 — not duplicated)
 - [ ] SPY/QQQ above 200-day MA + vol-target (~10% ann.), else cash (subsequent)
 - [ ] Run through firewall (discipline), then paper it; show the equity curve
