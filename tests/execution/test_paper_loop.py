@@ -155,7 +155,7 @@ def _run(
         strategy=strategy,
         ingest_fn=the_sync.ingest,
         reconcile_fn=the_sync.reconcile,
-        now=now,
+        now_fn=lambda: now,
         killswitch_dir=tmp,
     )
 
@@ -390,6 +390,69 @@ def test_fewer_than_two_bars_raises(tmp_path: Path) -> None:
     _install(db, _bars(OPENS[:1], CLOSES[:1]))
     with pytest.raises(ValueError, match="at least 2"):
         _run(db, _config(), tmp_path)
+
+
+def test_bars_synced_after_loop_start_are_still_visible(tmp_path: Path) -> None:
+    # FAIL-FIRST for the 2026-07-15 silent no-op: ingest/reconcile stamp their
+    # rows AFTER the loop's start instant, so a loop that reads as-of its
+    # PRE-sync clock cannot see the bars its own sync just wrote -- on a rebuild
+    # night it sees an empty store and settles/decides NOTHING, without error.
+    # The fix reads the clock again after the sync. This test's sync writes a
+    # new bar stamped between the two clock readings: the old code missed it
+    # (bars_processed == 0); the fixed loop must decide it.
+    t_start = "2025-06-01T12:00:00Z"
+    t_sync_stamp = "2025-06-01T12:03:00Z"  # after t_start: invisible to old code
+    t_after_sync = "2025-06-01T12:05:00Z"
+
+    bars = _bars(OPENS, CLOSES)
+    db = tmp_path / "book.db"
+    _install(db, bars[:4])
+    _run(db, _config(), tmp_path)  # seed the book (cursor at bar 3)
+
+    class _WritingSync(_RecordingSync):
+        """A sync that delivers bar 4 stamped AFTER the loop started."""
+
+        def reconcile(
+            self, tickers: Sequence[str], db_path: store.DbPath
+        ) -> object:
+            late = bars[4]
+            _install(
+                db,
+                [
+                    PriceClean(
+                        ticker=late.ticker,
+                        event_time=late.event_time,
+                        open=late.open,
+                        high=late.high,
+                        low=late.low,
+                        close=late.close,
+                        volume=late.volume,
+                        adj_close=late.adj_close,
+                        knowable_time=t_sync_stamp,
+                        source=late.source,
+                    )
+                ],
+            )
+            return super().reconcile(tickers, db_path)
+
+    clock_reads: list[str] = [t_start, t_after_sync]
+
+    def _two_phase_clock() -> str:
+        return clock_reads.pop(0) if clock_reads else t_after_sync
+
+    sync = _WritingSync()
+    digest = run_paper(
+        db,
+        _config(),
+        ingest_fn=sync.ingest,
+        reconcile_fn=sync.reconcile,
+        now_fn=_two_phase_clock,
+        killswitch_dir=tmp_path,
+    )
+
+    # The just-synced bar was seen, settled against, and decided.
+    assert digest.bars_processed == 1
+    assert digest.as_of_bar == bars[4].event_time
 
 
 def test_dry_run_reports_but_writes_nothing(tmp_path: Path) -> None:

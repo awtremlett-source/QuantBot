@@ -29,7 +29,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sqlite3
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -134,6 +134,7 @@ def run_once(
     config: PaperConfig,
     now: str,
     *,
+    today: str | None = None,
     killswitch: bool = False,
     dry_run: bool = False,
     strategy: Strategy | None = None,
@@ -141,12 +142,16 @@ def run_once(
     """Run one loop pass against an open connection; return the digest.
 
     Pure paper logic: no network, no filesystem checks -- callers supply ``now``
-    (canonical UTC ISO), the killswitch verdict, and optionally a strategy
-    override (tests). Transactions: one commit per processed bar in live mode;
-    ``dry_run`` rolls everything back at the end and reports what WOULD happen.
+    (canonical UTC ISO; also the as-of instant for the CLEAN read), the
+    killswitch verdict, and optionally a strategy override (tests). ``today``
+    (``YYYY-MM-DD``) is the partial-bar exclusion day; it defaults to ``now``'s
+    date but callers that sync first pass their PRE-sync day so the exclusion
+    matches what ingest was asked for. Transactions: one commit per processed
+    bar in live mode; ``dry_run`` rolls everything back at the end and reports
+    what WOULD happen.
     """
     ticker = config.ticker
-    today = now[:10]
+    the_today = today if today is not None else now[:10]
     the_strategy = strategy if strategy is not None else config.build_strategy()
     if killswitch:
         # Journal the fact loudly; the run continues (settles + marks) below.
@@ -156,7 +161,7 @@ def run_once(
             ticker,
         )
 
-    prices = _completed_bars(conn, ticker, now, today)
+    prices = _completed_bars(conn, ticker, now, the_today)
     state = store.read_paper_state(conn, ticker)
     if state is None:
         state = paper_book.init_state(conn, ticker, config.starting_equity, prices)
@@ -242,17 +247,23 @@ def run_paper(
     strategy: Strategy | None = None,
     ingest_fn: IngestFn = _default_ingest,
     reconcile_fn: ReconcileFn = _default_reconcile,
-    now: str | None = None,
+    now_fn: Callable[[], str] = now_utc_iso,
     killswitch_dir: Path = Path("."),
 ) -> LoopDigest:
     """One full loop run: killswitch check, data sync, book pass, digest.
 
-    ``now`` defaults to the wall clock (tests inject a fixed instant).
+    ``now_fn`` is the clock (tests inject a fixed one). It is read TWICE: once
+    before the sync (that instant's date is 'today' -- the ingest end and the
+    partial-bar exclusion day) and once AFTER the sync, as the as-of instant for
+    the CLEAN read. The second read is load-bearing: ingest/reconcile stamp
+    their rows with knowable_times LATER than the loop's start, so reading
+    as-of the pre-sync instant would miss the very bars this run just synced
+    (a rebuild made that a total miss on 2026-07-15 -- see the fail-first test).
     ``ingest_fn`` / ``reconcile_fn`` are the live network sync by default; tests
     inject fakes. Sync is skipped entirely under ``dry_run`` (offline what-if).
     """
-    the_now = now if now is not None else now_utc_iso()
-    today = the_now[:10]
+    t_start = now_fn()
+    today = t_start[:10]
     killswitch = (killswitch_dir / KILLSWITCH_FILE).exists()
 
     if not dry_run:
@@ -260,13 +271,17 @@ def run_paper(
         ingest_fn([config.ticker], db_path, start=None, end=today)
         reconcile_fn([config.ticker], db_path)
 
+    # Re-read the clock AFTER the sync so freshly-synced rows are visible.
+    read_now = now_fn()
+
     store.init_db(db_path)  # idempotent; ensures the paper tables exist
     conn = store.connect(db_path)
     try:
         digest = run_once(
             conn,
             config,
-            the_now,
+            read_now,
+            today=today,
             killswitch=killswitch,
             dry_run=dry_run,
             strategy=strategy,
