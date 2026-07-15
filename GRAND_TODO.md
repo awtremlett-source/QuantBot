@@ -70,6 +70,12 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
         cycle (or firewall-approved cadence change).
   - [ ] Refit-cadence experiment (after switcher): same walk-forward, monthly step
         vs annual step, OOS decides — adopt faster cadence ONLY if it wins.
+  - [ ] Risk ladder (drawdown-based de-risking): mechanical daily overlay on the live
+        engine — cut to half-size at drawdown rung X, flat beyond the validated-worst
+        rung Y, re-enter on recovery rung Z; rungs chosen via firewall (candidates:
+        -35% / -55% / -30%). Changes fill physics -> FULL firewall re-run required
+        before going live. Complements (does not replace) the annual refit; responds
+        to strategy health, never to operator mood.
   - (Deflated Sharpe + monitors items above = rubric conditions 2 and 6 — not duplicated)
 - [ ] SPY/QQQ above 200-day MA + vol-target (~10% ann.), else cash (subsequent)
 - [ ] Run through firewall (discipline), then paper it; show the equity curve
