@@ -56,8 +56,11 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 - [ ] monitors: prove drawdown warning red-on-broken (#9)
 - [ ] Deflated Sharpe formally applied to the logged trials
 - STRATEGY DEEPENING (NVDA — before any ticker #2; rubric = docs/MANIFEST.md):
-  - [ ] Challenger 1: mean-reversion strategy through the FULL firewall (validated
-        spare part; not live)
+  - [x] Challenger 1: mean-reversion through the FULL firewall (2026-07-15) —
+        validated spare part, SURVIVED 2× costs (base gates thin: p=0.039/0.041;
+        2× stress sharpe +0.93, gate-B p=0.025 with null also at 2×). Does NOT
+        beat champion (+1.04 vs +1.19 OOS) — complementary low-exposure/shallow-DD
+        profile for the switcher. NOT live. Trial count 108+/run (rubric #2)
   - [ ] Regime-switcher experiment: SMA-200 + challenger, severity-gated; judged vs
         SMA-200 OOS; adopt ONLY if it wins, else record the rejection
   - [ ] Journal backup policy: data/ journal + trials.jsonl protected off-laptop

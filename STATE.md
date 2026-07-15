@@ -93,6 +93,16 @@ Phase: 1 (Foundations).  Updated: 2026-07-15.
   commission; commission_pct is 0). cash −£5.00 = slippage overdraft; matches
   validated backtest physics; cash-floor sizing queued as a firewall-gated
   refinement. Equity 10,167.91 at close 211.80. 76 tests green.
+- CHALLENGER 1 (2026-07-15): mean-reversion (Cutler-RSI dip-buy above SMA-200 trend,
+  strategies/mean_reversion.py) through the FULL firewall — VALIDATED SPARE PART,
+  NOT live. Base: stitched OOS 2018→2026 sharpe +1.04, maxDD −29.6%, exposure 31.1%,
+  420 trades; both MC gates passed THINLY (full-series p=0.039, matched-window
+  p=0.041 vs alpha 0.05). 2× cost stress (law #15): sharpe +0.93, gate-B p=0.025
+  with the null ALSO paying 2× — SURVIVED (champion at 2×: +1.19, barely moved).
+  Does NOT beat the champion (+1.04 vs +1.19); value = complementary profile
+  (shallower DD −29.6% vs −48.8%, 31% exposure) → regime-switcher ingredient.
+  Honest trial count now 108+/walk-forward run — Deflated Sharpe pending (rubric
+  #2). 91 tests green; ruff + mypy --strict clean.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
