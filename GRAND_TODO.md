@@ -51,6 +51,8 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
       killswitch/catch-up/resume/partial-bar all test-proven
 - [x] ingest: re-fetch-and-supersede trailing RAW bars (frozen partial-bar fix; live
       2026-07-15 — 07-14 bar healed to official values, old rows archived)
+- [ ] sizing: cash-floor (no slippage overdraft at full weight) — changes fill physics,
+      MUST re-run the full firewall before adoption
 - [ ] monitors: prove drawdown warning red-on-broken (#9)
 - [ ] Deflated Sharpe formally applied to the logged trials
 - [ ] SPY/QQQ above 200-day MA + vol-target (~10% ann.), else cash (subsequent)

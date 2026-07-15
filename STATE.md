@@ -88,15 +88,19 @@ Phase: 1 (Foundations).  Updated: 2026-07-15.
 - FOUND+FIXED same night: loop read CLEAN as-of its PRE-sync clock, so a rebuild
   night made it silently process nothing (bars=0) — now re-reads the clock post-sync;
   fail-first test proven red on old code, green on fix.
-- FIRST FILL (2026-07-15): order #1 settled at 07-14 open — fill 208.3041 (open
-  208.20 + 0.05% slippage), 48.030740 shares, cash −5.00, equity 10,167.91 at close
-  211.80. 76 tests green.
+- FIRST FILL (2026-07-15): order #1 settled at 07-14 open — sized at raw open 208.20
+  → 48.030740 shares; fill 208.3041 = open × 1.0005 (the £5 is SLIPPAGE, not
+  commission; commission_pct is 0). cash −£5.00 = slippage overdraft; matches
+  validated backtest physics; cash-floor sizing queued as a firewall-gated
+  refinement. Equity 10,167.91 at close 211.80. 76 tests green.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
   Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
-- NEXT ACTION: run the loop daily (python -m execution.paper_loop --db data/quantbot.db).
+- NEXT ACTION: run the loop each MORNING (python -m execution.paper_loop --db
+  data/quantbot.db) — it processes yesterday's bar. A bar counts finished once its
+  date is fully in the past (UTC), so e.g. 07-15's bar becomes readable after 1am UK.
 
 ## Open flags
 - Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).

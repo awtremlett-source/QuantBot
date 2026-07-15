@@ -1,4 +1,4 @@
-# SCARS REGISTER — twenty-two laws from the desk
+# SCARS REGISTER — twenty-three laws from the desk
 
 > #1–21 verbatim from §13 of the founding directive (QUANTBOT KICKSTART, 2026-06-15); #22+ earned in-session, same force.
 > Read once, obey forever. Each row is a real failure and the law it produced.
@@ -28,3 +28,4 @@
 | 20 | The OS clock drifted +31.6s; timestamps and bar alignment were quietly wrong | NTP sync at setup + daily task; verify with stripchart |
 | 21 | A team set an optimizer to "keep searching until the backtest turned profitable" — it succeeded, shipped, and lost money live; the green was the optimizer fitting noise it was told to chase | A loop's stop-condition is *correct / exhausted*, NEVER *profitable*; optimize process, observe outcome; P&L is a thermometer, not a thermostat (§2c) |
 | 22 | The RAW→CLEAN brick divided pre-split bars by the split ratio, but Yahoo/yfinance already split-adjusts OHLC (even with auto_adjust=False) — double-adjusting collapsed NVDA's pre-split bars ~10× (a fake ~907% jump) and read_price_asof served ÷10 garbage (~$4.80 not ~$48); caught by the live read-back before any strategy used it, RAW (system of record) was never wrong | CLEAN = validated COPY of RAW; never re-adjust splits — the split/corporate-actions logic is a CONTINUITY CHECK only: a ~split-ratio cliff at a split date means the source failed to pre-adjust → quarantine + raise. Dividend adjustment (via Yahoo Adj Close) is a separate later refinement |
+| 23 | The paper loop computed its point-in-time as-of instant BEFORE running its own data sync; reconcile's rebuild re-stamps every CLEAN row's knowable_time, so on any rebuild night the loop would read ZERO bars — silently, no error, just a quiet no-op. Caught same-night with a fail-first test (4e3700d) | Capture as-of AFTER your own writes: any point-in-time read that follows a sync/rebuild must use an as-of instant captured after those writes complete |
