@@ -13,6 +13,7 @@ serve the CLEAN tables only.
 
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
 from collections.abc import Sequence
@@ -364,6 +365,81 @@ def replace_price_clean(
         conn.execute("DELETE FROM price_clean WHERE ticker = ?", (ticker,))
         if fresh_params:
             conn.executemany(_PRICE_CLEAN_SQL, fresh_params)
+    return len(fresh_rows)
+
+
+def replace_price_raw(
+    conn: sqlite3.Connection,
+    fresh_rows: Sequence[PriceRaw],
+    knowable_time: str,
+) -> int:
+    """Atomically supersede stored RAW rows with re-fetched ones (archive ->
+    delete -> insert), mirroring :func:`replace_price_clean`'s pattern.
+
+    RAW is the system of record, so replacing a row must keep the audit trail:
+    in ONE transaction, each existing row conflicting with a fresh one (same
+    ticker + event_time + source) is copied verbatim into quarantine (domain
+    ``'price_raw'``, reason ``'superseded_by_refetch'``, payload = the old row
+    as JSON), deleted, and the fresh row inserted. All-or-nothing: any error
+    rolls the whole batch back, so a bar is never absent mid-operation
+    (quarantine-never-delete). Returns the number of fresh rows written.
+    """
+    validate_iso(knowable_time)
+    fresh_params = [
+        (
+            r.ticker,
+            validate_iso(r.event_time),
+            r.open,
+            r.high,
+            r.low,
+            r.close,
+            r.volume,
+            validate_iso(r.knowable_time),
+            r.source,
+        )
+        for r in fresh_rows
+    ]
+    with conn:  # one transaction: archive + delete + insert, or nothing at all
+        for r in fresh_rows:
+            key = (r.ticker, r.event_time, r.source)
+            old_rows = conn.execute(
+                "SELECT ticker, event_time, open, high, low, close, volume, "
+                "knowable_time, source FROM price_raw "
+                "WHERE ticker = ? AND event_time = ? AND source = ?",
+                key,
+            ).fetchall()
+            for old in old_rows:
+                payload = json.dumps(
+                    {
+                        "ticker": old[0],
+                        "event_time": old[1],
+                        "open": old[2],
+                        "high": old[3],
+                        "low": old[4],
+                        "close": old[5],
+                        "volume": old[6],
+                        "knowable_time": old[7],
+                        "source": old[8],
+                    },
+                    sort_keys=True,
+                )
+                conn.execute(
+                    _QUARANTINE_SQL,
+                    (
+                        "price_raw",
+                        r.ticker,
+                        r.event_time,
+                        payload,
+                        "superseded_by_refetch",
+                        knowable_time,
+                    ),
+                )
+            conn.execute(
+                "DELETE FROM price_raw "
+                "WHERE ticker = ? AND event_time = ? AND source = ?",
+                key,
+            )
+        conn.executemany(_PRICE_RAW_SQL, fresh_params)
     return len(fresh_rows)
 
 

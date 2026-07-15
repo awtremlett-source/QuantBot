@@ -10,7 +10,8 @@ checks, and route it to exactly one of two places:
 Nothing is written unchecked; nothing rejected is silently dropped. Each run
 returns -- and logs as one line -- a :class:`ReconciliationSummary` so the
 counts always balance: ``rows_fetched == rows_valid + rows_quarantined`` and
-``rows_valid == rows_written + rows_skipped_duplicate`` (per run).
+``rows_valid == rows_written + rows_skipped_duplicate + rows_superseded``
+(per run).
 
 Scope: RAW only. No price adjustment / CLEAN reconciliation happens here.
 """
@@ -20,13 +21,15 @@ from __future__ import annotations
 import json
 import logging
 import math
+import sqlite3
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import StrEnum
 
 from data_store import store
 from data_store.store import PriceRaw, QuarantineRow
-from data_store.timeutils import now_utc_iso, validate_iso
+from data_store.timeutils import now_utc_iso, parse_iso, validate_iso
 from ingest import yfinance_source
 from ingest.yfinance_source import DailyBar, FetchError
 
@@ -38,6 +41,11 @@ _PRICE_DOMAIN = "price"
 _SOURCE = "yfinance"
 # A close that moves more than this fraction vs the previous valid bar is suspect.
 _MAX_CLOSE_MOVE = 0.5
+# Trailing refresh window: every ingest re-fetches at least this many calendar
+# days back from the ticker's latest stored RAW bar, so a bar captured
+# mid-session (a partial snapshot) is re-checked -- and superseded with the
+# official values -- on the next run instead of being frozen forever.
+_REFRESH_DAYS = 7
 
 
 class QuarantineReason(StrEnum):
@@ -64,7 +72,11 @@ class ReconciliationSummary:
 
     Invariants (per run):
         rows_fetched == rows_valid + rows_quarantined
-        rows_valid   == rows_written + rows_skipped_duplicate
+        rows_valid   == rows_written + rows_skipped_duplicate + rows_superseded
+
+    ``rows_superseded`` counts stored RAW bars replaced by a re-fetch that
+    delivered DIFFERENT values (the old row is archived to quarantine first --
+    see :func:`data_store.store.replace_price_raw`).
     """
 
     requested_tickers: tuple[str, ...]
@@ -74,6 +86,7 @@ class ReconciliationSummary:
     rows_quarantined: int
     rows_written: int
     rows_skipped_duplicate: int
+    rows_superseded: int
 
 
 def _is_nonfinite(value: float) -> bool:
@@ -207,6 +220,63 @@ def _classify_ticker(
     return valid, quarantined
 
 
+def _effective_start(
+    conn: sqlite3.Connection, ticker: str, requested_start: str | None
+) -> str | None:
+    """The fetch start honouring the trailing refresh window.
+
+    Returns the EARLIER of the requested start (if any) and the ticker's latest
+    stored RAW ``event_time`` minus ``_REFRESH_DAYS`` calendar days -- so recent
+    bars are always re-fetched and a mid-session snapshot gets corrected. A
+    ticker with no stored history behaves exactly as before (first-ever ingest).
+    Dates are ``YYYY-MM-DD`` strings, so ``min`` is a chronological comparison.
+    """
+    row = conn.execute(
+        "SELECT MAX(event_time) FROM price_raw WHERE ticker = ?", (ticker,)
+    ).fetchone()
+    latest: str | None = row[0] if row is not None else None
+    if latest is None:
+        return requested_start
+    refresh_start = (parse_iso(latest) - timedelta(days=_REFRESH_DAYS)).strftime(
+        "%Y-%m-%d"
+    )
+    if requested_start is None:
+        return refresh_start
+    return min(requested_start, refresh_start)
+
+
+def _partition_against_store(
+    conn: sqlite3.Connection, valid: Sequence[PriceRaw]
+) -> tuple[list[PriceRaw], list[PriceRaw]]:
+    """Split checked rows into (write-as-before, supersede-stored-row).
+
+    A row goes to the supersede list only when the store already holds a bar for
+    its (ticker, event_time, source) with ANY differing value -- the re-fetch
+    delivered new numbers (e.g. the official close replacing a mid-session
+    snapshot). Rows with no stored counterpart, or an identical one, flow
+    through the normal idempotent write (identical -> skipped duplicate).
+    """
+    passthrough: list[PriceRaw] = []
+    to_supersede: list[PriceRaw] = []
+    for row in valid:
+        existing = conn.execute(
+            "SELECT open, high, low, close, volume FROM price_raw "
+            "WHERE ticker = ? AND event_time = ? AND source = ?",
+            (row.ticker, row.event_time, row.source),
+        ).fetchone()
+        if existing is not None and (
+            float(existing[0]),
+            float(existing[1]),
+            float(existing[2]),
+            float(existing[3]),
+            int(existing[4]),
+        ) != (row.open, row.high, row.low, row.close, row.volume):
+            to_supersede.append(row)
+        else:
+            passthrough.append(row)
+    return passthrough, to_supersede
+
+
 def ingest(
     tickers: Sequence[str],
     db_path: store.DbPath,
@@ -219,6 +289,14 @@ def ingest(
     this run shares one consistent "as of" instant. A fetch failure for one
     ticker is logged and recorded in ``failed_tickers`` -- it never aborts the run
     or other tickers.
+
+    TRAILING REFRESH: the fetch always reaches back at least ``_REFRESH_DAYS``
+    days before the ticker's latest stored bar (see :func:`_effective_start`).
+    A re-fetched bar that passes the sanity checks and DIFFERS from its stored
+    counterpart supersedes it via :func:`data_store.store.replace_price_raw`
+    (old row archived to quarantine, atomically) and is counted in
+    ``rows_superseded``. Bars failing the checks are quarantined as before and
+    never touch the stored row.
     """
     requested = tuple(tickers)
     knowable_time = now_utc_iso()
@@ -229,12 +307,14 @@ def ingest(
     rows_valid = 0
     rows_quarantined = 0
     rows_written = 0
+    rows_superseded = 0
 
     conn = store.connect(db_path)
     try:
         for ticker in requested:
+            fetch_start = _effective_start(conn, ticker, start)
             try:
-                bars = yfinance_source.fetch_daily(ticker, start=start, end=end)
+                bars = yfinance_source.fetch_daily(ticker, start=fetch_start, end=end)
             except FetchError as exc:
                 logger.error("ingest fetch failed for %s: %s", ticker, exc)
                 failed.append(ticker)
@@ -247,8 +327,20 @@ def ingest(
 
             if quarantined:
                 store.write_quarantine(conn, quarantined)
-            if valid:
-                rows_written += store.write_price_raw(conn, valid)
+            passthrough, to_supersede = _partition_against_store(conn, valid)
+            if passthrough:
+                rows_written += store.write_price_raw(conn, passthrough)
+            if to_supersede:
+                rows_superseded += store.replace_price_raw(
+                    conn, to_supersede, knowable_time
+                )
+                for row in to_supersede:
+                    logger.warning(
+                        "superseded stored RAW bar %s @ %s with re-fetched values "
+                        "(old row archived to quarantine)",
+                        row.ticker,
+                        row.event_time,
+                    )
     finally:
         conn.close()
 
@@ -259,7 +351,8 @@ def ingest(
         rows_valid=rows_valid,
         rows_quarantined=rows_quarantined,
         rows_written=rows_written,
-        rows_skipped_duplicate=rows_valid - rows_written,
+        rows_skipped_duplicate=rows_valid - rows_written - rows_superseded,
+        rows_superseded=rows_superseded,
     )
     logger.info("ingest summary: %s", summary)
     return summary

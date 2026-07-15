@@ -219,8 +219,10 @@ def test_second_identical_run_is_idempotent(
     finally:
         conn.close()
 
-    # Mock used once per run; never the real network.
-    assert fetch_calls == [("NVDA", None, None), ("NVDA", None, None)]
+    # Mock used once per run; never the real network. The SECOND run has stored
+    # history (latest bar 2026-06-03), so the trailing refresh window widens its
+    # fetch start to latest - 7 days (see test_refetch_supersede.py).
+    assert fetch_calls == [("NVDA", None, None), ("NVDA", "2026-05-27", None)]
 
 
 def test_fetch_failure_is_recorded_and_does_not_abort(
