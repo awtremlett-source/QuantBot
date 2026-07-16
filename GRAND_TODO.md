@@ -61,8 +61,14 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
         2× stress sharpe +0.93, gate-B p=0.025 with null also at 2×). Does NOT
         beat champion (+1.04 vs +1.19 OOS) — complementary low-exposure/shallow-DD
         profile for the switcher. NOT live. Trial count 108+/run (rubric #2)
-  - [ ] Regime-switcher experiment: SMA-200 + challenger, severity-gated; judged vs
-        SMA-200 OOS; adopt ONLY if it wins, else record the rejection
+  - [x] Regime-switcher experiment — DECIDED 2026-07-16: ADOPTED per pre-committed
+        rules. Beat champion OOS base +1.27 vs +1.19 (matched MC p=0.004); 2× cost
+        stress sharpe +1.1999 > champion-at-2× +1.19 (RAZOR-THIN, ~+0.01) with the
+        matched-window null also at 2× p=0.002. Threshold instability (1.8/1.2/1.5
+        across folds) = known wart for the annual refit. NOT live yet — see swap brick.
+  - [ ] LIVE SWAP: paper config SMA-200 → regime switcher (config law: the swap rides
+        the switcher's firewall pass — no new fitting; PROPOSE→GO→APPLY before
+        touching execution/)
   - [ ] Journal backup policy: data/ journal + trials.jsonl protected off-laptop
   - [ ] Monthly health report (measure, never refit): rolling OOS-vs-live tracking,
         drawdown vs validated envelope, regime-fire counts, trade/cost tally —

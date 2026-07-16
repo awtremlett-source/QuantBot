@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-07-15.
+Phase: 1 (Foundations).  Updated: 2026-07-16.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -103,6 +103,19 @@ Phase: 1 (Foundations).  Updated: 2026-07-15.
   (shallower DD −29.6% vs −48.8%, 31% exposure) → regime-switcher ingredient.
   Honest trial count now 108+/walk-forward run — Deflated Sharpe pending (rubric
   #2). 91 tests green; ruff + mypy --strict clean.
+- REGIME SWITCHER ADOPTED per pre-committed rules (2026-07-16). Severity-gated
+  SMA-200/mean-reversion switcher (strategies/regime_switcher.py; threshold walk-forward
+  tuned over {1.2,1.5,1.8}, re-entry hysteresis 0.8 FIXED). Base: beat champion OOS
+  stitched 2018→2026 sharpe +1.27 vs +1.19, matched-window MC p=0.004. 2× cost stress
+  (law #15, 2026-07-16): stitched sharpe +1.1999 vs champion-at-2× +1.19 — pre-committed
+  bar (> +1.19) passed by a RAZOR-THIN margin (~+0.01, and the champion figure is a
+  2-dp record — honesty note, not a re-litigation); matched-window null ALSO at 2×
+  (n=1000, seed=0) p=0.002, 99.9th pct, null mean +0.43; maxDD at 2× −36.9% (champion
+  −48.8%); base-run repro before stressing landed exactly +1.2734. VERDICT: SURVIVED →
+  ADOPTED. Live swap of the paper config = separate next brick (config law: the swap
+  rides THIS firewall pass; execution/ stays frozen on SMA-200 until that brick).
+  Threshold instability (1.8/1.2/1.5 across folds) recorded as a known wart for the
+  annual refit. Trial log now 17 records (walk-forward repro + 2× walk-forward + 2× null).
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
@@ -110,9 +123,11 @@ Phase: 1 (Foundations).  Updated: 2026-07-15.
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
 - NEXT ACTIONS: (a) daily MORNING loop (python -m execution.paper_loop --db
   data/quantbot.db — processes yesterday's bar; a bar counts finished once its date
-  is fully past UTC, so 07-15's bar is readable after 1am UK). (b) Strategy
-  deepening per docs/MANIFEST.md graduation rubric. NO export / NO ticker #2 until
-  the rubric passes (all 7 conditions).
+  is fully past UTC, so 07-15's bar is readable after 1am UK). (b) LIVE SWAP brick:
+  paper config SMA-200 → regime switcher (rides the switcher's firewall pass;
+  PROPOSE→GO→APPLY before touching execution/). (c) Strategy deepening per
+  docs/MANIFEST.md graduation rubric. NO export / NO ticker #2 until the rubric
+  passes (all 7 conditions).
 
 ## Open flags
 - Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).
