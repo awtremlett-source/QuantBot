@@ -116,6 +116,17 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
   rides THIS firewall pass; execution/ stays frozen on SMA-200 until that brick).
   Threshold instability (1.8/1.2/1.5 across folds) recorded as a known wart for the
   annual refit. Trial log now 17 records (walk-forward repro + 2× walk-forward + 2× null).
+- PAPER NOW DRIVEN BY SWITCHER (2026-07-16): deployment threshold 1.5 fit on full
+  history per validated process (fit_best over {1.2,1.5,1.8} on all 2,898 CLEAN bars,
+  in-sample sharpe +1.3692; 3 trials logged → trials.jsonl now 20); transition
+  journaled (no-op — first live decision on the 07-15 bar: calm regime → SMA-200 →
+  stay long 48.030740 shares, placed=0, equity £10,201.53); drawdown warning
+  re-anchored to −36.5% (switcher stitched OOS maxDD; −36.9% at 2×; warning fires at
+  the shallower line). Config law intact: swap rides the switcher's firewall pass
+  (be6f007/f55b738) — no loop-mechanics or research/ changes; loop tests now pin
+  their small SMA fixture explicitly, and the config has its own birth-certificate
+  test (tests/execution/test_config.py). 102 tests green; ruff + mypy --strict clean.
+  next_refit_due unchanged: 2027-07-14.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
@@ -123,11 +134,10 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
   holdout before the ~100-ticker universe (GRAND_TODO "FIREWALL DESIGN follow-ups").
 - NEXT ACTIONS: (a) daily MORNING loop (python -m execution.paper_loop --db
   data/quantbot.db — processes yesterday's bar; a bar counts finished once its date
-  is fully past UTC, so 07-15's bar is readable after 1am UK). (b) LIVE SWAP brick:
-  paper config SMA-200 → regime switcher (rides the switcher's firewall pass;
-  PROPOSE→GO→APPLY before touching execution/). (c) Strategy deepening per
-  docs/MANIFEST.md graduation rubric. NO export / NO ticker #2 until the rubric
-  passes (all 7 conditions).
+  is fully past UTC, so 07-15's bar is readable after 1am UK; loop now trades the
+  SWITCHER config). (b) Strategy deepening per docs/MANIFEST.md graduation rubric
+  (condition 4 closed by the switcher adoption + live swap). NO export / NO ticker
+  #2 until the rubric passes (all 7 conditions).
 
 ## Open flags
 - Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).

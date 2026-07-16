@@ -148,11 +148,19 @@ def _run(
 ) -> LoopDigest:
     """run_paper with offline fakes; killswitch dir = tmp (create the file to arm)."""
     the_sync = sync if sync is not None else _RecordingSync()
+    # These tests exercise LOOP MECHANICS, so they pin the small SMA their tiny
+    # fixtures were built around (what CONFIG's old family gave at lookback=3);
+    # the live switcher CONFIG has its own birth certificate in test_config.py.
+    the_strategy = (
+        strategy
+        if strategy is not None
+        else SmaTrendStrategy([3]).build({"lookback": 3})
+    )
     return run_paper(
         db,
         config,
         dry_run=dry_run,
-        strategy=strategy,
+        strategy=the_strategy,
         ingest_fn=the_sync.ingest,
         reconcile_fn=the_sync.reconcile,
         now_fn=lambda: now,

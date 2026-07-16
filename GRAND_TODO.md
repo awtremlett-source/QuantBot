@@ -66,9 +66,11 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
         stress sharpe +1.1999 > champion-at-2× +1.19 (RAZOR-THIN, ~+0.01) with the
         matched-window null also at 2× p=0.002. Threshold instability (1.8/1.2/1.5
         across folds) = known wart for the annual refit. NOT live yet — see swap brick.
-  - [ ] LIVE SWAP: paper config SMA-200 → regime switcher (config law: the swap rides
-        the switcher's firewall pass — no new fitting; PROPOSE→GO→APPLY before
-        touching execution/)
+  - [x] LIVE SWAP — DONE 2026-07-16: paper config SMA-200 → regime switcher
+        (deployment threshold 1.5, fit_best on full history, in-sample sharpe +1.37,
+        3 trials logged; rides the switcher's firewall pass). Transition = no-op
+        (calm regime → SMA-200 → stay long). Drawdown warning re-anchored −48.8% →
+        −36.5%. Rubric condition 4 FULLY CLOSED (switcher adopted + live).
   - [ ] Journal backup policy: data/ journal + trials.jsonl protected off-laptop
   - [ ] Monthly health report (measure, never refit): rolling OOS-vs-live tracking,
         drawdown vs validated envelope, regime-fire counts, trade/cost tally —
