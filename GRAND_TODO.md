@@ -71,7 +71,12 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
         3 trials logged; rides the switcher's firewall pass). Transition = no-op
         (calm regime → SMA-200 → stay long). Drawdown warning re-anchored −48.8% →
         −36.5%. Rubric condition 4 FULLY CLOSED (switcher adopted + live).
-  - [ ] Journal backup policy: data/ journal + trials.jsonl protected off-laptop
+  - [~] Journal backup policy — mechanism LIVE 2026-07-17 (SQLite online-backup +
+        verify + 14-day retention; piggybacks every live loop run, failure warns but
+        never blocks; tools/backup.py CLI). OPERATOR ACTION REQUIRED: set
+        QUANTBOT_BACKUP_DIR to an off-laptop folder (OneDrive) — rubric condition 7
+        counts as MET only when backups land off-laptop; stays [~] until the
+        operator confirms the destination.
   - [ ] Monthly health report (measure, never refit): rolling OOS-vs-live tracking,
         drawdown vs validated envelope, regime-fire counts, trade/cost tally —
         diagnostics feed the ANNUAL refit; no parameter changes outside the annual

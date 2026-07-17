@@ -127,6 +127,18 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
   their small SMA fixture explicitly, and the config has its own birth-certificate
   test (tests/execution/test_config.py). 102 tests green; ruff + mypy --strict clean.
   next_refit_due unchanged: 2027-07-14.
+- JOURNAL BACKUP (2026-07-17): backup mechanism live (SQLite online-backup + verify +
+  14-day retention), piggybacked on the loop — every LIVE run snapshots the journal;
+  backup failure warns loudly but NEVER blocks trading (scoped catch+log, law #12
+  compliant). tools/backup.py + CLI: python -m tools.backup --db data/quantbot.db
+  [--dest DIR] [--retain-days N]. Verify-before-trust: snapshot must open read-only,
+  pass integrity_check, match all 6 table counts vs source + trials line count; a
+  failed verify deletes the artifacts and raises. Dest: arg > QUANTBOT_BACKUP_DIR >
+  data/backups/ (gitignored via data/). First live run: quantbot-20260717.db verified
+  (6 tables, 15,737 rows) + trials-20260717.jsonl, LOCAL-ONLY warning fired as
+  designed. OPERATOR ACTION REQUIRED: set QUANTBOT_BACKUP_DIR to an off-laptop folder
+  (OneDrive) — rubric condition 7 counts as MET only when backups land off-laptop.
+  113 tests green; ruff + mypy --strict clean.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
@@ -140,6 +152,9 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
   #2 until the rubric passes (all 7 conditions).
 
 ## Open flags
+- QUANTBOT_BACKUP_DIR not yet set → backups are LOCAL-ONLY (data/backups/ on the
+  same laptop). Rubric condition 7 NOT met until the operator points it at an
+  off-laptop folder (e.g. OneDrive).
 - Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
 - Daily auto clock-sync task still to set up (admin).

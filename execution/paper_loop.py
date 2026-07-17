@@ -18,7 +18,10 @@ laptop law). Each run:
    exact discipline. N dark days = N honest replayed decisions, each order
    filling at its own historical next open.
 7. DIGEST -- one line: date, position, equity, drawdown-from-peak, orders;
-   plus a WARNING if drawdown breaches the validated worst (-48.8%).
+   plus a WARNING if drawdown breaches the validated worst.
+8. BACKUP -- live runs (never --dry-run) snapshot the journal via
+   :func:`tools.backup.run_backup`; a backup failure warns loudly in the
+   digest but NEVER blocks trading.
 
 Belt-and-braces: bars dated today or later are excluded from decisions even if
 they somehow reached CLEAN (defense in depth against partial bars).
@@ -41,6 +44,7 @@ from data_store.timeutils import now_utc_iso
 from execution import paper_book
 from execution.config import CONFIG, VALIDATED_WORST_DRAWDOWN, PaperConfig
 from research.strategy import Strategy
+from tools.backup import LOCAL_ONLY_WARNING, BackupVerificationError, run_backup
 
 logger = logging.getLogger(__name__)
 
@@ -298,6 +302,21 @@ def run_paper(
         )
         logger.warning(warning)
         print(warning)
+
+    if not dry_run:
+        # Rubric condition 7: every LIVE run backs up the journal it just wrote.
+        # A failed backup must never block trading -- this catch is SCOPED to
+        # the backup call only and logs the full error (no-silent-exceptions
+        # law: handle+log; anything unexpected still propagates).
+        try:
+            backup_report = run_backup(db_path)
+        except (BackupVerificationError, OSError):
+            logger.exception("journal backup failed")
+            print("WARNING: BACKUP FAILED — journal is unprotected")
+        else:
+            print(f"backup: OK -> {backup_report.dest_dir}")
+            if backup_report.local_only:
+                print(LOCAL_ONLY_WARNING)
     return digest
 
 

@@ -9,6 +9,7 @@ both engines must produce the same equity, bar for bar. Divergence MUST fail it.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,10 +19,12 @@ import pytest
 
 from data_store import store
 from data_store.store import PriceClean
+from execution import paper_loop
 from execution.config import PaperConfig
 from execution.paper_loop import KILLSWITCH_FILE, LoopDigest, run_paper
 from research.backtester import run_backtest
 from research.strategy import SmaTrendStrategy, Strategy
+from tools.backup import LOCAL_ONLY_WARNING, BackupReport, BackupVerificationError
 
 # A fixed "now" strictly after every synthetic bar: all bars count as completed.
 NOW = "2025-06-01T12:00:00Z"
@@ -128,6 +131,33 @@ class _Alternator:
 
     def decide(self, history: pd.DataFrame) -> float:
         return float(len(history) % 2)
+
+
+def _stub_report(*, local_only: bool = False) -> BackupReport:
+    return BackupReport(
+        dest_dir=Path("stub-dest"),
+        db_snapshot_path=Path("stub-dest/quantbot-00000000.db"),
+        trials_snapshot_path=None,
+        verified=True,
+        tables_checked={},
+        pruned=[],
+        local_only=local_only,
+    )
+
+
+@pytest.fixture(autouse=True)
+def stub_backup(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
+    """Loop tests never run a REAL backup: tmp DBs must not be snapshotted, and
+    an operator's QUANTBOT_BACKUP_DIR must never receive test artifacts. The
+    backup-integration tests at the bottom override this stub explicitly."""
+    calls: list[Path] = []
+
+    def fake_backup(db_path: store.DbPath) -> BackupReport:
+        calls.append(Path(db_path))
+        return _stub_report()
+
+    monkeypatch.setattr(paper_loop, "run_backup", fake_backup)
+    return calls
 
 
 def _config(**overrides: object) -> PaperConfig:
@@ -478,3 +508,72 @@ def test_dry_run_reports_but_writes_nothing(tmp_path: Path) -> None:
         assert store.read_paper_equity(conn, "TEST") == []
     finally:
         conn.close()
+
+
+# ----------------------------------------------------------------------------- #
+# BACKUP INTEGRATION (rubric condition 7)
+# ----------------------------------------------------------------------------- #
+def test_live_run_backs_up_but_dry_run_never_does(
+    tmp_path: Path, stub_backup: list[Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+
+    _run(db, _config(), tmp_path)
+    assert stub_backup == [db]  # a LIVE run backs up exactly this db, once
+    assert "backup: OK -> stub-dest" in capsys.readouterr().out
+
+    _run(db, _config(), tmp_path, dry_run=True)
+    assert stub_backup == [db]  # a dry-run must never trigger a backup
+    assert "backup" not in capsys.readouterr().out
+
+
+def test_local_only_backup_prints_the_loud_warning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+    monkeypatch.setattr(
+        paper_loop,
+        "run_backup",
+        lambda db_path: _stub_report(local_only=True),
+    )
+
+    _run(db, _config(), tmp_path)
+
+    assert LOCAL_ONLY_WARNING in capsys.readouterr().out
+
+
+def test_backup_failure_warns_and_logs_but_never_blocks_the_loop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+
+    def boom(db_path: store.DbPath) -> BackupReport:
+        raise BackupVerificationError("tampered snapshot (test)")
+
+    monkeypatch.setattr(paper_loop, "run_backup", boom)
+    with caplog.at_level(logging.ERROR):
+        digest = _run(db, _config(), tmp_path)
+
+    # The loop completed and journaled its run despite the backup failure...
+    assert digest.bars_processed > 0
+    conn = store.connect(db)
+    try:
+        assert store.read_paper_state(conn, "TEST") is not None
+    finally:
+        conn.close()
+    # ...the digest warned the operator loudly...
+    out = capsys.readouterr().out
+    assert "WARNING: BACKUP FAILED — journal is unprotected" in out
+    # ...and the full error was logged with its traceback, never swallowed.
+    assert any(
+        "journal backup failed" in record.getMessage() and record.exc_info
+        for record in caplog.records
+    )
