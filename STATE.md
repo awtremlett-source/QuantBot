@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-07-16.
+Phase: 1 (Foundations).  Updated: 2026-07-28.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -50,6 +50,18 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
   annual refit, live graduation). Near-live / 24-7 gathering REJECTED on locked
   evidence: daily bars publish daily; short horizons are cost-fatal (measured);
   credit budget. Sentiment collection stays v2.
+- DEFLATED SHARPE (rubric 2) run 2026-07-28: N=481 selection trials (477
+  walk-forward grid combos across 9 records + 4 standalone backtests; excluded:
+  7 monte-carlo + 40 cross-ticker records), V from matched null (ann. std 0.2504,
+  null mean +0.61). Champion DSR=0.898 FAIL; Challenger DSR=0.800 FAIL; Switcher
+  (LIVE) DSR=0.933 FAIL (pre-committed bar 0.95; all three reruns reproduced
+  exactly first: 1.1924/1.0431/1.2734; champion grid identified as
+  50/100/150/200/250). Sensitivity (non-binding): 2xV -> 0.63/0.46/0.72,
+  2xN -> 0.87/0.75/0.91 — no verdict flips. GOVERNANCE (pre-committed): a
+  live-switcher FAIL does not pull it from paper (paper = forward test, no
+  capital at risk) but is recorded, and LIVE-MONEY graduation requires
+  DSR>=0.95 at then-current N. Challenger keeps spare-part status with a
+  deflation flag.
 
 ## Done
 - Safety rails: git init, .gitignore (verified: .env blocked, template kept),
@@ -152,6 +164,13 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
   designed. OPERATOR ACTION REQUIRED: set QUANTBOT_BACKUP_DIR to an off-laptop folder
   (OneDrive) — rubric condition 7 counts as MET only when backups land off-laptop.
   113 tests green; ruff + mypy --strict clean.
+- Rubric 1 catch-up evidence banked 2026-07-28: real 8-bar dark-gap replay via
+  scheduled task, position held, digest + backup OK.
+- DEFLATION BRICK (2026-07-28): research/deflation.py (moments/PSR/expected-max-
+  Sharpe/DSR + count_selection_trials policy) with fail-first tests; 127 tests
+  green; ruff + mypy --strict clean. Trial log 60 -> 64 records (3 wf reruns +
+  1 matched null); N 481 -> 661 for the NEXT deflation (self-reference fixed by
+  snapshotting N before the reruns).
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).

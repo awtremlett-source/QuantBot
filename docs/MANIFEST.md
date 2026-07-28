@@ -45,7 +45,10 @@ this logic leaves NVDA or this laptop.
 
 ## GRADUATION RUBRIC — before this logic moves to ticker #2 or another device (ALL required)
 1. ≥1 month clean daily paper runs, incl. at least one real catch-up after dark days.
+   [~ half met: real 8-bar catch-up banked 2026-07-28; month-clock runs to ~2026-08-14]
 2. Deflated Sharpe formally applied to the logged trials.
+   [MET-as-mechanism 2026-07-28 — verdicts at N=481, bar 0.95: champion DSR=0.898
+   FAIL / challenger 0.800 FAIL / switcher (live) 0.933 FAIL; governance in STATE.md]
 3. Challenger experiment complete: ≥1 alternative strategy through the full firewall.
 4. Regime-switcher experiment DECIDED: adopted only if it beats SMA-200 OOS,
    else rejected-and-recorded.
