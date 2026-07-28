@@ -106,6 +106,10 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
    alone, the portfolio is the edge. (Was "Portfolio"; effective-N monitor and
    stressed-corr caps unchanged. No new items — cross-ticker test, universe
    selection and the portfolio items above were already heading here.)
+- [ ] Thematic watchlist generator — candidate-DISCOVERY feed into Phase-6 universe
+      selection; nominates tickers for RESEARCH, never positions; every candidate
+      faces the full firewall. (Thematic theses REJECTED as a trading signal,
+      2026-07-28 — see STATE.md.)
 ## Phase 7 — Graduation rubric (§15), then live at irrelevant size
 
 ## Standing / cross-cutting

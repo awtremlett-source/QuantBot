@@ -40,6 +40,16 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
 - Simons alignment (2026-07-20): breadth of thin validated edges over depth of one
   edge; daily horizon locked (costs kill short horizons at our scale — measured);
   returns anchors stay honesty-first.
+- Thematic discovery (2026-07-28): REJECTED as a trading signal — innovation/narrative
+  theses can't pass the firewall (no repeatable sample; survivorship stories; the
+  intuition Simons dismissed). SALVAGED as candidate-DISCOVERY only: a thematic
+  watchlist generator may nominate tickers for RESEARCH into Phase-6 universe
+  selection, never positions; every candidate faces the full firewall.
+- Autonomy (2026-07-28): operations fully automated — scheduled runs, catch-up,
+  backups, digests; HUMAN RETAINED for governance only (killswitch, promotions,
+  annual refit, live graduation). Near-live / 24-7 gathering REJECTED on locked
+  evidence: daily bars publish daily; short horizons are cost-fatal (measured);
+  credit budget. Sentiment collection stays v2.
 
 ## Done
 - Safety rails: git init, .gitignore (verified: .env blocked, template kept),

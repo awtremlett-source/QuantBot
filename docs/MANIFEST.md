@@ -34,6 +34,11 @@ this logic leaves NVDA or this laptop.
 ## LAWS
 - docs/SCARS.md — 23, binding on every session and every loop.
 
+## OUT OF SCOPE
+- Long-horizon thematic investing (innovation/narrative theses) = separate product,
+  separate rules — NOT QuantBot. Thematic names may enter only as RESEARCH candidates
+  via the Phase-6 watchlist generator, through the full firewall, never as positions.
+
 ## OPEN FLAGS
 - monitors red-on-broken proof (#9) · journal backup policy (data/ not in git) ·
   Deflated Sharpe pending · cash-floor sizing (firewall-gated).
