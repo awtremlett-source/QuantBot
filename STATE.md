@@ -37,6 +37,9 @@ Phase: 1 (Foundations).  Updated: 2026-07-16.
   - Pull NVDA history back to ~2015 before strategy work (real stress/downtrend regimes).
   - Deflate at the SWEEP level (count all ~100 tickers as trials) OR keep a final cross-ticker
     holdout tested once.
+- Simons alignment (2026-07-20): breadth of thin validated edges over depth of one
+  edge; daily horizon locked (costs kill short horizons at our scale — measured);
+  returns anchors stay honesty-first.
 
 ## Done
 - Safety rails: git init, .gitignore (verified: .env blocked, template kept),

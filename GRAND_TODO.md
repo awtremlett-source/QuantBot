@@ -101,7 +101,11 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 ## Phase 4 — Regime gate (trend/chop/stress; risk-off insurance; validate on stress)
    GATED: build only if it beats the single always-on strategy OUT-OF-SAMPLE (see Phase 2 sequencing).
 ## Phase 5 — ML meta-labeling (triple-barrier, frac-diff features, GBM; NO deep nets)
-## Phase 6 — Portfolio (3–6 low-corr; effective-N monitor; stressed-corr caps)
+## Phase 6 — ENSEMBLE (the Simons destination): 3–6 validated strategy families ×
+   many tickers, low pairwise correlation, effective-N monitored; each signal thin
+   alone, the portfolio is the edge. (Was "Portfolio"; effective-N monitor and
+   stressed-corr caps unchanged. No new items — cross-ticker test, universe
+   selection and the portfolio items above were already heading here.)
 ## Phase 7 — Graduation rubric (§15), then live at irrelevant size
 
 ## Standing / cross-cutting

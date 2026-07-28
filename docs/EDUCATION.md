@@ -46,6 +46,40 @@ A backtest showing far more is a **red flag**, not a triumph.
 
 ---
 
+## Entry #2 — The Simons method, translated to retail scale
+
+Jim Simons's Renaissance Technologies (the Medallion fund) is the most successful
+quant fund in history. We copy its *method*, not its numbers.
+
+**BORROW.**
+- *Data over intuition.* Rules are pre-committed and validated before money moves;
+  no mid-flight overrides. Our version: the validation firewall, and loops that stop
+  on CORRECT/EXHAUSTED, never on profit.
+- *Pattern recognition validated adversarially.* A pattern only counts if it survives
+  attempts to kill it. Our version: walk-forward testing + Monte Carlo (shuffling
+  trades to check the result isn't luck).
+- *Full automation.* Humans design and audit; the machine executes and records.
+  Our version: the paper loop + the trade journal.
+- *An **ensemble of small edges*** — the core idea. Many thin, independent, validated
+  signals across tickers and strategy families beat one deep edge, because the **law
+  of large numbers** (many independent small bets → the average outcome becomes
+  reliable) turns lots of coin-flips-with-a-lean into a steady result. No single
+  signal has to be impressive; the *portfolio* is the edge.
+
+**DO NOT BORROW: high frequency.** Renaissance trades fast because at institutional
+scale, with direct market access, costs per trade are tiny. Ours are not — and we
+have measured it with our own firewall. The challenger's 420 trades thinned its
+Monte Carlo p-value from 0.039 to ~0.025-at-2× territory and cost ~0.11 Sharpe under
+2× cost stress; the regime switcher paid ~0.07 Sharpe for just 110 trades. At retail
+costs with delayed data, short horizons feed the edge to the market — every extra
+trade is a toll. **Daily horizon is where our edges survive.**
+
+**ANCHOR (honesty-first).** Medallion's famous returns are not a target: it is a
+capped, closed fund running unscalable edges, and Renaissance's own public fund
+(RIEF) earns ordinary returns. Copy the method, never the numbers.
+
+---
+
 ## Glossary (grows on first use)
 - **Share** — a small slice of ownership in a company.
 - **Ticker** — a stock's short code (Apple = AAPL).
@@ -60,3 +94,7 @@ A backtest showing far more is a **red flag**, not a triumph.
 - **Overfitting** — tuning a model so hard it fits past noise and fails on new data.
 - **Backtest** — a simulation of a strategy on historical data. A hypothesis, not proof.
 - **Demo / paper account** — a practice account with fake money (Trading 212 demo).
+- **Ensemble (of edges)** — a portfolio of many small independent signals, none
+  impressive alone, reliable together.
+- **Law of large numbers** — with many independent bets, the average outcome
+  converges to the true edge; luck washes out.
