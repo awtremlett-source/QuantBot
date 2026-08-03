@@ -51,13 +51,14 @@ must be catch-up-safe.
 - Honest trial counting → Deflated Sharpe; real ≈ 0.7–1.2 net (#15)
 - Secrets in env; names-only in any output (#1)
 - Requirements-verbatim: record operator words at issue time (§12)
-- Loops stop on CORRECT / EXHAUSTED, never on PROFIT (#21,§2c)
+- Loops stop on CORRECT/EXHAUSTED, never PROFIT (#21,§2c)
 - Birth-certificate: monitors prove red-on-broken before trusted (#9)
+- 3 mandatory pre-commit checks: correctness · spelling · numbers (FRAMEWORK)
 
 ## Token rules (§12)
 This file ≤4k chars; GRAND_TODO ≤10k (archive DONE). grep-then-read-range;
-never cat data files (head/tail/count). Update STATE.md at session end. Make
-surgical edits to this file — never full rewrites.
+never cat data files (head/tail/count). Update STATE.md at session end.
+Surgical edits only — never full rewrites.
 
 ## Pointers
 Resume → STATE.md · Backlog → GRAND_TODO.md · Manifest → docs/MANIFEST.md ·

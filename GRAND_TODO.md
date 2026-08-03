@@ -115,6 +115,13 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
       2026-07-28 — see STATE.md.)
 ## Phase 7 — Graduation rubric (§15), then live at irrelevant size
 
+## Deployment (end goal)
+- [ ] Installer/deployment package: one command bootstraps venv from pinned
+      requirements, initializes/verifies the DB, registers the scheduled tasks,
+      wires killswitch + digest access. May be BUILT pre-graduation (packaging
+      risks nothing); EXECUTING it on the always-on PC is gated behind the full
+      rubric.
+
 ## Standing / cross-cutting
 - [ ] Killswitch (STOP_NEW_TRADES + flatten-all) from day one; monthly fire-drill
 - [ ] Fast drawdown-based risk-off ("position drops X% → cut risk NOW") — immediate complement

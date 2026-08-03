@@ -62,6 +62,10 @@ Phase: 1 (Foundations).  Updated: 2026-07-28.
   capital at risk) but is recorded, and LIVE-MONEY graduation requires
   DSR>=0.95 at then-current N. Challenger keeps spare-part status with a
   deflation flag.
+- FRAMEWORK (2026-07-28): docs/FRAMEWORK.md is canonical; work follows the
+  framework. 3-checks protocol adopted (correctness · language · numbers, printed
+  as a "3-checks:" line before every commit). End goal: installable app on the
+  always-on PC; migration rubric-gated.
 
 ## Done
 - Safety rails: git init, .gitignore (verified: .env blocked, template kept),

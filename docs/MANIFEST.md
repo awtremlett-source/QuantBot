@@ -34,6 +34,10 @@ this logic leaves NVDA or this laptop.
 ## LAWS
 - docs/SCARS.md — 23, binding on every session and every loop.
 
+## END GOAL
+- QuantBot ships as an installable application; target = the always-on home PC;
+  migration is rubric-gated (see GRADUATION RUBRIC below + GRAND_TODO "Deployment").
+
 ## OUT OF SCOPE
 - Long-horizon thematic investing (innovation/narrative theses) = separate product,
   separate rules — NOT QuantBot. Thematic names may enter only as RESEARCH candidates
