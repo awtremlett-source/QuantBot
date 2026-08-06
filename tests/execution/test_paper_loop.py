@@ -577,3 +577,79 @@ def test_backup_failure_warns_and_logs_but_never_blocks_the_loop(
         "journal backup failed" in record.getMessage() and record.exc_info
         for record in caplog.records
     )
+
+
+# ----------------------------------------------------------------------------- #
+# MONITORS BLOCK (rubric condition 6) -- digest wiring
+# ----------------------------------------------------------------------------- #
+def test_live_digest_prints_monitors_block_dry_run_does_not(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+
+    # 'now' the day after the last synthetic bar: data_freshness sees a 1d-old
+    # bar (OK); the stubbed backup is verified off-laptop (OK).
+    _run(db, _config(), tmp_path, now="2024-01-15T12:00:00Z")
+    out = capsys.readouterr().out
+    assert "MONITORS:" in out
+    for name in (
+        "data_freshness",
+        "drawdown",
+        "book_invariants",
+        "quarantine_growth",
+        "backup_status",
+    ):
+        assert name in out
+    assert "data_freshness: OK" in out
+    assert "backup_status: OK" in out
+    assert "OVERALL:" in out
+
+    # Dry-run is an offline what-if: no backup, no monitors.
+    _run(db, _config(), tmp_path, now="2024-01-15T12:00:00Z", dry_run=True)
+    assert "MONITORS" not in capsys.readouterr().out
+
+
+def test_red_meter_propagates_to_overall_red(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+
+    # NOW is ~17 months after the last bar: freshness MUST be RED, and one RED
+    # meter must drag OVERALL to RED.
+    _run(db, _config(), tmp_path)
+    out = capsys.readouterr().out
+    assert "data_freshness: RED" in out
+    assert "OVERALL: RED" in out
+
+
+def test_drawdown_red_reaches_the_digest_via_the_meter(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Replaces the old inline validated-worst warning: the drawdown METER is
+    now the single source of truth, so a -40% book must print drawdown: RED."""
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+    _run(db, _config(), tmp_path, now="2024-01-15T12:00:00Z")
+    capsys.readouterr()
+
+    conn = store.connect(db)
+    try:
+        # A doctored latest mark 40% below the run's peak (distinct event_time
+        # sorting AFTER the real 2024-01-14T00:00:00Z mark).
+        peak = max(m.equity for m in store.read_paper_equity(conn, "TEST"))
+        conn.execute(
+            "INSERT INTO paper_equity (ticker, event_time, equity, close) "
+            "VALUES ('TEST', '2024-01-14T12:00:00Z', ?, 90.0)",
+            (0.6 * peak,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    _run(db, _config(), tmp_path, now="2024-01-15T12:00:00Z")
+    out = capsys.readouterr().out
+    assert "drawdown: RED" in out
+    assert "-36.5%" in out  # the threshold is named in the detail
+    assert "OVERALL: RED" in out

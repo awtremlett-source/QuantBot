@@ -44,8 +44,8 @@ this logic leaves NVDA or this laptop.
   via the Phase-6 watchlist generator, through the full firewall, never as positions.
 
 ## OPEN FLAGS
-- monitors red-on-broken proof (#9) · journal backup policy (data/ not in git) ·
-  Deflated Sharpe pending · cash-floor sizing (firewall-gated).
+- QUANTBOT_BACKUP_DIR unset → backups LOCAL-ONLY (rubric 7) · cash-floor sizing
+  (firewall-gated).
 
 ## GRADUATION RUBRIC — before this logic moves to ticker #2 or another device (ALL required)
 1. ≥1 month clean daily paper runs, incl. at least one real catch-up after dark days.
@@ -58,4 +58,6 @@ this logic leaves NVDA or this laptop.
    else rejected-and-recorded.
 5. Cross-ticker generalization test run (NVDA-fit strategy untouched on 2–3 tickers).
 6. Monitors brick live with red-on-broken proof.
+   [MET 2026-08-06 — 5 observe-only meters in the digest; each unit-proven RED on
+   broken fixtures + live RED on doctored DB copies (stale CLEAN, -40% drawdown)]
 7. Journal backup policy in place.

@@ -53,7 +53,7 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
       2026-07-15 — 07-14 bar healed to official values, old rows archived)
 - [ ] sizing: cash-floor (no slippage overdraft at full weight) — changes fill physics,
       MUST re-run the full firewall before adoption
-- [ ] monitors: prove drawdown warning red-on-broken (#9)
+- [x] monitors: 5 meters live in the digest, red-on-broken proven (#9) (2026-08-06)
 - [x] Deflated Sharpe formally applied to the logged trials (2026-07-28, N=481:
       champion DSR=0.898 FAIL / challenger 0.800 FAIL / switcher 0.933 FAIL at
       the pre-committed 0.95 bar — mechanism MET, verdicts recorded; see STATE.md

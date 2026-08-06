@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-07-28.
+Phase: 1 (Foundations).  Updated: 2026-08-06.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -175,6 +175,14 @@ Phase: 1 (Foundations).  Updated: 2026-07-28.
   green; ruff + mypy --strict clean. Trial log 60 -> 64 records (3 wf reruns +
   1 matched null); N 481 -> 661 for the NEXT deflation (self-reference fixed by
   snapshotting N before the reruns).
+- MONITORS LIVE (rubric 6, 2026-08-06): 5 meters (freshness, drawdown, invariants,
+  quarantine, backup), observe-never-act; every meter unit-proven red-on-broken +
+  live proof on doctored DB copies (freshness RED, -40% drawdown RED); inline
+  drawdown warning replaced by the meter. The live proof caught + fixed a
+  wallpaper bug (SCARS #8): quarantine meter now excludes superseded_by_rebuild
+  bookkeeping (a routine rebuild archived 2,899 rows and falsely cried RED).
+  Second real catch-up banked same day: 7 dark bars replayed, 2 orders settled
+  at historical opens, equity 10,249.23 at new peak. 152 tests green.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
@@ -191,7 +199,6 @@ Phase: 1 (Foundations).  Updated: 2026-07-28.
 - QUANTBOT_BACKUP_DIR not yet set → backups are LOCAL-ONLY (data/backups/ on the
   same laptop). Rubric condition 7 NOT met until the operator points it at an
   off-laptop folder (e.g. OneDrive).
-- Drawdown-warning red-on-broken proof deferred to monitors brick (law #9).
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
 - Daily auto clock-sync task still to set up (admin).
 - gh CLI not installed → use plain git for GitHub ops.

@@ -17,11 +17,13 @@ laptop law). Each run:
    decide from history up to AND INCLUDING this bar only -- the backtester's
    exact discipline. N dark days = N honest replayed decisions, each order
    filling at its own historical next open.
-7. DIGEST -- one line: date, position, equity, drawdown-from-peak, orders;
-   plus a WARNING if drawdown breaches the validated worst.
+7. DIGEST -- one line: date, position, equity, drawdown-from-peak, orders.
 8. BACKUP -- live runs (never --dry-run) snapshot the journal via
    :func:`tools.backup.run_backup`; a backup failure warns loudly in the
    digest but NEVER blocks trading.
+9. MONITORS -- live runs end with the observe-only meters block (one line per
+   meter + OVERALL = worst); the drawdown meter is the single source of truth
+   for the validated-worst warning (:mod:`monitors.meters`).
 
 Belt-and-braces: bars dated today or later are excluded from decisions even if
 they somehow reached CLEAN (defense in depth against partial bars).
@@ -42,9 +44,15 @@ import pandas as pd
 from data_store import store
 from data_store.timeutils import now_utc_iso
 from execution import paper_book
-from execution.config import CONFIG, VALIDATED_WORST_DRAWDOWN, PaperConfig
+from execution.config import CONFIG, PaperConfig
+from monitors import meters
 from research.strategy import Strategy
-from tools.backup import LOCAL_ONLY_WARNING, BackupVerificationError, run_backup
+from tools.backup import (
+    LOCAL_ONLY_WARNING,
+    BackupReport,
+    BackupVerificationError,
+    run_backup,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -294,20 +302,13 @@ def run_paper(
         conn.close()
 
     print(digest.line())
-    if digest.drawdown_from_peak <= VALIDATED_WORST_DRAWDOWN:
-        warning = (
-            f"WARNING: drawdown {digest.drawdown_from_peak:+.2%} has breached the "
-            f"validated worst ({VALIDATED_WORST_DRAWDOWN:+.2%}) -- the book is "
-            f"outside anything validation promised. Review before continuing."
-        )
-        logger.warning(warning)
-        print(warning)
 
     if not dry_run:
         # Rubric condition 7: every LIVE run backs up the journal it just wrote.
         # A failed backup must never block trading -- this catch is SCOPED to
         # the backup call only and logs the full error (no-silent-exceptions
         # law: handle+log; anything unexpected still propagates).
+        backup_report: BackupReport | None = None
         try:
             backup_report = run_backup(db_path)
         except (BackupVerificationError, OSError):
@@ -317,6 +318,21 @@ def run_paper(
             print(f"backup: OK -> {backup_report.dest_dir}")
             if backup_report.local_only:
                 print(LOCAL_ONLY_WARNING)
+
+        # Rubric condition 6: the MONITORS block -- observe-only meters, one
+        # line each + OVERALL = worst. The drawdown meter replaced the old
+        # inline validated-worst warning as the single source of truth.
+        mconn = store.connect(db_path)
+        try:
+            results, overall = meters.run_all(
+                mconn, backup_report, today, ticker=config.ticker
+            )
+        finally:
+            mconn.close()
+        print("MONITORS:")
+        for result in results:
+            print(f"{result.name}: {result.status} - {result.detail}")
+        print(f"OVERALL: {overall}")
     return digest
 
 
