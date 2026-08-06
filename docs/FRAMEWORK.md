@@ -120,7 +120,8 @@ cost to the moment you can least afford it.
 - **Deployment:** QuantBot ships as an installable application onto the
   always-on home PC; the installer may be BUILT early (packaging risks
   nothing), but EXECUTING it there is rubric-gated.
-- **Pointers:** docs/MANIFEST.md (rubric + END GOAL) · GRAND_TODO "Deployment".
+- **Pointers:** docs/MANIFEST.md (rubric + END GOAL) · docs/DEPLOY.md (the
+  migration runbook) · GRAND_TODO "Deployment".
 
 ## The standing laws (one line each — the stories live in docs/SCARS.md)
 

@@ -61,5 +61,5 @@ Surgical edits only — never full rewrites.
 
 ## Pointers
 Resume → STATE.md · Backlog → GRAND_TODO.md · Manifest → docs/MANIFEST.md ·
-History → docs/sessions/ ·
+History → docs/sessions/ · Deploy → docs/DEPLOY.md ·
 Constitution → docs/FOUNDING_DIRECTIVE.md · Curriculum → docs/EDUCATION.md

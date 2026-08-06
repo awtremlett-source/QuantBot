@@ -36,7 +36,10 @@ this logic leaves NVDA or this laptop.
 
 ## END GOAL
 - QuantBot ships as an installable application; target = the always-on home PC;
-  migration is rubric-gated (see GRADUATION RUBRIC below + GRAND_TODO "Deployment").
+  migration is rubric-gated (see GRADUATION RUBRIC below + docs/DEPLOY.md).
+- Installer built + verified locally 2026-08-06:
+  `powershell -ExecutionPolicy Bypass -File install.ps1` (install; also
+  -Verify / -Uninstall) → `python -m tools.installer install|verify|uninstall`.
 
 ## OUT OF SCOPE
 - Long-horizon thematic investing (innovation/narrative theses) = separate product,

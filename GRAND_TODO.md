@@ -116,11 +116,10 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 ## Phase 7 — Graduation rubric (§15), then live at irrelevant size
 
 ## Deployment (end goal)
-- [ ] Installer/deployment package: one command bootstraps venv from pinned
-      requirements, initializes/verifies the DB, registers the scheduled tasks,
-      wires killswitch + digest access. May be BUILT pre-graduation (packaging
-      risks nothing); EXECUTING it on the always-on PC is gated behind the full
-      rubric.
+- [x] Installer/deployment package (2026-08-06): built + verified locally —
+      install.ps1 bootstrap + tools/installer.py install|verify|uninstall
+      (venv from pins, DB init/integrity, tasks with /F, killswitch note).
+      EXECUTION on the always-on PC remains rubric-gated (DEPLOY.md).
 
 ## Standing / cross-cutting
 - [ ] Killswitch (STOP_NEW_TRADES + flatten-all) from day one; monthly fire-drill
