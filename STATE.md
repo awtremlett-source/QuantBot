@@ -202,6 +202,16 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   QuantBot-Monthly task registered (day 1, 07:45); run_health.bat generated;
   uninstall now decommissions all three tasks. Trials: 64 records, N=661,
   18/428 bars banked toward switcher DSR>=0.95.
+- CONTROL PANEL + STATUS/DRILL (2026-08-07): tools/gui.py (stdlib Tkinter —
+  observe + governance only: loop/health/backup/status runs, red-light drill,
+  killswitch arm/disarm with confirm; one subprocess at a time; Controller
+  tested offline behind the Runner interface, Tk = thin shell) +
+  monitors/status.py (read-only status incl. tasks/config; --drill doctors two
+  DB COPIES via the backup API, real DB hash-proven untouched, every line
+  "DRILL — "-prefixed, never sends Telegram). Live drill: freshness RED at 22d
+  + drawdown RED at -40.00% on the copies; live status OVERALL WARN (telegram,
+  backup destination, logon task — the three known operator items).
+  run_gui.bat generated. 198 tests green.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).

@@ -62,6 +62,11 @@ _HEALTH_BAT_TEMPLATE = (
     ".venv\\Scripts\\python.exe -m monitors.health "
     "--db data\\quantbot.db >> data\\health\\health.log 2>&1\n"
 )
+# Double-clickable control panel; pythonw + start = no lingering console.
+_GUI_BAT_TEMPLATE = (
+    "cd /d {root}\n"
+    'start "QuantBot" .venv\\Scripts\\pythonw.exe -m tools.gui\n'
+)
 
 # Printed when registering the logon task needs elevation this shell lacks.
 LOGON_FALLBACK = """\
@@ -141,6 +146,14 @@ def generate_health_bat(root: Path) -> Path:
     bat = root / "tools" / "run_health.bat"
     bat.parent.mkdir(parents=True, exist_ok=True)
     bat.write_text(_HEALTH_BAT_TEMPLATE.format(root=root), newline="\n")
+    return bat
+
+
+def generate_gui_bat(root: Path) -> Path:
+    """Write tools/run_gui.bat (double-click launcher for the control panel)."""
+    bat = root / "tools" / "run_gui.bat"
+    bat.parent.mkdir(parents=True, exist_ok=True)
+    bat.write_text(_GUI_BAT_TEMPLATE.format(root=root), newline="\n")
     return bat
 
 
@@ -235,6 +248,8 @@ def cmd_install(
     _say(f"generated {bat} from resolved root {root}")
     health_bat = generate_health_bat(root)
     _say(f"generated {health_bat} from resolved root {root}")
+    gui_bat = generate_gui_bat(root)
+    _say(f"generated {gui_bat} from resolved root {root}")
     _say(f"database: {_ensure_db(root)}")
     _say(f"env file: {_ensure_env_file(root)}")
     _register_tasks(root, runner)

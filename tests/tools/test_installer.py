@@ -90,10 +90,13 @@ def test_install_is_idempotent_and_always_forces(
     creates = [c for c in runner.calls if c[1] == "/Create"]
     assert len(creates) == 6  # daily + logon + monthly, twice
     assert all("/F" in c for c in creates)
-    # The health bat is generated alongside the loop bat, from the same root.
+    # The health + gui bats are generated alongside the loop bat, same root.
     health = (root / "tools" / "run_health.bat").read_text()
     assert f"cd /d {root}" in health
     assert "monitors.health" in health
+    gui = (root / "tools" / "run_gui.bat").read_text()
+    assert f"cd /d {root}" in gui
+    assert "tools.gui" in gui
 
 
 def test_install_refuses_wrong_python_before_any_side_effect(

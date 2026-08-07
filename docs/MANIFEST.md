@@ -39,8 +39,9 @@ this logic leaves NVDA or this laptop.
 - docs/SCARS.md — 23, binding on every session and every loop.
 
 ## END GOAL
-- QuantBot ships as an installable application; target = the always-on home PC;
-  migration is rubric-gated (see GRADUATION RUBRIC below + docs/DEPLOY.md).
+- QuantBot ships as an installable application = headless engine + control-panel
+  GUI (observe + governance only; tools/run_gui.bat); target = the always-on
+  home PC; migration is rubric-gated (see GRADUATION RUBRIC + docs/DEPLOY.md).
 - Installer built + verified locally 2026-08-06:
   `powershell -ExecutionPolicy Bypass -File install.ps1` (install; also
   -Verify / -Uninstall) → `python -m tools.installer install|verify|uninstall`.

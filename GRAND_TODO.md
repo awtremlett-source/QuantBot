@@ -55,10 +55,9 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 - [ ] sizing: cash-floor (no slippage overdraft at full weight) — changes fill physics,
       MUST re-run the full firewall before adoption
 - [x] monitors: 5 meters live in the digest, red-on-broken proven (#9) (2026-08-06)
-- [x] Deflated Sharpe formally applied to the logged trials (2026-07-28, N=481:
-      champion DSR=0.898 FAIL / challenger 0.800 FAIL / switcher 0.933 FAIL at
-      the pre-committed 0.95 bar — mechanism MET, verdicts recorded; see STATE.md
-      governance line)
+- [x] Deflated Sharpe applied (2026-07-28, N=481): 0.898/0.800/0.933 all FAIL
+      at the pre-committed 0.95 bar — mechanism MET, verdicts recorded
+      (STATE.md governance line)
 - STRATEGY DEEPENING (NVDA — before any ticker #2; rubric = docs/MANIFEST.md):
   - [x] Challenger 1: mean-reversion through the FULL firewall (2026-07-15) —
         validated spare part, SURVIVED 2× costs (base gates thin: p=0.039/0.041;
@@ -117,10 +116,12 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 ## Phase 7 — Graduation rubric (§15), then live at irrelevant size
 
 ## Deployment (end goal)
-- [x] Installer/deployment package (2026-08-06): built + verified locally —
-      install.ps1 bootstrap + tools/installer.py install|verify|uninstall
-      (venv from pins, DB init/integrity, tasks with /F, killswitch note).
-      EXECUTION on the always-on PC remains rubric-gated (DEPLOY.md).
+- [x] Installer (2026-08-06): install.ps1 + tools/installer.py
+      install|verify|uninstall; EXECUTION on the always-on PC rubric-gated
+      (DEPLOY.md).
+- [x] Control-panel GUI + on-demand status/drill (2026-08-07): tools/gui.py
+      (Tkinter, observe + governance only; one action at a time) +
+      monitors/status.py (--drill = red-light test on doctored copies).
 
 ## Standing / cross-cutting
 - [ ] Killswitch (STOP_NEW_TRADES + flatten-all) from day one; monthly fire-drill
