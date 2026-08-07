@@ -125,6 +125,7 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 
 ## Standing / cross-cutting
 - [ ] Killswitch (STOP_NEW_TRADES + flatten-all) from day one; monthly fire-drill
+      (live-drilled 2026-08-07; monthly via GUI; flatten-all still to build)
 - [ ] Fast drawdown-based risk-off ("position drops X% → cut risk NOW") — immediate complement
       to the laggy volatility stress signal (acts before vol confirms).
 - [ ] Trade journal from first paper trade (signal→order→fill→exit→feature snapshot)

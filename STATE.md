@@ -212,6 +212,11 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   + drawdown RED at -40.00% on the copies; live status OVERALL WARN (telegram,
   backup destination, logon task — the three known operator items).
   run_gui.bat generated. 198 tests green.
+- First live killswitch fire-drill 2026-08-07: armed -> detected + reported
+  (journal WARNING + digest "KILLSWITCH" flag), placed=0 — and it was a real
+  armed decision day (bars=1, the 08-06 bar processed under the armed state);
+  disarmed -> normal digest, no flag. Monthly drill cadence begins (GUI:
+  Arm -> run -> Disarm).
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
