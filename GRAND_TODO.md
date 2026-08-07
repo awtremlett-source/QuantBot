@@ -38,10 +38,8 @@ Legend: [ ] open · [~] in progress · [x] done
 - [ ] Count reconciliation (in-zip vs staged vs DB) + ±10% universe invariant
 - [ ] Integrity census v1 (CLEAN/SUSPECT/CORRUPT certificates) + data-quality meter
 - [ ] FIRST LIGHT: chart any ticker + first daily digest
-- [x] Telegram digest in code (2026-08-07): sanitized, non-blocking, wired into
-      the live digest + installer verify (dormant until operator creates the
-      bot via BotFather + fills .env; python -m monitors.notify --get-chat-id
-      then --test)
+- [x] Telegram digest in code (2026-08-07): sanitized, non-blocking; dormant
+      until operator fills .env (notify --get-chat-id then --test)
 EXIT: firewall passes its known-null test; census ≥95% CLEAN on active universe.
 
 ## Phase 2 — CORE (consistency engine; ~80–90% paper capital)
@@ -83,10 +81,10 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
         QUANTBOT_BACKUP_DIR to an off-laptop folder (OneDrive) — rubric condition 7
         counts as MET only when backups land off-laptop; stays [~] until the
         operator confirms the destination.
-  - [ ] Monthly health report (measure, never refit): rolling OOS-vs-live tracking,
-        drawdown vs validated envelope, regime-fire counts, trade/cost tally —
-        diagnostics feed the ANNUAL refit; no parameter changes outside the annual
-        cycle (or firewall-approved cadence change).
+  - [x] Monthly health report (measure, never refit) (2026-08-07):
+        monitors/health.py — shadow reconciliation as ongoing birth certificate;
+        QuantBot-Monthly task (day 1, 07:45). Diagnostics feed the ANNUAL refit
+        only; no parameter changes outside it (details: STATE.md).
   - [ ] Refit-cadence experiment (after switcher): same walk-forward, monthly step
         vs annual step, OOS decides — adopt faster cadence ONLY if it wins.
   - [ ] Risk ladder (drawdown-based de-risking): mechanical daily overlay on the live

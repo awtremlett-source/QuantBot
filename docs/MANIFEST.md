@@ -31,6 +31,9 @@ this logic leaves NVDA or this laptop.
 - Daily rhythm: scheduled task runs the loop each morning; operator reads the
   Telegram message (digest + MONITORS) and acts only on RED. Manual run:
   `python -m execution.paper_loop --db data/quantbot.db`
+- Monthly rhythm: QuantBot-Monthly (day 1, 07:45) writes data/health/ report;
+  read the health summary; act only on RED (shadow reconciliation is the
+  ongoing birth certificate).
 
 ## LAWS
 - docs/SCARS.md — 23, binding on every session and every loop.

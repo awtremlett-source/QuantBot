@@ -39,18 +39,28 @@ from typing import Protocol
 
 TASK_DAILY = "QuantBot-Daily"
 TASK_LOGON = "QuantBot-Logon"
+TASK_MONTHLY = "QuantBot-Monthly"
 DAILY_TIME = "07:30"
 LOGON_DELAY = "0002:00"
+MONTHLY_TIME = "07:45"
 KILLSWITCH_FILE = "STOP_NEW_TRADES"
 # The operator-set off-laptop backup destination (tools/backup.py ENV_DEST).
 BACKUP_ENV = "QUANTBOT_BACKUP_DIR"
 REQUIRED_PYTHON = (3, 13)
 
-# The scheduled task's entry point, rendered from the RESOLVED repo root.
+# The scheduled tasks' entry points, rendered from the RESOLVED repo root.
 _BAT_TEMPLATE = (
     "cd /d {root}\n"
     ".venv\\Scripts\\python.exe -m execution.paper_loop "
     "--db data\\quantbot.db >> data\\loop.log 2>&1\n"
+)
+# The mkdir guard matters: cmd's >> redirect fails if the directory is absent,
+# and on a fresh machine the monthly task can fire before any report ran.
+_HEALTH_BAT_TEMPLATE = (
+    "cd /d {root}\n"
+    'if not exist "data\\health" mkdir "data\\health"\n'
+    ".venv\\Scripts\\python.exe -m monitors.health "
+    "--db data\\quantbot.db >> data\\health\\health.log 2>&1\n"
 )
 
 # Printed when registering the logon task needs elevation this shell lacks.
@@ -65,6 +75,16 @@ Manual fallback (5 steps, Task Scheduler GUI):
      and pick 2 minutes (lets Wi-Fi connect first) -> OK.
   5. Right-click the task -> Run; check data\\loop.log gained a digest line
      (a quiet bars=0 no-op is CORRECT if the daily task already ran today)."""
+
+MONTHLY_FALLBACK = """\
+QuantBot-Monthly could not be registered from this shell (needs elevation).
+Manual fallback (5 steps, Task Scheduler GUI):
+  1. Start menu -> type "Task Scheduler" -> open it.
+  2. Create Basic Task... -> name it QuantBot-Monthly -> Next.
+  3. Trigger: Monthly -> all months, day 1, start time 07:45 -> Next.
+  4. Action: Start a program -> browse to tools\\run_health.bat in this
+     repo -> Next -> Finish.
+  5. Right-click the task -> Run; check data\\health\\ gained a report file."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +133,14 @@ def generate_bat(root: Path) -> Path:
     bat = root / "tools" / "run_paper_loop.bat"
     bat.parent.mkdir(parents=True, exist_ok=True)
     bat.write_text(_BAT_TEMPLATE.format(root=root), newline="\n")
+    return bat
+
+
+def generate_health_bat(root: Path) -> Path:
+    """Write tools/run_health.bat (same contract as :func:`generate_bat`)."""
+    bat = root / "tools" / "run_health.bat"
+    bat.parent.mkdir(parents=True, exist_ok=True)
+    bat.write_text(_HEALTH_BAT_TEMPLATE.format(root=root), newline="\n")
     return bat
 
 
@@ -174,6 +202,18 @@ def _register_tasks(root: Path, runner: Runner) -> None:
         # every day the machine is on at 07:30, and catch-up covers the rest.
         _say(LOGON_FALLBACK)
 
+    health_bat = str(root / "tools" / "run_health.bat")
+    monthly = runner.run(
+        [
+            "schtasks", "/Create", "/TN", TASK_MONTHLY, "/TR", health_bat,
+            "/SC", "MONTHLY", "/D", "1", "/ST", MONTHLY_TIME, "/F",
+        ]
+    )
+    if monthly.returncode == 0:
+        _say(f"task {TASK_MONTHLY}: registered (monthly, day 1, {MONTHLY_TIME})")
+    else:
+        _say(MONTHLY_FALLBACK)
+
 
 def cmd_install(
     root: Path,
@@ -193,6 +233,8 @@ def cmd_install(
 
     bat = generate_bat(root)
     _say(f"generated {bat} from resolved root {root}")
+    health_bat = generate_health_bat(root)
+    _say(f"generated {health_bat} from resolved root {root}")
     _say(f"database: {_ensure_db(root)}")
     _say(f"env file: {_ensure_env_file(root)}")
     _register_tasks(root, runner)
@@ -306,6 +348,7 @@ def cmd_verify(
     for task, absent_status, absent_note in (
         (TASK_DAILY, "RED", "not registered -- rerun install"),
         (TASK_LOGON, "WARN", "not registered (GUI fallback pending; optional)"),
+        (TASK_MONTHLY, "WARN", "not registered (GUI fallback pending; optional)"),
     ):
         query = runner.run(["schtasks", "/Query", "/TN", task])
         checks.append(
@@ -367,7 +410,7 @@ def cmd_uninstall(root: Path, runner: Runner) -> int:
     data/ is the product (the journal); uninstall decommissions this machine's
     WRITER role only, preserving the single-writer law during migration.
     """
-    for task in (TASK_DAILY, TASK_LOGON):
+    for task in (TASK_DAILY, TASK_LOGON, TASK_MONTHLY):
         existed = runner.run(["schtasks", "/Query", "/TN", task]).returncode == 0
         if existed:
             result = runner.run(["schtasks", "/Delete", "/TN", task, "/F"])

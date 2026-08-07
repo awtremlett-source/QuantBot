@@ -189,6 +189,19 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   retry + 4,000-char truncation, installer-verify integrated ('telegram'
   check). DORMANT awaiting operator: BotFather bot + .env values, then
   python -m monitors.notify --get-chat-id / --test. 177 tests green.
+- MONTHLY HEALTH REPORT (2026-08-07): monitors/health.py, measure-never-refit
+  (SQLite opened read-only — writes impossible by construction; writes only
+  data/health/health-YYYYMM.txt + optional Telegram summary). First live report:
+  18 bars (LOW-CONFIDENCE), equity 10,249.23 (+2.49%), sharpe +1.13, worst dd
+  -10.59% (well inside -36.5% envelope), 0% bars stressed (ref 25.8%), 3 fills /
+  1 round-trip / £14.29 slippage (0.139% of equity), SHADOW RECONCILIATION OK —
+  shares+cash EXACT, 8 bars differ: 07-14 supersede-explained + 7 within the
+  documented inception basis-noise ceiling (<=0.03 actual vs 0.10 limit; a real
+  fill error ~£5 sits 50x above). regime_series exposed from the switcher
+  (decide() delegates — can never diverge; behavior proven unchanged).
+  QuantBot-Monthly task registered (day 1, 07:45); run_health.bat generated;
+  uninstall now decommissions all three tasks. Trials: 64 records, N=661,
+  18/428 bars banked toward switcher DSR>=0.95.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).

@@ -14,6 +14,7 @@ from tools.installer import (
     LOGON_FALLBACK,
     TASK_DAILY,
     TASK_LOGON,
+    TASK_MONTHLY,
     RunResult,
     cmd_install,
     cmd_uninstall,
@@ -87,8 +88,12 @@ def test_install_is_idempotent_and_always_forces(
     assert (root / "tools" / "run_paper_loop.bat").read_bytes() == first_bat
     assert "existing DB integrity ok" in second_out
     creates = [c for c in runner.calls if c[1] == "/Create"]
-    assert len(creates) == 4  # daily + logon, twice
+    assert len(creates) == 6  # daily + logon + monthly, twice
     assert all("/F" in c for c in creates)
+    # The health bat is generated alongside the loop bat, from the same root.
+    health = (root / "tools" / "run_health.bat").read_text()
+    assert f"cd /d {root}" in health
+    assert "monitors.health" in health
 
 
 def test_install_refuses_wrong_python_before_any_side_effect(
@@ -184,7 +189,7 @@ def test_verify_task_aggregation(
 # ------------------------------------------------------------ uninstall
 
 
-def test_uninstall_removes_exactly_the_two_tasks(
+def test_uninstall_removes_exactly_the_registered_tasks(
     root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     runner = FakeRunner()
@@ -193,6 +198,7 @@ def test_uninstall_removes_exactly_the_two_tasks(
     assert deletes == [
         ["schtasks", "/Delete", "/TN", TASK_DAILY, "/F"],
         ["schtasks", "/Delete", "/TN", TASK_LOGON, "/F"],
+        ["schtasks", "/Delete", "/TN", TASK_MONTHLY, "/F"],
     ]
     out = capsys.readouterr().out
     assert f"task {TASK_DAILY}: removed" in out

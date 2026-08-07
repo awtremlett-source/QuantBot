@@ -100,6 +100,36 @@ def severity_series(closes: _FloatArray) -> _FloatArray:
     return result
 
 
+def regime_series(history: pd.DataFrame, threshold: float) -> list[str]:
+    """Per-bar regime labels (``'calm'`` | ``'stressed'``) for ``history``.
+
+    THE hysteresis replay -- :meth:`RegimeSwitcherStrategy.decide` delegates to
+    this function, so the labels a monitor reads and the regime the live
+    strategy trades can never diverge. Stateless: recomputed from the given
+    history on every call, exactly like ``decide``. Bars before the first
+    defined severity (the 271-bar warmup) are ``'calm'`` (the replay's start
+    state); a NaN severity leaves the regime unchanged, as in ``decide``.
+    """
+    if not threshold > 0.0:
+        raise ValueError(f"threshold must be > 0, got {threshold!r}")
+    exit_threshold = _HYSTERESIS * threshold
+    closes = history["close"].to_numpy(dtype=float)
+    severity: list[float] = severity_series(closes).tolist()
+
+    labels: list[str] = []
+    stressed_now = False
+    for t in range(len(closes)):
+        if t >= _SEVERITY_START:
+            s = severity[t]
+            if stressed_now:
+                if s < exit_threshold:
+                    stressed_now = False
+            elif s > threshold:
+                stressed_now = True
+        labels.append("stressed" if stressed_now else "calm")
+    return labels
+
+
 class RegimeSwitcherStrategy:
     """Emit the calm strategy's decision in calm regimes, the stressed one's
     in stressed regimes (see module docstring for severity and hysteresis).
@@ -143,20 +173,9 @@ class RegimeSwitcherStrategy:
         if n < _WARMUP:
             return 0.0
 
-        closes = history["close"].to_numpy(dtype=float)
-        severity: list[float] = severity_series(closes).tolist()
-
-        # Stateless hysteresis replay, ascending from the first defined bar.
-        # A NaN severity compares False on both branches and leaves the regime
-        # unchanged (cannot occur past _SEVERITY_START on clean data).
-        stressed_now = False
-        for t in range(_SEVERITY_START, n):
-            s = severity[t]
-            if stressed_now:
-                if s < self._exit_threshold:
-                    stressed_now = False
-            elif s > self._threshold:
-                stressed_now = True
+        # THE regime replay lives in regime_series (shared with monitors);
+        # only the final bar's label selects whose signal is emitted.
+        stressed_now = regime_series(history, self._threshold)[-1] == "stressed"
 
         # Both sub-signals are computed on the full history, exactly as if each
         # strategy always ran; the regime only selects whose signal is USED.
