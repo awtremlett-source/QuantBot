@@ -81,9 +81,9 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
         counts as MET only when backups land off-laptop; stays [~] until the
         operator confirms the destination.
   - [x] Monthly health report (measure, never refit) (2026-08-07):
-        monitors/health.py — shadow reconciliation as ongoing birth certificate;
-        QuantBot-Monthly task (day 1, 07:45). Diagnostics feed the ANNUAL refit
-        only; no parameter changes outside it (details: STATE.md).
+        monitors/health.py — shadow reconciliation = ongoing birth certificate;
+        QuantBot-Monthly (day 1, 07:45). Diagnostics feed the ANNUAL refit only
+        (STATE.md).
   - [ ] Refit-cadence experiment (after switcher): same walk-forward, monthly step
         vs annual step, OOS decides — adopt faster cadence ONLY if it wins.
   - [ ] Risk ladder (drawdown-based de-risking): mechanical daily overlay on the live
@@ -111,8 +111,7 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
    selection and the portfolio items above were already heading here.)
 - [ ] Thematic watchlist generator — candidate-DISCOVERY feed into Phase-6 universe
       selection; nominates tickers for RESEARCH, never positions; every candidate
-      faces the full firewall. (Thematic theses REJECTED as a trading signal,
-      2026-07-28 — see STATE.md.)
+      faces the full firewall. (Theses REJECTED as signal 2026-07-28 — STATE.md.)
 ## Phase 7 — Graduation rubric (§15), then live at irrelevant size
 
 ## Deployment (end goal)
@@ -125,7 +124,7 @@ EXIT: firewall passes its known-null test; census ≥95% CLEAN on active univers
 
 ## Standing / cross-cutting
 - [ ] Killswitch (STOP_NEW_TRADES + flatten-all) from day one; monthly fire-drill
-      (live-drilled 2026-08-07; monthly via GUI; flatten-all still to build)
+      (live-drilled 2026-08-07, monthly via GUI; flatten-all TBD)
 - [ ] Fast drawdown-based risk-off ("position drops X% → cut risk NOW") — immediate complement
       to the laggy volatility stress signal (acts before vol confirms).
 - [ ] Trade journal from first paper trade (signal→order→fill→exit→feature snapshot)
