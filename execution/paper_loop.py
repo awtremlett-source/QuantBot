@@ -24,6 +24,9 @@ laptop law). Each run:
 9. MONITORS -- live runs end with the observe-only meters block (one line per
    meter + OVERALL = worst); the drawdown meter is the single source of truth
    for the validated-worst warning (:mod:`monitors.meters`).
+10. TELEGRAM -- live runs push the digest + MONITORS text to the operator's
+    phone if configured (:mod:`monitors.notify`; secrets in .env). A send
+    failure warns (sanitized) but NEVER blocks the loop -- backup's contract.
 
 Belt-and-braces: bars dated today or later are excluded from decisions even if
 they somehow reached CLEAN (defense in depth against partial bars).
@@ -40,12 +43,13 @@ from pathlib import Path
 from typing import Protocol
 
 import pandas as pd
+import requests
 
 from data_store import store
 from data_store.timeutils import now_utc_iso
 from execution import paper_book
 from execution.config import CONFIG, PaperConfig
-from monitors import meters
+from monitors import meters, notify
 from research.strategy import Strategy
 from tools.backup import (
     LOCAL_ONLY_WARNING,
@@ -329,10 +333,34 @@ def run_paper(
             )
         finally:
             mconn.close()
-        print("MONITORS:")
-        for result in results:
-            print(f"{result.name}: {result.status} - {result.detail}")
-        print(f"OVERALL: {overall}")
+        monitor_lines = (
+            ["MONITORS:"]
+            + [f"{r.name}: {r.status} - {r.detail}" for r in results]
+            + [f"OVERALL: {overall}"]
+        )
+        for line in monitor_lines:
+            print(line)
+
+        # Telegram push: the exact digest + MONITORS text, to the operator's
+        # phone. Same contract as backup: a failure warns but NEVER blocks the
+        # loop; the catch is SCOPED to the send. All failure text is sanitized
+        # (the API URL embeds the bot token -- SCARS #1).
+        message = "\n".join([digest.line(), *monitor_lines])
+        try:
+            telegram_config = notify.load_config()
+            if telegram_config is None:
+                print("telegram: unconfigured")
+            else:
+                outcome = notify.send_digest(message, telegram_config)
+                if outcome.sent:
+                    print("telegram: OK")
+                else:
+                    logger.warning("telegram send failed: %s", outcome.detail)
+                    print(f"telegram: WARN - {outcome.detail}")
+        except (requests.RequestException, OSError) as exc:
+            detail = notify.sanitize(str(exc))
+            logger.warning("telegram send failed: %s", detail)
+            print(f"telegram: WARN - {detail}")
     return digest
 
 

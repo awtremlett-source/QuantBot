@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-08-06.
+Phase: 1 (Foundations).  Updated: 2026-08-07.
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -183,6 +183,12 @@ Phase: 1 (Foundations).  Updated: 2026-08-06.
   bookkeeping (a routine rebuild archived 2,899 rows and falsely cried RED).
   Second real catch-up banked same day: 7 dark bars replayed, 2 orders settled
   at historical opens, equity 10,249.23 at new peak. 152 tests green.
+- TELEGRAM DIGEST (2026-08-07): live in code — the digest + MONITORS text pushed
+  to the operator's phone after every live run; token-sanitized error paths
+  (leak test proves it), non-blocking (backup's contract), 10s timeout + one
+  retry + 4,000-char truncation, installer-verify integrated ('telegram'
+  check). DORMANT awaiting operator: BotFather bot + .env values, then
+  python -m monitors.notify --get-chat-id / --test. 177 tests green.
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).

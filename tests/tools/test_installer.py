@@ -144,6 +144,18 @@ def test_verify_unset_backup_destination_warns(
     )
 
 
+def test_verify_telegram_check_reads_the_env_file(
+    root: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    cmd_verify(root, FakeRunner(), env={})
+    assert "telegram: WARN - unconfigured — digest is log-only" in (
+        capsys.readouterr().out
+    )
+    (root / ".env").write_text("TELEGRAM_BOT_TOKEN=t\nTELEGRAM_CHAT_ID=1\n")
+    cmd_verify(root, FakeRunner(), env={})
+    assert "telegram: OK - configured" in capsys.readouterr().out
+
+
 def test_verify_task_aggregation(
     root: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

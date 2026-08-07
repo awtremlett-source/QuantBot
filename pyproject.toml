@@ -18,13 +18,14 @@ exclude = [
     '^archive/',
 ]
 
-# pandas, yfinance and scipy ship no py.typed marker and we install no stub
-# packages, so silence their missing-stubs errors. All ARE imported (pandas in
-# data_store.store + ingest.yfinance_source; yfinance in ingest.yfinance_source;
-# scipy.stats in research.deflation), so these overrides are used and --strict's
+# pandas, yfinance, scipy and requests ship no py.typed marker and we install
+# no stub packages, so silence their missing-stubs errors. All ARE imported
+# (pandas in data_store.store + ingest.yfinance_source; yfinance in
+# ingest.yfinance_source; scipy.stats in research.deflation; requests in
+# monitors.notify), so these overrides are used and --strict's
 # warn_unused_configs stays quiet.
 [[tool.mypy.overrides]]
-module = ["pandas", "yfinance", "scipy", "scipy.stats"]
+module = ["pandas", "yfinance", "scipy", "scipy.stats", "requests"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

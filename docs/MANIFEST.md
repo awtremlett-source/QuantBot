@@ -28,7 +28,8 @@ this logic leaves NVDA or this laptop.
 
 ## PAPER
 - Live since 2026-07-14. First fill: 48.030740 sh @ 208.3041 (07-14 open + slippage).
-- Daily rhythm — each MORNING (processes yesterday's bar):
+- Daily rhythm: scheduled task runs the loop each morning; operator reads the
+  Telegram message (digest + MONITORS) and acts only on RED. Manual run:
   `python -m execution.paper_loop --db data/quantbot.db`
 
 ## LAWS

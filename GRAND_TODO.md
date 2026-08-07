@@ -38,7 +38,10 @@ Legend: [ ] open · [~] in progress · [x] done
 - [ ] Count reconciliation (in-zip vs staged vs DB) + ±10% universe invariant
 - [ ] Integrity census v1 (CLEAN/SUSPECT/CORRUPT certificates) + data-quality meter
 - [ ] FIRST LIGHT: chart any ticker + first daily digest
-- [ ] Telegram bot live (BotFather → .env → "hello")
+- [x] Telegram digest in code (2026-08-07): sanitized, non-blocking, wired into
+      the live digest + installer verify (dormant until operator creates the
+      bot via BotFather + fills .env; python -m monitors.notify --get-chat-id
+      then --test)
 EXIT: firewall passes its known-null test; census ≥95% CLEAN on active universe.
 
 ## Phase 2 — CORE (consistency engine; ~80–90% paper capital)

@@ -16,12 +16,15 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+import requests
 
 from data_store import store
 from data_store.store import PriceClean
 from execution import paper_loop
 from execution.config import PaperConfig
 from execution.paper_loop import KILLSWITCH_FILE, LoopDigest, run_paper
+from monitors import notify
+from monitors.notify import NotifyConfig, NotifyResult
 from research.backtester import run_backtest
 from research.strategy import SmaTrendStrategy, Strategy
 from tools.backup import LOCAL_ONLY_WARNING, BackupReport, BackupVerificationError
@@ -158,6 +161,14 @@ def stub_backup(monkeypatch: pytest.MonkeyPatch) -> list[Path]:
 
     monkeypatch.setattr(paper_loop, "run_backup", fake_backup)
     return calls
+
+
+@pytest.fixture(autouse=True)
+def stub_telegram(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Loop tests never touch Telegram (or the real repo .env): default is
+    'unconfigured'. The telegram-integration tests below override explicitly."""
+
+    monkeypatch.setattr(notify, "load_config", lambda env=None, root=None: None)
 
 
 def _config(**overrides: object) -> PaperConfig:
@@ -653,3 +664,93 @@ def test_drawdown_red_reaches_the_digest_via_the_meter(
     assert "drawdown: RED" in out
     assert "-36.5%" in out  # the threshold is named in the detail
     assert "OVERALL: RED" in out
+
+
+# ----------------------------------------------------------------------------- #
+# TELEGRAM DIGEST PUSH -- wiring (sanitized, non-blocking)
+# ----------------------------------------------------------------------------- #
+_FAKE_TOKEN = "999999:LOOP-FAKE-TOKEN-xyz"
+_TELEGRAM_CONFIG = NotifyConfig(token=_FAKE_TOKEN, chat_id="1")
+
+
+def test_live_run_sends_exact_digest_plus_monitors_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+    sent: list[str] = []
+
+    monkeypatch.setattr(
+        notify, "load_config", lambda env=None, root=None: _TELEGRAM_CONFIG
+    )
+
+    def fake_send(text: str, config: object = None, **kwargs: object) -> NotifyResult:
+        sent.append(text)
+        return NotifyResult(True, "sent")
+
+    monkeypatch.setattr(notify, "send_digest", fake_send)
+
+    _run(db, _config(), tmp_path, now="2024-01-15T12:00:00Z")
+    out = capsys.readouterr().out
+    assert "telegram: OK" in out
+
+    # The message is EXACTLY the printed digest line + MONITORS block.
+    lines = out.splitlines()
+    paper_line = next(line for line in lines if line.startswith("PAPER "))
+    start = lines.index("MONITORS:")
+    end = next(i for i, line in enumerate(lines) if line.startswith("OVERALL: "))
+    assert sent == ["\n".join([paper_line, *lines[start : end + 1]])]
+
+
+def test_unconfigured_telegram_reports_and_never_attempts_a_send(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+
+    def never(*args: object, **kwargs: object) -> NotifyResult:
+        raise AssertionError("send_digest must not be called when unconfigured")
+
+    monkeypatch.setattr(notify, "send_digest", never)  # autouse stub: no config
+
+    digest = _run(db, _config(), tmp_path, now="2024-01-15T12:00:00Z")
+    assert digest.bars_processed > 0
+    assert "telegram: unconfigured" in capsys.readouterr().out
+
+
+def test_telegram_failure_never_blocks_the_loop_and_never_leaks_the_token(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The LEAK test at loop level: the escaping error message CONTAINS the
+    token (as real requests errors do -- they embed the URL). If the loop's
+    handler stops sanitizing, this test MUST fail."""
+    db = tmp_path / "book.db"
+    _install(db, _bars(OPENS, CLOSES))
+
+    monkeypatch.setattr(
+        notify, "load_config", lambda env=None, root=None: _TELEGRAM_CONFIG
+    )
+
+    def boom(text: str, config: object = None, **kwargs: object) -> NotifyResult:
+        raise requests.ConnectionError(
+            f"refused: https://api.telegram.org/bot{_FAKE_TOKEN}/sendMessage"
+        )
+
+    monkeypatch.setattr(notify, "send_digest", boom)
+
+    with caplog.at_level(logging.WARNING):
+        digest = _run(db, _config(), tmp_path, now="2024-01-15T12:00:00Z")
+
+    assert digest.bars_processed > 0  # the loop completed and journaled
+    out = capsys.readouterr().out
+    assert "telegram: WARN" in out
+    assert "***" in out
+    assert _FAKE_TOKEN not in out  # the secret appears NOWHERE...
+    assert _FAKE_TOKEN not in caplog.text  # ...printed or logged

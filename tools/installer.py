@@ -334,6 +334,20 @@ def cmd_verify(
             else f"{BACKUP_ENV} unset -- backups are LOCAL-ONLY (rubric 7)",
         )
     )
+
+    # Telegram digest: configured = both secrets present (env or .env file).
+    # notify.load_config is the single source of truth for "configured".
+    from monitors import notify  # deferred: pulls requests
+
+    telegram = notify.load_config(env=the_env, root=root)
+    checks.append(
+        CheckResult(
+            "telegram",
+            "OK" if telegram is not None else "WARN",
+            "configured (token + chat id present)" if telegram is not None
+            else "unconfigured — digest is log-only",
+        )
+    )
     checks.append(_digest_check(root))
 
     worst = "OK"
