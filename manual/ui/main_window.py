@@ -3,7 +3,7 @@ regime, guidance, last refresh. Network work (refresh) and scoring (scan)
 both run on worker threads so the desk never freezes."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QThread, QTimer, Signal
+from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QMainWindow, QMessageBox,
                                QProgressBar, QPushButton, QTabWidget,
                                QVBoxLayout, QWidget)
@@ -18,6 +18,7 @@ from manual.scout.scan import position_verdict, scan_universe
 from manual.scout.universe import INDEX_TICKERS, load_universe, universe_tickers
 from .board import BoardTab
 from .add_stock import AddStockDialog
+from .bot_tab import BotTab
 from .detail import DetailTab
 from .home import HomeTab
 from .journal_view import JournalTab
@@ -25,7 +26,7 @@ from .picks_view import PicksTab
 from .positions import PositionsTab
 from .results import ResultsTab
 from .spotlight_view import SpotlightTab
-from .theme import BORDER, MUTED, PANEL
+from .theme import BORDER, PANEL
 
 
 class RefreshWorker(QThread):
@@ -155,6 +156,11 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.detail_tab, "🔍 Stock Detail")
         self.tabs.addTab(self.positions_tab, "💼 My Trades")
         self.tabs.addTab(self.results_tab, "📊 Results")
+        # The bot's own tab: read-only figures + the governance buttons that
+        # already exist headlessly. It comes last -- this app is the operator's
+        # own trading; the bot is something they check on.
+        self.bot_tab = BotTab()
+        self.tabs.addTab(self.bot_tab, "🤖 Bot")
         root.addWidget(self.tabs, stretch=1)
 
         self.footer = QLabel("Guide only \u00b7 paper trading \u00b7 "
@@ -233,7 +239,7 @@ class MainWindow(QMainWindow):
         self.start_scan()
         self._live_timer = QTimer(self)
         self._live_timer.setInterval(
-            max(1, int(cfg.live_interval_min)) * 60_000)
+            max(1, int(self.cfg.live_interval_min)) * 60_000)
         self._live_timer.timeout.connect(self._live_tick)
         self._live_timer.start()
         QTimer.singleShot(4000, self._live_tick)
@@ -380,3 +386,24 @@ class MainWindow(QMainWindow):
     def _after_trade_logged(self) -> None:
         self.positions_tab.refresh(self._rows)
         self.journal_tab.refresh()
+
+    # ---------------- closing ----------------
+    def closeEvent(self, event) -> None:
+        """Failure mode (d): never close the window on top of a running command.
+
+        The alternative -- detaching the process -- would leave an engine
+        command writing to the live journal with nobody to record its exit
+        code, and the governance log would end mid-sentence. Blocking is the
+        honest choice: the operator waits a few seconds, or kills it from Task
+        Manager knowing exactly what they are doing.
+        """
+        running = self.bot_tab.busy()
+        if running is not None:
+            QMessageBox.warning(
+                self, "A bot command is still running",
+                f"“{running}” is still running.\n\nWait for it to "
+                f"finish before closing. Closing now would abandon a command "
+                f"that is writing to the bot's journal.")
+            event.ignore()
+            return
+        event.accept()

@@ -44,6 +44,7 @@ pms_artifacts/
 
 # === Python ===
 .venv/
+.venv-ui/
 venv/
 env/
 __pycache__/

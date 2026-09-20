@@ -1,0 +1,22 @@
+# PLANTED VIOLATION - the window growing its own way to launch things.
+# Arrives innocently: "the Bot tab needs to open the health folder, and it
+# would be handy to re-run the loop with my own flags while I'm testing."
+from __future__ import annotations
+
+import os
+import subprocess
+from pathlib import Path
+
+
+def run_whatever(command: str) -> int:
+    # Free text straight to a shell: the operator can now run anything, and so
+    # can anything that can put text in this box.
+    return os.system(command)
+
+
+def rerun_the_loop_with_my_flags(extra: list[str]) -> None:
+    subprocess.Popen(["python", "-m", "execution.paper_loop", *extra])
+
+
+def open_the_health_folder() -> None:
+    os.system(f'explorer "{Path("data") / "health"}"')

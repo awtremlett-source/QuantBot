@@ -63,7 +63,7 @@ def test_money_split_step_inserted():
               "next_cap": 2500.0}
     plan = {"ok": True, "value_gbp": 500.0, "warnings": []}
     out = with_money_split(rec, ladder, plan)
-    labels = [l for l, _t in out["steps"]]
+    labels = [label for label, _t in out["steps"]]
     assert labels == ["Enter", "Money split", "Exit"]
     assert "position #2" in out["steps"][1][1]
     assert "fits comfortably" in out["steps"][1][1]

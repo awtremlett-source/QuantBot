@@ -54,7 +54,23 @@ Enforced by `tests/wall/`, each test shipping a red-on-broken proof against a
 planted violation in `tests/museum/wall_violations/` (SCARS #9: a check nobody
 has watched fail is not a check).
 
-## Two environments, on purpose
+## Two environments, permanently (LOCKED 2026-09-20)
+
+This is a locked decision, not a temporary state:
+
+* the ENGINE keeps `.venv`; the WINDOW keeps `.venv-ui`;
+* `manual/` never imports an engine package, and the engine never imports
+  `manual/`, `tools_ui/` or PySide6;
+* the window talks to the bot through exactly TWO doorways --
+  `manual/bot_readonly.py` (read-only reads) and `manual/bot_governance.py`
+  (allow-listed launches) -- and through nothing else;
+* version alignment is DEFERRED to the July 2027 refit, where a change of
+  pandas or yfinance can ride a full firewall re-run. A library version is part
+  of what produced the live record, so it does not move between refits.
+
+Enforced by `tests/wall/test_two_environments.py`, which checks the declaration
+(no requirement line is shared) and the installation (the engine's `.venv` holds
+no UI distribution).
 
 The two apps' pinned dependencies CONFLICT and are never installed together:
 
@@ -99,15 +115,33 @@ its state moved to `data/manual/` (gitignored); launcher at
 **Stage 2 — the wall. DONE 2026-09-20.** `tests/wall/` (18 tests), the
 read-only doorway, and the planted-violation museum.
 
-**Stage 3 — one dependency story. PROPOSED, not agreed.** Decide the pandas /
-yfinance split: one environment or two, permanently. Gate: the engine's pins
-may only move behind a full re-run of the validation firewall, because a
-library version is part of what produced the record.
+**Stage 3a — housekeeping + the Bot tab. DONE 2026-09-20.** The dependency
+question is ANSWERED, by locking two environments (above) rather than merging
+them. `.venv-ui` created from `requirements-ui.txt` and the launcher pointed at
+it -- it no longer falls back to a global Python. The old folder's launcher now
+prints where the app went and exits, so two live copies cannot both start.
+Ruff clean repo-wide (16 findings fixed, one of them a REAL latent crash -- see
+below); `mypy --strict .` green with 52 inherited errors recorded in
+`TYPING_DEBT.md` rather than silently ignored. And the window gained a **Bot
+tab**: the engine's figures in plain words with an age on every one, a header
+that turns red when a completed trading day has gone unprocessed, and the
+control panel's seven governance buttons behind an allow-list. The wall grew
+from 18 tests to 44.
 
-**Stage 4 — one front door. PROPOSED, not agreed.** Today there are two GUIs:
-`tools/gui.py` (engine control panel — observe and govern only) and the
-manual app. Merging them means the UI process could reach the engine's
-controls, so the killswitch and promotion paths need re-proving first.
+**Stage 3b — the journal migration. STOPPED, deliberately.** The operator's
+existing manual trade journal was NOT copied in. Its `trades` table declares
+`shares INTEGER`; the current code declares `shares REAL` (changed by TradeScout
+commit 4e15cf4 "Support fractional shares", and `CREATE TABLE IF NOT EXISTS`
+never altered the existing table). Stage 3a's own rule was to stop on a schema
+difference rather than force it, so it stopped. The data is safe -- a verified
+copy sits in the pre-merge backup folder -- and the fix is a deliberate rebuild
+of that one table preserving both rows, which needs PROPOSE->GO.
+
+**Stage 4 — retire the Tkinter panel. PROPOSED, not agreed.** There are now
+two faces of the same governance: `tools/gui.py` and the Bot tab. That is
+deliberate for one stage -- the panel is the reference the Bot tab is tested
+against -- but two faces must not become permanent. Retiring the panel is its
+own box, with the killswitch drill re-run through the new face first.
 
 **Stage 5 — one view of two books. PROPOSED, not agreed.** Show the bot's
 record and the operator's record side by side through the read-only doorway.
@@ -120,6 +154,36 @@ strategy = a full firewall re-run).
 
 Stages 3–6 are PROPOSALS awaiting PROPOSE→GO→APPLY. Nothing in them is
 committed by this document.
+
+## What stage 3a is still blind to
+
+Written down because a merge that hides its gaps is worse than one that admits
+them.
+
+* **The meters are on request, not on open.** The Bot tab shows the bot's own
+  status check only after "Refresh Status" is pressed, because the window must
+  never start an engine command by itself. Until it is pressed, that box is
+  empty -- the tab cannot tell you a meter is RED that it has not been asked to
+  read.
+* **Staleness ignores market holidays.** A US market holiday shows as one day
+  of false staleness. That is the safe direction: it over-reports, never under-
+  reports. A holiday calendar would fix it and is not worth the dependency yet.
+* **"Last run" comes from the run log, which only the scheduled task writes.**
+  `tools\run_paper_loop.bat` redirects into `data/loop.log`; a loop run by hand
+  in a terminal does not land there. So the log time can UNDERSTATE how recently
+  the engine ran. The authoritative figure -- and the one staleness uses -- is
+  the newest bar in the journal, which the engine writes however it is started.
+* **The window mirrors the panel; it does not replace it.** Both can arm the
+  killswitch. Until stage 4 retires one, two faces exist.
+* **A pre-existing Qt fault at teardown.** The manual suite prints two "Windows
+  fatal exception: access violation" lines from a worker thread and still passes
+  131/131. Confirmed pre-existing: the untouched original repo does the same
+  under the same PySide6. Not introduced here, not yet diagnosed.
+* **52 type errors in five inherited modules** are silenced, with counts, in
+  `TYPING_DEBT.md`. New errors in those five files are silenced too.
+* **The bot itself is 31 trading days behind** as of 2026-09-20 (newest bar
+  2026-08-06). That is the laptop being off, not a fault -- the loop is
+  catch-up-safe -- but the Bot tab will read RED until it is run.
 
 ## What stage 0–2 deliberately did NOT do
 

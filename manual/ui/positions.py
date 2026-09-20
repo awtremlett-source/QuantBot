@@ -14,7 +14,7 @@ from manual.scout import journal
 from manual.scout.indicators import to_gbp
 from manual.scout.ladder import ladder_line, ladder_state
 from manual.scout.playbook import manage_path
-from manual.scout.scan import exit_flags, position_verdict
+from manual.scout.scan import position_verdict
 from .manual_trade import RecordTradeDialog
 from .theme import AMBER, GREEN, RED, fmt_gbp, fmt_shares
 

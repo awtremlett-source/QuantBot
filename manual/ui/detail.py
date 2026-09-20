@@ -9,7 +9,7 @@ matplotlib.use("QtAgg")
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QGroupBox, QHBoxLayout,
                                QLabel, QMessageBox, QPushButton, QScrollArea,
                                QTextEdit, QVBoxLayout, QWidget)
@@ -20,7 +20,7 @@ from manual.scout.playbook import manage_path, recommend_new, with_money_split
 from manual.scout.indicators import snapshot
 from manual.scout.scoring import buy_score, sell_score
 from .finders import make_searchable, stock_labels, ticker_from_label
-from .theme import (AMBER, BG, BORDER, GREEN, MUTED, PANEL, RED, TEXT,
+from .theme import (AMBER, BG, BORDER, GREEN, MUTED, RED, TEXT,
                     fmt_gbp, fmt_num, fmt_px, fmt_shares)
 
 CHECKLIST = [

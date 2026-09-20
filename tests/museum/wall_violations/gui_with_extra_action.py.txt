@@ -1,0 +1,25 @@
+# PLANTED VIOLATION - the control panel growing a seventh command.
+# Arrives innocently: "I added a quick reset button to the panel while
+# debugging." The window's allow-list no longer mirrors the panel, so the two
+# faces of governance disagree about what the operator can do -- and nobody
+# notices until one of them does something the other would have refused.
+#
+# Shaped like tools/gui.py so the same parser reads it.
+
+_DB_ACTIONS = {
+    "status": ("monitors.status", []),
+    "drill": ("monitors.status", ["--drill"]),
+    "loop": ("execution.paper_loop", []),
+    "health": ("monitors.health", []),
+    "backup": ("tools.backup", []),
+    "wipe": ("tools.reset_everything", ["--yes"]),
+}
+
+
+class Controller:
+    def command(self, action: str) -> list[str]:
+        if action == "telegram_test":
+            return [self._python(), "-m", "monitors.notify", "--test"]
+        module, extra = _DB_ACTIONS[action]
+        db = str(self._root / "data" / "quantbot.db")
+        return [self._python(), "-m", module, "--db", db, *extra]

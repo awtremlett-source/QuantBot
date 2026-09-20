@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QGroupBox, QLabel, QTableWidget,
                                QTableWidgetItem, QVBoxLayout, QWidget)
 
 from manual.scout.picks import performance
-from .theme import GREEN, MUTED, RED, fmt_num
+from .theme import GREEN, RED, fmt_num
 
 COLS = ["Date", "Side", "Ticker", "Name", "% since"]
 

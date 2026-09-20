@@ -55,13 +55,14 @@ def test_atr_constant_range_converges():
 def test_atr_matches_wilder_reference_loop():
     df = uptrend_df(150)
     ours = atr_wilder(df, 14)
-    h, l, c = (df[k].to_numpy() for k in ("high", "low", "close"))
+    high, low, close = (df[k].to_numpy() for k in ("high", "low", "close"))
     ref = 0.0
     for i in range(len(df)):
         if i == 0:
-            tr = h[i] - l[i]
+            tr = high[i] - low[i]
         else:
-            tr = max(h[i] - l[i], abs(h[i] - c[i - 1]), abs(l[i] - c[i - 1]))
+            tr = max(high[i] - low[i], abs(high[i] - close[i - 1]),
+                     abs(low[i] - close[i - 1]))
         ref = tr if i == 0 else (ref * 13 + tr) / 14
     assert ours.iloc[-1] == pytest.approx(ref, rel=1e-9)
 

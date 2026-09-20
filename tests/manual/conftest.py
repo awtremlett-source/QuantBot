@@ -19,6 +19,7 @@ See docs/merge/MERGE_PLAN.md ("two books, two environments").
 import importlib.util
 import os
 import sys
+from collections.abc import Iterator
 
 import numpy as np
 import pandas as pd
@@ -90,7 +91,7 @@ def cfg() -> Config:
 
 
 @pytest.fixture
-def tmp_store(tmp_path) -> Store:
+def tmp_store(tmp_path) -> Iterator[Store]:
     s = Store(tmp_path / "test.db")
     yield s
     s.close()

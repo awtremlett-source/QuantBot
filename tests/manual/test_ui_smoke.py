@@ -47,9 +47,10 @@ def make_window(app, seeded_store):
     return win
 
 
-def test_window_builds_with_six_tabs_home_first(app, seeded_store):
+def test_window_builds_with_seven_tabs_home_first(app, seeded_store):
     win = make_window(app, seeded_store)
-    assert win.tabs.count() == 6
+    assert win.tabs.count() == 7          # six of the operator's + the Bot tab
+    assert "Bot" in win.tabs.tabText(6)
     assert win.tabs.currentIndex() == 0
     assert "Home" in win.tabs.tabText(0)
     assert "GOOD" in win.banner.text()
@@ -255,3 +256,23 @@ def test_home_search_opens_detail(app, seeded_store):
     win.home_tab._search_go()
     assert win.tabs.currentWidget() is win.detail_tab
     assert "Uptrend plc" in win.detail_tab.title.text()
+
+
+def test_refresh_done_starts_the_live_timer_without_a_name_error(
+        app, seeded_store):
+    """Fail-first (SCARS #2) for a real NameError found by the lint pass.
+
+    `_refresh_done` read a bare `cfg`, which only exists as a parameter of
+    __init__ -- so the moment a data refresh finished, the slot raised
+    NameError and the live-quote timer was never started. Ruff's F821 caught
+    it; this pins it. On the old code this test raises NameError.
+    """
+    win = make_window(app, seeded_store)
+    win._refresh_done([])          # the slot the refresh worker calls on success
+    if win._scan_worker:           # _refresh_done rescans; let it finish first
+        win._scan_worker.wait(15000)
+    app.processEvents()
+    assert win._live_timer is not None
+    assert win._live_timer.interval() == max(
+        1, int(Config().live_interval_min)) * 60_000
+    assert "cache is current" in win.footer.text()

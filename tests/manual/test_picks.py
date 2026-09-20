@@ -1,4 +1,3 @@
-import pandas as pd
 import pytest
 
 from manual.scout.config import Config

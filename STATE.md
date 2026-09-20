@@ -27,6 +27,14 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   time, continuous severity blending, early-and-small sizing, blunt stress rules.
 - Validation (locked): walk-forward + final untouched holdout; backtests simulate live
   data delay; Deflated Sharpe (penalised by number of trials).
+- TWO ENVIRONMENTS (locked 2026-09-20): the engine keeps .venv, the manual
+  window keeps .venv-ui, permanently. manual/ never imports an engine package;
+  it reaches the bot through exactly TWO doorways -- manual/bot_readonly.py
+  (read-only reads) and manual/bot_governance.py (allow-listed launches).
+  Their pins conflict on purpose (pandas 3.0.2 vs 2.3.3, yfinance 1.4.1 vs
+  0.2.66); requirements-ui.txt must NEVER be installed into .venv. Version
+  alignment is DEFERRED to the July 2027 refit, where it can ride a full
+  firewall re-run -- a library version is part of what produced the record.
 - Plan-review principles (locked 2026-07-08):
   - Judge strategies on RISK-ADJUSTED terms (Sharpe, max drawdown), NOT raw total return
     (buy-and-hold NVDA is a rigged benchmark long-only cannot beat on total return).
@@ -241,6 +249,40 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   says so. Journal + trials backed up off-repo first and verified (10 files,
   82,320,834 bytes, every SHA-256 matching). Plan + the two-books rule:
   docs/merge/MERGE_PLAN.md (stages 3-6 are PROPOSALS only, nothing agreed).
+- BOT TAB + HOUSEKEEPING (2026-09-20, merge stage 3a). The window now has a
+  7th tab showing the engine in plain words, every figure carrying its age:
+  last bar processed, up-to-date or not, equity, open position, forward-record
+  days, trial count, last run-log entry, last digest line. Header turns RED
+  when a completed trading day has gone unprocessed -- birth certificate both
+  ways (old fixture RED, fresh fixture GREEN, proven through the real widget).
+  On first open it reads RED and true: newest bar 2026-08-06, 31 completed
+  trading days unprocessed (laptop off; the loop is catch-up-safe).
+  GOVERNANCE: manual/bot_governance.py is the ONLY way the window launches
+  anything -- a fixed allow-list of exactly the Tkinter panel's 6 commands
+  (status/drill/loop/health/backup + telegram test) plus the killswitch FILE,
+  run with the ENGINE's interpreter from the repo root, fixed argv, never
+  shell=True, one at a time, every press appended to
+  data/manual/governance_log.jsonl. A wall test PARSES tools/gui.py and
+  bot_governance.py and fails if the two command sets ever differ. The loop
+  button gained a confirmation the Tkinter panel does not have; closing the
+  window during a command is BLOCKED rather than orphaning the process.
+  READS: short-lived, mode=ro, 2s lock timeout -- proven not to fail or block
+  a concurrent writer. HOUSEKEEPING: .venv-ui built from requirements-ui.txt
+  and the launcher pointed at it (no more silent fallback to a global Python);
+  old Documents/TradeScout launcher now prints where the app went and exits
+  (local commit 60b7142, unpushed) so two live copies cannot both start; 16
+  ruff findings fixed -- one was a REAL latent crash (NameError on `cfg` in
+  _refresh_done, so the live-quote timer never started after a data refresh;
+  fail-first test shipped with the fix). ENGINE UNTOUCHED: fingerprint proves
+  all 48 engine code files byte-identical; pyproject.toml is the ONLY changed
+  file, and only inside [tool.mypy] (the one permitted edit) -- now
+  25c9ec06...2477ee -> 4add56ec...743b6. Tests: engine 198 unchanged, wall
+  18 -> 44, manual 131 -> 147. ruff + mypy --strict both green repo-wide, with
+  52 inherited type errors recorded in docs/merge/TYPING_DEBT.md.
+  STOPPED: the old trade journal was NOT migrated -- its trades.shares is
+  INTEGER where the code declares REAL (TradeScout 4e15cf4; CREATE TABLE IF
+  NOT EXISTS never altered it). Verified backup taken; the rebuild needs
+  PROPOSE->GO (MERGE_PLAN stage 3b).
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
@@ -260,13 +302,18 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
 - Daily auto clock-sync task still to set up (admin).
 - gh CLI not installed → use plain git for GitHub ops.
-- Manual app's EXISTING trade journal NOT migrated: it is still at
-  Documents/TradeScout/cache/trade_scout.db; the copy in this repo starts
-  empty. Migrating it is a decision (PROPOSE→GO), not a side effect.
-- No .venv-ui yet: the manual app currently runs on the system Python 3.13,
-  which happens to have the UI deps. Create .venv-ui from requirements-ui.txt
-  to make that deliberate rather than lucky.
-- Repo-wide `ruff check .` (16) and `mypy --strict .` (623) now report against
-  the moved app only — zero in the engine, zero in new code. Engine-scoped
-  commands stay clean; clearing the debt needs pyproject.toml, which this merge
-  froze (see MERGE_PLAN "What stage 0-2 deliberately did NOT do").
+- Manual app's EXISTING trade journal STILL NOT migrated (stage 3a stopped on
+  purpose): trades.shares is INTEGER in the operator's database, REAL in the
+  code. Backup verified at QuantBot-premerge-backup-2026-09-20/tradescout-cache.
+  Needs a one-table rebuild under PROPOSE→GO (MERGE_PLAN stage 3b).
+- Bot is 31 completed trading days behind (newest bar 2026-08-06) — the laptop
+  has been off; the loop is catch-up-safe, so one run should clear it. The Bot
+  tab reads RED until then, correctly.
+- TWO faces of governance until stage 4: tools/gui.py (Tkinter) and the Bot
+  tab can both arm the killswitch. Deliberate for one stage — the panel is the
+  reference the tab is tested against — but it must not stay that way.
+- Typing debt: 52 mypy errors in 5 inherited modules silenced with counts in
+  docs/merge/TYPING_DEBT.md; new errors in those 5 files are silenced too.
+- Pre-existing Qt fault: the manual suite prints 2 "Windows fatal exception:
+  access violation" lines from a worker thread and still passes. Confirmed
+  pre-existing (the untouched original repo does the same). Not diagnosed.

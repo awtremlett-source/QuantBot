@@ -62,13 +62,17 @@ def buy_score(s: dict, cfg: Config) -> ScoreResult:
     # Trend (30)
     trend_pts = 0
     if _ok(sma200) and _ok(close) and close > sma200:
-        _add(res, 10, "Above the 200-day average"); trend_pts += 10
+        _add(res, 10, "Above the 200-day average")
+        trend_pts += 10
     if _ok(sma50) and _ok(sma200) and sma50 > sma200:
-        _add(res, 10, "50-day average above 200-day"); trend_pts += 10
+        _add(res, 10, "50-day average above 200-day")
+        trend_pts += 10
     if _ok(s.get("sma50_slope")) and s["sma50_slope"] > 0:
-        _add(res, 5, "50-day average rising"); trend_pts += 5
+        _add(res, 5, "50-day average rising")
+        trend_pts += 5
     if _ok(sma50) and _ok(close) and close > sma50:
-        _add(res, 5, "Above the 50-day average"); trend_pts += 5
+        _add(res, 5, "Above the 50-day average")
+        trend_pts += 5
 
     # Momentum (25)
     rsi = s.get("rsi")

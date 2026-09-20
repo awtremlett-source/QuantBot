@@ -1,6 +1,5 @@
 import numpy as np
 
-from manual.scout.config import Config
 from manual.scout.scoring import ScoreResult
 from manual.scout.timing import timing_checks, timing_dial
 from tests.manual.conftest import make_ohlcv
