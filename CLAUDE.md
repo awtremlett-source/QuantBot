@@ -1,12 +1,14 @@
 # CLAUDE.md — QuantBot operating memory
 
 ## Mission & phase
-ML-focused, long-only US-equity paper-trading system on a Trading 212 DEMO account.
-North star £100/day net — honesty FIRST (£10k → 1%/day = fantasy; anchor only).
-Operator is a complete beginner: teach before building; define terms on first
-use; decisions arrive as `DECISION REQUESTED` + recommended default.
-CURRENT PHASE: 1 (Foundations) — rails done; data layer + §7 firewall BEFORE any
-strategy. Machine: sometimes-off laptop → loops catch-up-safe.
+Many-small-edges paper-trading system on a Trading 212 DEMO account — the Simons
+direction (v2, from 2026-09-21). North star £100/day net — honesty FIRST (£10k →
+1%/day = fantasy; anchor only). Operator is a complete beginner: teach before
+building; define terms on first use; decisions arrive as `DECISION REQUESTED` +
+recommended default. CURRENT: v2 PLANNED — next box = S1 (qb2 skeleton + its own
+env). v1 KEEPS RUNNING UNTOUCHED as the baseline v2 must beat out-of-sample at 2×
+costs; its engine folders are read-only. Machine: sometimes-off laptop → loops
+catch-up-safe.
 
 ## Commands (venv: .venv — activate first)
 - Tests: python -m pytest -q · Lint/types: ruff check . && mypy --strict .
@@ -60,6 +62,7 @@ never cat data files (head/tail/count). Update STATE.md at session end.
 Surgical edits only — never full rewrites.
 
 ## Pointers
-Resume → STATE.md · Backlog → GRAND_TODO.md · Manifest → docs/MANIFEST.md ·
+Resume → STATE.md · PLAN v2 → docs/plan/PLAN_V2.md · Backlog → GRAND_TODO.md ·
+Manifest → docs/MANIFEST.md ·
 History → docs/sessions/ · Deploy → docs/DEPLOY.md ·
 Constitution → docs/FOUNDING_DIRECTIVE.md · Curriculum → docs/EDUCATION.md

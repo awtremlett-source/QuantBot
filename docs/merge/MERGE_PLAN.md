@@ -98,6 +98,13 @@ Inside the engine's `.venv` the manual suite is deliberately NOT collected
 
 ## The six stages
 
+> **SUPERSEDED 2026-09-21 from stage 3b onwards.** The direction changed to v2
+> (the Simons direction): see **docs/plan/PLAN_V2.md**, which replaces stages
+> 3b, 4, 5 and 6 below. They are kept here, not deleted, because they record
+> what was intended and why. Stages 0, 1, 2 and 3a SHIPPED and stand — the
+> manual app, the one-way wall, the two doorways and the Bot tab are all live
+> and are inherited by v2.
+
 **Stage 0 — snapshot. DONE 2026-09-20.** Both repos clean and tagged
 `pre-merge-2026-09-18`; journal + trial log backed up outside the repo and
 verified (10 files, 82,320,834 bytes, every SHA-256 matching, plus a verified
@@ -128,7 +135,7 @@ that turns red when a completed trading day has gone unprocessed, and the
 control panel's seven governance buttons behind an allow-list. The wall grew
 from 18 tests to 44.
 
-**Stage 3b — the journal migration. STOPPED, deliberately.** The operator's
+**Stage 3b — the journal migration. STOPPED, and now SUPERSEDED by docs/plan/PLAN_V2.md.** The operator's
 existing manual trade journal was NOT copied in. Its `trades` table declares
 `shares INTEGER`; the current code declares `shares REAL` (changed by TradeScout
 commit 4e15cf4 "Support fractional shares", and `CREATE TABLE IF NOT EXISTS`
@@ -137,17 +144,17 @@ difference rather than force it, so it stopped. The data is safe -- a verified
 copy sits in the pre-merge backup folder -- and the fix is a deliberate rebuild
 of that one table preserving both rows, which needs PROPOSE->GO.
 
-**Stage 4 — retire the Tkinter panel. PROPOSED, not agreed.** There are now
+**Stage 4 — retire the Tkinter panel. SUPERSEDED by docs/plan/PLAN_V2.md (folded into S10, the rebuilt front end).** There are now
 two faces of the same governance: `tools/gui.py` and the Bot tab. That is
 deliberate for one stage -- the panel is the reference the Bot tab is tested
 against -- but two faces must not become permanent. Retiring the panel is its
 own box, with the killswitch drill re-run through the new face first.
 
-**Stage 5 — one view of two books. PROPOSED, not agreed.** Show the bot's
+**Stage 5 — one view of two books. SUPERSEDED by docs/plan/PLAN_V2.md (folded into S10).** Show the bot's
 record and the operator's record side by side through the read-only doorway.
 Reporting only; still two writers, still two books.
 
-**Stage 6 — "revise how it works". THE OPERATOR'S REDESIGN.** Not started, and
+**Stage 6 — "revise how it works". SUPERSEDED: this IS docs/plan/PLAN_V2.md.** Not started, and
 deliberately last: the merge is plumbing, the revision is strategy, and
 strategy changes are rubric- and firewall-gated (a config change = a new
 strategy = a full firewall re-run).

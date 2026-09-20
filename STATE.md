@@ -1,6 +1,8 @@
 # STATE.md — resume in seconds
 
-Phase: 1 (Foundations).  Updated: 2026-08-07.
+Phase: v2 PLANNED (the Simons direction).  Updated: 2026-09-21.
+NEXT BOX: S1 — qb2 skeleton + its own pinned environment + wall/fingerprint tests.
+PLAN: docs/plan/PLAN_V2.md (gated by tests/plan/test_plan_v2.py).
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
@@ -27,6 +29,21 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   time, continuous severity blending, early-and-small sizing, blunt stress rules.
 - Validation (locked): walk-forward + final untouched holdout; backtests simulate live
   data delay; Deflated Sharpe (penalised by number of trials).
+- DIRECTION CHANGE (2026-09-21): v2, the Simons direction — many thin validated
+  edges combined into ONE calibrated probability per instrument, searched for by
+  machine under pre-registration, sized by a ladder that must first beat equal
+  sizing after costs. Operator words recorded verbatim in docs/plan/PLAN_V2.md.
+  v1 (NVDA regime-switcher) KEEPS RUNNING UNTOUCHED as the baseline; v2 replaces
+  it only by beating it out-of-sample at 2x costs. Its clock keeps counting.
+  QT-02's forward stages (MERGE_PLAN 3b/4/5/6) are SUPERSEDED by PLAN_V2 —
+  marked, not deleted. QT-02's SHIPPED work (stage 3a: the Bot tab, the two
+  doorways, the wall) stands and is kept.
+- TWO ENVIRONMENTS — AMENDED 2026-09-21: the 2026-09-20 lock stands FOR V1 (its
+  engine keeps .venv, its window keeps .venv-ui, both frozen). v2 gets ONE fresh
+  pinned environment of its own for engine + interface together — that is the
+  real fix for the pandas/yfinance pin conflict — and when v2 replaces v1 the
+  count returns to one. The reason for the lock (never silently swap the
+  libraries that produced a live record) is honoured, not overturned.
 - TWO ENVIRONMENTS (locked 2026-09-20): the engine keeps .venv, the manual
   window keeps .venv-ui, permanently. manual/ never imports an engine package;
   it reaches the bot through exactly TWO doorways -- manual/bot_readonly.py
@@ -296,6 +313,15 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   #2 until the rubric passes (all 7 conditions).
 
 ## Open flags
+- FLAKY TEST found 2026-09-21 00:41 (recorded, NOT fixed — QT-03 was docs-only):
+  tests/monitors/test_status.py::test_drill_fires_both_meters_and_leaves_no_trace
+  fails between 00:00 and 01:00 UK summer time. Its fixture builds bars with
+  date.today() (LOCAL) while run_drill defaults to UTC; during the hour when BST
+  runs a day ahead, the drill's doctored equity mark sorts BEFORE the fixture's
+  healthy one, so the drawdown light cannot fire and the drill reports FAILED.
+  A FIXTURE bug, not a broken monitor — the live drill is unaffected (its newest
+  real mark is far older than any UTC-today insert). Fix = build the fixture on
+  the UTC date. Engine suite therefore reads 197 passed / 1 failed in that hour.
 - QUANTBOT_BACKUP_DIR not yet set → backups are LOCAL-ONLY (data/backups/ on the
   same laptop). Rubric condition 7 NOT met until the operator points it at an
   off-laptop folder (e.g. OneDrive).
