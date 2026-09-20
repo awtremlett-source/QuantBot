@@ -38,7 +38,10 @@ logs/
 *.log
 
 # === Archived prior experiments & generated state (kept out of git) ===
-archive/
+# Anchored to the repo ROOT on purpose: /archive/ is the pre-QuantBot dump and
+# stays out, but docs/archive/ is DOCUMENTATION (superseded plans kept whole,
+# quarantine-never-delete) and must be tracked.
+/archive/
 pms_state/
 pms_artifacts/
 
