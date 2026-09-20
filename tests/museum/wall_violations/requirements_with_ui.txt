@@ -1,0 +1,7 @@
+# PLANTED VIOLATION — the engine's requirements file grown a UI dependency.
+# Arrives innocently: "one requirements file is simpler than two."
+yfinance==1.4.1
+pandas==3.0.2
+numpy==2.4.4
+PySide6==6.11.1
+mplfinance==0.12.10b0

@@ -1,0 +1,62 @@
+QuantBot ENGINE FINGERPRINT
+
+folders: data_store, execution, ingest, monitors, reconcile, research, risk, strategies, tools
+config:  .env.example, install.ps1, pyproject.toml, requirements.txt
+excluded: __pycache__, *.pyc, *.pyo (generated, not source)
+
+files: 52   bytes: 277470
+
+79718dce0312bd605ea43352edb3c20a4008051695ce7c1a4b0e979431efd5a7        903  .env.example
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  data_store/.gitkeep
+58e18cb3d62320c17aceb00a6c9a3721af15d5a79b63f67a6cb4b2005440bdd0        653  data_store/__init__.py
+a6012ed41c9b50a02dc901161f81293a3bf69e3ec5627d0427b5f8f03ededafd       8217  data_store/schema.py
+173572badc79a274d9a2d79614b7986cd344706a1f4b7dd4211fd5a156fc6dc8      25628  data_store/store.py
+8c68b199482e907758556edb2b2f00c3a6d763362196df02103838ed7bd9c68b       3134  data_store/timeutils.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  execution/.gitkeep
+aa89bc2d4382f909ec497b4ca1eebdc9862aca760df13d5003af5da126e15f7d        435  execution/__init__.py
+dd0f1af7daa725dd94a0952a244ebe83129d896de1722fb78921030969c994ed        464  execution/__main__.py
+220e5cba9c69bbd5b3200b10276e9070f2c2d200ae5d16c9d798c262f960e2cb       3308  execution/config.py
+24fc9eaf12dad1cdbcafb5d763f97848a673e40ee3d31b6fc35651817c9741e0       7202  execution/paper_book.py
+61dd565608dbe39e3ef0a2f5025dc288151ae097c7b2477ad116633e22f84940      14878  execution/paper_loop.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  ingest/.gitkeep
+a305821d0efe0d7bd03640c5e255c754d47a4618c9c18b9325484fe4df23a014        944  ingest/__init__.py
+1c0664fcdb3597fa921c13ff110dafeb3a8c4c1b6baa0e5cdb033abeef63adf7       2148  ingest/__main__.py
+38b4212758cbbb2ab7586d6dd8a8afade63c11e64184c96585170e590e6a9775      13614  ingest/front_door.py
+bae3d7d4bfe62f2892fdd9116a30cc36d62ff07dd47e2430cf12a531ae4e70f0       3655  ingest/yfinance_source.py
+d9f50e4fd60fa0f9f90bf45c4329f672e101d5139dac1bb180069b0595048a86       2321  install.ps1
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  monitors/.gitkeep
+a2fff6183924d4ee640f4e57b31288d4748e4be96320a442e7ab72c9e7c5fbd8        387  monitors/__init__.py
+3fce9fa1911d4ca157143e5ad9b9029f10b81f07038d2308eca633e0588394e3      18830  monitors/health.py
+aaf684bf351fd8ce908071388034545dda11ef1db0c734c6ebeb39f72202ad41       9003  monitors/meters.py
+97c51fab672581689fa4b0d73f6f30ae4c230ad7d3cfd575fbd2bfa41b2525fd       8228  monitors/notify.py
+b8fd8346180212e0a7332222734105fad80a7bd061fae90506a440deb8f21690       8937  monitors/status.py
+5dbdfef1dc56e98f59589330bd821ff9e4152b435fef544d543747a209934c98       1244  pyproject.toml
+cb03109d8b7c12d764a15b7275a3f67e28baffaa5fd9e8cbc2b351a7fc822c38       1544  reconcile/__init__.py
+b2b1df7598955ad21522b0c639617b3d716ec852c24c8c5bfda20865cefaf3c2       1932  reconcile/__main__.py
+2c6cd2842a6a4769fdc0f13b7cd5ca2f98a4dab319c5f62fde04d4f041b8907a      19769  reconcile/clean_prices.py
+b5f7af162f639f4cb533e605ec30ee4b9212adfd07c978287080dc1f52d2b5a0       3537  reconcile/corporate_actions.py
+f3aae5cbbd1c03994a5f1cf9b5c452b0af4cca00bda1f424c35b98b8381ee950        195  requirements.txt
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  research/.gitkeep
+4a5f6a3d1ff2f7b42d58395abe460797640975459667a80cc43d61734bb5c57f        595  research/__init__.py
+4ca72b809c37d1eab994ec6feda0b07aa9a4baeb8e1973ffb8d391407ad485ba      12645  research/backtester.py
+f0d9d46d19909e02adb85008fad02b9db805c17fb3f40d92244478e59fa9e6a6       8919  research/deflation.py
+eb4c1677be68498ab1ac45234ae6926e16db56a6d40ee05ad250942f3586ede7      10622  research/monte_carlo.py
+c2db335a8bef704997bd4ba74eacb30c1a37bf6e2182c51cf41f9767ac73f10b       4473  research/strategy.py
+597d02b36f221d89bd5a2851167c8a4c27a7a9c9d00d8c3bf0da23524cd435f9       3436  research/trial_log.py
+5db3bd8c4ec1b1245c2f20d768fcce74205daf412d0070445383ffa2231f05de      13009  research/walk_forward.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  risk/.gitkeep
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  strategies/.gitkeep
+15ae8ff6596dfa6727272b6044c72197e8cf06f753eb0a8a6e29fa69908cf3f0        459  strategies/__init__.py
+aec33f92febe97c45c15dfd44725c18598b53d367acf74cc20cb25ff6a7c9cb0       7669  strategies/mean_reversion.py
+649676d1837f6ab25f582f2b6ce0f3ea2dff117c536ba948363458d3ffd32e04       8170  strategies/regime_switcher.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855          0  tools/.gitkeep
+9a35a80ccb24ad245662b04e785317b504415b2f15d030a2ba55b1a46fa33a5f         81  tools/__init__.py
+3211bef36e3aa058f109abab56c7d6a271f9578f6ed97c2703ae2a003adb8811      12963  tools/backup.py
+3f555f8159753618604e7efc7912f8d655a977c701ade64ca9df28d46c980de7       5389  tools/engine_fingerprint.py
+9b668fb140a122f7d02738b89d8722ada1c7adb038f17e1a4e3c77d6d6bbd3d4      10624  tools/gui.py
+79e11705d07f83a0946cb9bd22bfd778f6d5c5f0331c5941065165b575f87f4a      16926  tools/installer.py
+5316b90bccdb2e56092bf6cd38a14101af9c74c2f2cf929af5eae3b5975a54b4         85  tools/run_gui.bat
+759670f7d5e06432d9c33a00a2faf13a1a1cf160b400df8ea716fac5269b1709        173  tools/run_health.bat
+3817c1a3bc482815a71d578ac4e769e9482b798bd39761da80818c662cb98928        122  tools/run_paper_loop.bat
+
+COMBINED: 25c9ec06bb13167f7cb8fde7e054251ad8243a4c9bfe84a9a1b75babbd2477ee

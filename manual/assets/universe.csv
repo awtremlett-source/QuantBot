@@ -1,0 +1,258 @@
+ticker,name,index,sector,currency,stamp_duty
+III.L,3i Group,FTSE100,Financial Services,GBp,Y
+ADM.L,Admiral Group,FTSE100,Insurance,GBp,Y
+AAF.L,Airtel Africa,FTSE100,Telecoms,GBp,Y
+ALW.L,Alliance Witan,FTSE100,Investment Trust,GBp,Y
+AAL.L,Anglo American,FTSE100,Mining,GBp,Y
+ANTO.L,Antofagasta,FTSE100,Mining,GBp,Y
+AHT.L,Ashtead Group,FTSE100,Industrial Rental,GBp,Y
+ABF.L,Associated British Foods,FTSE100,Food Producers,GBp,Y
+AZN.L,AstraZeneca,FTSE100,Pharmaceuticals,GBp,Y
+AUTO.L,Auto Trader Group,FTSE100,Media & Internet,GBp,Y
+AV.L,Aviva,FTSE100,Insurance,GBp,Y
+BAB.L,Babcock International,FTSE100,Aerospace & Defence,GBp,Y
+BA.L,BAE Systems,FTSE100,Aerospace & Defence,GBp,Y
+BARC.L,Barclays,FTSE100,Banks,GBp,Y
+BTRW.L,Barratt Redrow,FTSE100,Housebuilders,GBp,Y
+BEZ.L,Beazley,FTSE100,Insurance,GBp,Y
+BKG.L,Berkeley Group,FTSE100,Housebuilders,GBp,Y
+BLND.L,British Land,FTSE100,REIT,GBp,Y
+BP.L,BP,FTSE100,Oil & Gas,GBp,Y
+BATS.L,British American Tobacco,FTSE100,Tobacco,GBp,Y
+BT-A.L,BT Group,FTSE100,Telecoms,GBp,Y
+BNZL.L,Bunzl,FTSE100,Distribution,GBp,Y
+CNA.L,Centrica,FTSE100,Utilities,GBp,Y
+CCH.L,Coca-Cola HBC,FTSE100,Beverages,GBp,N
+CPG.L,Compass Group,FTSE100,Food Services,GBp,Y
+CTEC.L,ConvaTec Group,FTSE100,Medical Devices,GBp,Y
+CRDA.L,Croda International,FTSE100,Chemicals,GBp,Y
+DCC.L,DCC,FTSE100,Distribution,GBp,N
+DGE.L,Diageo,FTSE100,Beverages,GBp,Y
+DPLM.L,Diploma,FTSE100,Distribution,GBp,Y
+EDV.L,Endeavour Mining,FTSE100,Mining,GBp,N
+ENT.L,Entain,FTSE100,Gambling,GBp,Y
+EXPN.L,Experian,FTSE100,Data & Analytics,GBp,N
+FCIT.L,F&C Investment Trust,FTSE100,Investment Trust,GBp,Y
+FRAS.L,Frasers Group,FTSE100,Retail,GBp,Y
+FRES.L,Fresnillo,FTSE100,Mining,GBp,Y
+GAW.L,Games Workshop,FTSE100,Leisure Goods,GBp,Y
+GLEN.L,Glencore,FTSE100,Mining,GBp,N
+GSK.L,GSK,FTSE100,Pharmaceuticals,GBp,Y
+HLN.L,Haleon,FTSE100,Consumer Health,GBp,Y
+HLMA.L,Halma,FTSE100,Industrials,GBp,Y
+HIK.L,Hikma Pharmaceuticals,FTSE100,Pharmaceuticals,GBp,Y
+HSX.L,Hiscox,FTSE100,Insurance,GBp,N
+HWDN.L,Howden Joinery,FTSE100,Building Products,GBp,Y
+HSBA.L,HSBC Holdings,FTSE100,Banks,GBp,Y
+IHG.L,InterContinental Hotels,FTSE100,Hotels,GBp,Y
+IMI.L,IMI,FTSE100,Industrials,GBp,Y
+IMB.L,Imperial Brands,FTSE100,Tobacco,GBp,Y
+INF.L,Informa,FTSE100,Media & Events,GBp,Y
+ICG.L,Intermediate Capital Group,FTSE100,Financial Services,GBp,Y
+IAG.L,International Consolidated Airlines,FTSE100,Airlines,GBp,Y
+ITRK.L,Intertek Group,FTSE100,Testing & Inspection,GBp,Y
+JD.L,JD Sports Fashion,FTSE100,Retail,GBp,Y
+KGF.L,Kingfisher,FTSE100,Retail,GBp,Y
+LAND.L,Land Securities,FTSE100,REIT,GBp,Y
+LGEN.L,Legal & General,FTSE100,Insurance & Asset Mgmt,GBp,Y
+LLOY.L,Lloyds Banking Group,FTSE100,Banks,GBp,Y
+LSEG.L,London Stock Exchange Group,FTSE100,Financial Data,GBp,Y
+LMP.L,LondonMetric Property,FTSE100,REIT,GBp,Y
+MNG.L,M&G,FTSE100,Asset Management,GBp,Y
+MKS.L,Marks & Spencer,FTSE100,Retail,GBp,Y
+MRO.L,Melrose Industries,FTSE100,Aerospace,GBp,Y
+MNDI.L,Mondi,FTSE100,Packaging,GBp,Y
+NG.L,National Grid,FTSE100,Utilities,GBp,Y
+NWG.L,NatWest Group,FTSE100,Banks,GBp,Y
+NXT.L,Next,FTSE100,Retail,GBp,Y
+PSON.L,Pearson,FTSE100,Education & Media,GBp,Y
+PSH.L,Pershing Square Holdings,FTSE100,Investment Trust,GBp,N
+PSN.L,Persimmon,FTSE100,Housebuilders,GBp,Y
+PHNX.L,Phoenix Group,FTSE100,Insurance,GBp,Y
+PCT.L,Polar Capital Technology,FTSE100,Investment Trust,GBp,Y
+PRU.L,Prudential,FTSE100,Insurance,GBp,Y
+RKT.L,Reckitt Benckiser,FTSE100,Consumer Goods,GBp,Y
+REL.L,RELX,FTSE100,Data & Analytics,GBp,Y
+RTO.L,Rentokil Initial,FTSE100,Business Services,GBp,Y
+RIO.L,Rio Tinto,FTSE100,Mining,GBp,Y
+RMV.L,Rightmove,FTSE100,Media & Internet,GBp,Y
+RR.L,Rolls-Royce Holdings,FTSE100,Aerospace & Defence,GBp,Y
+SGE.L,Sage Group,FTSE100,Software,GBp,Y
+SBRY.L,J Sainsbury,FTSE100,Food Retail,GBp,Y
+SDR.L,Schroders,FTSE100,Asset Management,GBp,Y
+SMT.L,Scottish Mortgage IT,FTSE100,Investment Trust,GBp,Y
+SGRO.L,Segro,FTSE100,REIT,GBp,Y
+SVT.L,Severn Trent,FTSE100,Utilities,GBp,Y
+SHEL.L,Shell,FTSE100,Oil & Gas,GBp,Y
+SN.L,Smith & Nephew,FTSE100,Medical Devices,GBp,Y
+SMIN.L,Smiths Group,FTSE100,Industrials,GBp,Y
+SPX.L,Spirax Group,FTSE100,Industrials,GBp,Y
+SSE.L,SSE,FTSE100,Utilities,GBp,Y
+STAN.L,Standard Chartered,FTSE100,Banks,GBp,Y
+STJ.L,St James's Place,FTSE100,Wealth Management,GBp,Y
+TW.L,Taylor Wimpey,FTSE100,Housebuilders,GBp,Y
+TSCO.L,Tesco,FTSE100,Food Retail,GBp,Y
+ULVR.L,Unilever,FTSE100,Consumer Goods,GBp,Y
+UU.L,United Utilities,FTSE100,Utilities,GBp,Y
+UTG.L,Unite Group,FTSE100,REIT,GBp,Y
+VOD.L,Vodafone Group,FTSE100,Telecoms,GBp,Y
+WEIR.L,Weir Group,FTSE100,Mining Equipment,GBp,Y
+WTB.L,Whitbread,FTSE100,Hotels & Leisure,GBp,Y
+WPP.L,WPP,FTSE100,Advertising,GBp,Y
+ABDN.L,Aberdeen Group,FTSE250,Asset Management,GBp,Y
+AML.L,Aston Martin Lagonda,FTSE250,Automotive,GBp,Y
+ASHM.L,Ashmore Group,FTSE250,Asset Management,GBp,Y
+ASL.L,Aberforth Smaller Companies,FTSE250,Investment Trust,GBp,Y
+ATG.L,Auction Technology Group,FTSE250,Media & Internet,GBp,Y
+AGT.L,AVI Global Trust,FTSE250,Investment Trust,GBp,Y
+ATT.L,Allianz Technology Trust,FTSE250,Investment Trust,GBp,Y
+BAG.L,A.G. Barr,FTSE250,Beverages,GBp,Y
+BBY.L,Balfour Beatty,FTSE250,Construction,GBp,Y
+BGEO.L,Lion Finance Group,FTSE250,Banks,GBp,Y
+BME.L,B&M European Value Retail,FTSE250,Retail,GBp,N
+BNKR.L,Bankers Investment Trust,FTSE250,Investment Trust,GBp,Y
+BOWL.L,Hollywood Bowl Group,FTSE250,Leisure,GBp,Y
+BOY.L,Bodycote,FTSE250,Industrials,GBp,Y
+BRSC.L,BlackRock Smaller Companies,FTSE250,Investment Trust,GBp,Y
+BRWM.L,BlackRock World Mining,FTSE250,Investment Trust,GBp,Y
+BWY.L,Bellway,FTSE250,Housebuilders,GBp,Y
+BYG.L,Big Yellow Group,FTSE250,REIT,GBp,Y
+BYIT.L,Bytes Technology Group,FTSE250,IT Reseller,GBp,Y
+BBOX.L,Tritax Big Box REIT,FTSE250,REIT,GBp,Y
+BRBY.L,Burberry Group,FTSE250,Luxury Goods,GBp,Y
+CCL.L,Carnival,FTSE250,Travel & Leisure,GBp,Y
+CBG.L,Close Brothers Group,FTSE250,Banks,GBp,Y
+CCC.L,Computacenter,FTSE250,IT Services,GBp,Y
+CGT.L,Capital Gearing Trust,FTSE250,Investment Trust,GBp,Y
+CHG.L,Chemring Group,FTSE250,Aerospace & Defence,GBp,Y
+CKN.L,Clarkson,FTSE250,Shipping Services,GBp,Y
+CLDN.L,Caledonia Investments,FTSE250,Investment Trust,GBp,Y
+COA.L,Coats Group,FTSE250,Industrials,GBp,Y
+CRST.L,Crest Nicholson,FTSE250,Housebuilders,GBp,Y
+CTY.L,City of London IT,FTSE250,Investment Trust,GBp,Y
+CWK.L,Cranswick,FTSE250,Food Producers,GBp,Y
+CURY.L,Currys,FTSE250,Retail,GBp,Y
+DEC.L,Diversified Energy Company,FTSE250,Oil & Gas,GBp,N
+DLN.L,Derwent London,FTSE250,REIT,GBp,Y
+DNLM.L,Dunelm Group,FTSE250,Retail,GBp,Y
+DOCS.L,Dr. Martens,FTSE250,Footwear,GBp,Y
+DOM.L,Domino's Pizza Group,FTSE250,Food Services,GBp,Y
+DRX.L,Drax Group,FTSE250,Utilities,GBp,Y
+DSCV.L,discoverIE Group,FTSE250,Electronics,GBp,Y
+EDIN.L,Edinburgh Investment Trust,FTSE250,Investment Trust,GBp,Y
+ELM.L,Elementis,FTSE250,Chemicals,GBp,Y
+EMG.L,Man Group,FTSE250,Asset Management,GBp,N
+ENOG.L,Energean,FTSE250,Oil & Gas,GBp,Y
+ESNT.L,Essentra,FTSE250,Industrials,GBp,Y
+EWI.L,Edinburgh Worldwide IT,FTSE250,Investment Trust,GBp,Y
+EZJ.L,easyJet,FTSE250,Airlines,GBp,Y
+FCSS.L,Fidelity China Special Situations,FTSE250,Investment Trust,GBp,Y
+FGP.L,FirstGroup,FTSE250,Transport,GBp,Y
+FGT.L,Finsbury Growth & Income,FTSE250,Investment Trust,GBp,Y
+FORT.L,Forterra,FTSE250,Building Products,GBp,Y
+FOUR.L,4imprint Group,FTSE250,Media & Marketing,GBp,Y
+FSG.L,Foresight Group,FTSE250,Asset Management,GBp,Y
+FSV.L,Fidelity Special Values,FTSE250,Investment Trust,GBp,Y
+FUTR.L,Future,FTSE250,Media,GBp,Y
+GEN.L,Genuit Group,FTSE250,Building Products,GBp,Y
+GFTU.L,Grafton Group,FTSE250,Building Products,GBp,N
+GNC.L,Greencore Group,FTSE250,Food Producers,GBp,N
+GNS.L,Genus,FTSE250,Biotech & Agriculture,GBp,Y
+GPE.L,Great Portland Estates,FTSE250,REIT,GBp,Y
+GRG.L,Greggs,FTSE250,Food Retail,GBp,Y
+GRI.L,Grainger,FTSE250,Residential Property,GBp,Y
+HAS.L,Hays,FTSE250,Recruitment,GBp,Y
+HBR.L,Harbour Energy,FTSE250,Oil & Gas,GBp,Y
+HGT.L,HgCapital Trust,FTSE250,Investment Trust,GBp,Y
+HICL.L,HICL Infrastructure,FTSE250,Infrastructure Fund,GBp,Y
+HFG.L,Hilton Food Group,FTSE250,Food Producers,GBp,Y
+HILS.L,Hill & Smith,FTSE250,Industrials,GBp,Y
+HMSO.L,Hammerson,FTSE250,REIT,GBp,Y
+HOC.L,Hochschild Mining,FTSE250,Mining,GBp,Y
+HTWS.L,Helios Towers,FTSE250,Telecom Infrastructure,GBp,Y
+HVPE.L,HarbourVest Global PE,FTSE250,Investment Trust,GBp,N
+IBST.L,Ibstock,FTSE250,Building Products,GBp,Y
+ICGT.L,ICG Enterprise Trust,FTSE250,Investment Trust,GBp,Y
+IGG.L,IG Group Holdings,FTSE250,Financial Services,GBp,Y
+INCH.L,Inchcape,FTSE250,Automotive Distribution,GBp,Y
+INPP.L,International Public Partnerships,FTSE250,Infrastructure Fund,GBp,Y
+INVP.L,Investec,FTSE250,Banks,GBp,Y
+ITV.L,ITV,FTSE250,Media,GBp,Y
+IWG.L,IWG,FTSE250,Office Services,GBp,N
+JAM.L,JPMorgan American IT,FTSE250,Investment Trust,GBp,Y
+JDW.L,J D Wetherspoon,FTSE250,Pubs & Restaurants,GBp,Y
+JGGI.L,JPMorgan Global Growth & Income,FTSE250,Investment Trust,GBp,Y
+JMAT.L,Johnson Matthey,FTSE250,Chemicals,GBp,Y
+JMG.L,JPMorgan Emerging Markets IT,FTSE250,Investment Trust,GBp,Y
+KNOS.L,Kainos Group,FTSE250,Software,GBp,Y
+LRE.L,Lancashire Holdings,FTSE250,Insurance,GBp,N
+MAB.L,Mitchells & Butlers,FTSE250,Pubs & Restaurants,GBp,Y
+MCG.L,Mobico Group,FTSE250,Transport,GBp,Y
+MGNS.L,Morgan Sindall Group,FTSE250,Construction,GBp,Y
+MNKS.L,Monks Investment Trust,FTSE250,Investment Trust,GBp,Y
+MONY.L,Mony Group,FTSE250,Media & Internet,GBp,Y
+MOON.L,Moonpig Group,FTSE250,Online Retail,GBp,Y
+MRC.L,Mercantile Investment Trust,FTSE250,Investment Trust,GBp,Y
+MSLH.L,Marshalls,FTSE250,Building Products,GBp,Y
+MTO.L,Mitie Group,FTSE250,Business Services,GBp,Y
+MYI.L,Murray International Trust,FTSE250,Investment Trust,GBp,Y
+NCC.L,NCC Group,FTSE250,Cyber Security,GBp,Y
+OCDO.L,Ocado Group,FTSE250,Online Retail & Tech,GBp,Y
+OSB.L,OSB Group,FTSE250,Banks,GBp,Y
+OXIG.L,Oxford Instruments,FTSE250,Precision Engineering,GBp,Y
+PAG.L,Paragon Banking Group,FTSE250,Banks,GBp,Y
+PAGE.L,PageGroup,FTSE250,Recruitment,GBp,Y
+PETS.L,Pets at Home Group,FTSE250,Retail,GBp,Y
+PFD.L,Premier Foods,FTSE250,Food Producers,GBp,Y
+PHP.L,Primary Health Properties,FTSE250,REIT,GBp,Y
+PIN.L,Pantheon International,FTSE250,Investment Trust,GBp,Y
+PLUS.L,Plus500,FTSE250,Financial Services,GBp,N
+PNL.L,Personal Assets Trust,FTSE250,Investment Trust,GBp,Y
+PNN.L,Pennon Group,FTSE250,Utilities,GBp,Y
+PTEC.L,Playtech,FTSE250,Gambling Tech,GBp,N
+PZC.L,PZ Cussons,FTSE250,Consumer Goods,GBp,Y
+QLT.L,Quilter,FTSE250,Wealth Management,GBp,Y
+QQ.L,QinetiQ Group,FTSE250,Aerospace & Defence,GBp,Y
+RAT.L,Rathbones Group,FTSE250,Wealth Management,GBp,Y
+RCP.L,RIT Capital Partners,FTSE250,Investment Trust,GBp,Y
+RHIM.L,RHI Magnesita,FTSE250,Industrials,GBp,N
+RICA.L,Ruffer Investment Company,FTSE250,Investment Trust,GBp,N
+ROR.L,Rotork,FTSE250,Industrials,GBp,Y
+RPI.L,Raspberry Pi Holdings,FTSE250,Technology Hardware,GBp,Y
+RS1.L,RS Group,FTSE250,Distribution,GBp,Y
+RSW.L,Renishaw,FTSE250,Precision Engineering,GBp,Y
+SAFE.L,Safestore Holdings,FTSE250,REIT,GBp,Y
+SAIN.L,Scottish American IT,FTSE250,Investment Trust,GBp,Y
+SCT.L,Softcat,FTSE250,IT Reseller,GBp,Y
+SHC.L,Shaftesbury Capital,FTSE250,REIT,GBp,Y
+SMWH.L,WH Smith,FTSE250,Travel Retail,GBp,Y
+SNR.L,Senior,FTSE250,Aerospace,GBp,Y
+SRP.L,Serco Group,FTSE250,Outsourcing,GBp,Y
+SSON.L,Smithson Investment Trust,FTSE250,Investment Trust,GBp,Y
+SSPG.L,SSP Group,FTSE250,Food Services,GBp,Y
+SUPR.L,Supermarket Income REIT,FTSE250,REIT,GBp,Y
+SVS.L,Savills,FTSE250,Real Estate Services,GBp,Y
+TATE.L,Tate & Lyle,FTSE250,Food Ingredients,GBp,Y
+TBCG.L,TBC Bank Group,FTSE250,Banks,GBp,Y
+TCAP.L,TP ICAP Group,FTSE250,Financial Services,GBp,N
+TEM.L,Templeton Emerging Markets IT,FTSE250,Investment Trust,GBp,Y
+TEP.L,Telecom Plus,FTSE250,Utilities,GBp,Y
+THRG.L,BlackRock Throgmorton Trust,FTSE250,Investment Trust,GBp,Y
+TMPL.L,Temple Bar Investment Trust,FTSE250,Investment Trust,GBp,Y
+TPK.L,Travis Perkins,FTSE250,Building Products,GBp,Y
+TRIG.L,The Renewables Infrastructure Group,FTSE250,Infrastructure Fund,GBp,Y
+TRN.L,Trainline,FTSE250,Travel Tech,GBp,Y
+UKW.L,Greencoat UK Wind,FTSE250,Infrastructure Fund,GBp,Y
+USA.L,Baillie Gifford US Growth,FTSE250,Investment Trust,GBp,Y
+VCT.L,Victrex,FTSE250,Chemicals,GBp,Y
+VSVS.L,Vesuvius,FTSE250,Industrials,GBp,Y
+VTY.L,Vistry Group,FTSE250,Housebuilders,GBp,Y
+WIZZ.L,Wizz Air Holdings,FTSE250,Airlines,GBp,N
+WKP.L,Workspace Group,FTSE250,REIT,GBp,Y
+WOSG.L,Watches of Switzerland Group,FTSE250,Luxury Retail,GBp,Y
+WWH.L,Worldwide Healthcare Trust,FTSE250,Investment Trust,GBp,Y
+WISE.L,Wise,FTSE250,Fintech,GBp,Y
+XPS.L,XPS Pensions Group,FTSE250,Financial Services,GBp,Y
+3IN.L,3i Infrastructure,FTSE250,Infrastructure Fund,GBp,N
+SGLN.L,iShares Physical Gold ETC,ETC,Gold ETC,GBp,N
+GOOGL,Alphabet (Google) Class A,US,Technology,USD,N

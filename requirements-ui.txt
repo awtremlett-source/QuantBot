@@ -1,0 +1,30 @@
+# UI dependencies -- the MANUAL app (manual/) ONLY. Never the engine.
+#
+# ################  DO NOT INSTALL THESE INTO .venv  ########################
+# These pins CONFLICT with the engine's requirements.txt, which is why the two
+# apps keep two environments:
+#
+#     package      engine (requirements.txt)   manual (here)
+#     pandas       3.0.2                       2.3.3
+#     yfinance     1.4.1                       0.2.66
+#     matplotlib   3.10.8                      3.10.7
+#     pytest       9.1.0                       9.1.1
+#
+# Installing this file into .venv would silently downgrade the libraries the
+# live paper engine's forward track record is being produced with. Reconciling
+# the two pin sets is a LATER, firewall-aware decision -- it is deliberately
+# NOT done here (see docs/merge/MERGE_PLAN.md, stage 3).
+#
+# Install into a separate venv at the repo root:
+#     py -3.13 -m venv .venv-ui
+#     .venv-ui\Scripts\python.exe -m pip install -r requirements-ui.txt
+#
+# Versions below are the ones TradeScout is running on TODAY (2026-09-20),
+# pinned exactly so the app keeps behaving as it behaved when it was tested.
+PySide6==6.11.1
+yfinance==0.2.66
+pandas==2.3.3
+numpy==2.3.4
+mplfinance==0.12.10b0
+matplotlib==3.10.7
+pytest==9.1.1

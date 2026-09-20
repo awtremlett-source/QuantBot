@@ -217,6 +217,30 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
   armed decision day (bars=1, the 08-06 bar processed under the armed state);
   disarmed -> normal digest, no flag. Monthly drill cadence begins (GUI:
   Arm -> run -> Disarm).
+- TRADESCOUT MERGED IN, ENGINE UNTOUCHED (2026-09-20, merge stages 0-2 of 6).
+  The manual paper-trading app now lives at manual/ (copied, never moved, from
+  Documents/TradeScout @ 29e8e74 "50% money ladder + friendlier GUI"; that repo
+  and its GitHub remote are untouched, both tagged pre-merge-2026-09-18). Its
+  131 tests run from tests/manual/; its database/cache live in data/manual/
+  (gitignored); launcher = tools_ui/TradeScout.bat (NOT tools/, which is engine
+  territory). THE WALL (tests/wall/, 18 tests, each with a planted-violation
+  birth certificate in tests/museum/wall_violations/ and demonstrated RED on a
+  sandbox copy before green): the engine never imports manual/PySide6/tools_ui
+  (ast scan, dynamic imports included); manual/ may READ the engine's books
+  ONLY through manual/bot_readonly.py (SQLite mode=ro URI - SQLite itself
+  raises "attempt to write a readonly database", proven against the live DB
+  with its hash unchanged); the engine's requirements + one-command installer
+  stay headless; the banned legacy-project tokens appear nowhere in the merged
+  trees. ENGINE PROVEN UNMOVED: tools/engine_fingerprint.py (new - the ONLY
+  file added to an engine folder) hashes 52 files (48 engine + 4 config) ->
+  25c9ec06bb13167f7cb8fde7e054251ad8243a4c9bfe84a9a1b75babbd2477ee, IDENTICAL
+  before and after; engine suite still 198 green (216 with the wall). TWO
+  ENVIRONMENTS ON PURPOSE: requirements-ui.txt pins CONFLICT with the engine's
+  (pandas 2.3.3 vs 3.0.2, yfinance 0.2.66 vs 1.4.1) and must never be installed
+  into .venv; inside .venv the manual suite is deliberately not collected and
+  says so. Journal + trials backed up off-repo first and verified (10 files,
+  82,320,834 bytes, every SHA-256 matching). Plan + the two-books rule:
+  docs/merge/MERGE_PLAN.md (stages 3-6 are PROPOSALS only, nothing agreed).
 
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
@@ -236,3 +260,13 @@ Phase: 1 (Foundations).  Updated: 2026-08-07.
 - T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
 - Daily auto clock-sync task still to set up (admin).
 - gh CLI not installed → use plain git for GitHub ops.
+- Manual app's EXISTING trade journal NOT migrated: it is still at
+  Documents/TradeScout/cache/trade_scout.db; the copy in this repo starts
+  empty. Migrating it is a decision (PROPOSE→GO), not a side effect.
+- No .venv-ui yet: the manual app currently runs on the system Python 3.13,
+  which happens to have the UI deps. Create .venv-ui from requirements-ui.txt
+  to make that deliberate rather than lucky.
+- Repo-wide `ruff check .` (16) and `mypy --strict .` (623) now report against
+  the moved app only — zero in the engine, zero in new code. Engine-scoped
+  commands stay clean; clearing the debt needs pyproject.toml, which this merge
+  froze (see MERGE_PLAN "What stage 0-2 deliberately did NOT do").

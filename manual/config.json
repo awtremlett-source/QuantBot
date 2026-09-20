@@ -1,0 +1,13 @@
+{
+  "bankroll_gbp": 10000,
+  "risk_pct": 1.0,
+  "atr_stop_mult": 2.0,
+  "history_period": "2y",
+  "chunk_size": 40,
+  "chunk_pause_s": 2.0,
+  "min_turnover_gbp": 1000000,
+  "stamp_duty_pct": 0.5,
+  "ptm_levy_gbp": 1.0,
+  "ptm_threshold_gbp": 10000,
+  "top_n": 25
+}

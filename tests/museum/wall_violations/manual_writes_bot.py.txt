@@ -1,0 +1,20 @@
+# PLANTED VIOLATION — the manual app reaching into the bot's books.
+# Arrives innocently: "I just want to show the bot's equity on the home tab,
+# and while I'm here I may as well correct that one bad row."
+from __future__ import annotations
+
+import sqlite3
+from pathlib import Path
+
+BOT_DB = Path("data/quantbot.db")
+BOT_TRIALS = Path("data/trials.jsonl")
+
+
+def fix_that_one_row() -> None:
+    connection = sqlite3.connect(BOT_DB)
+    connection.execute("UPDATE paper_equity SET equity = 10500.0")
+    connection.execute("DELETE FROM paper_orders WHERE order_id = 1")
+    connection.commit()
+    connection.close()
+    with open(BOT_TRIALS, "a", encoding="utf-8") as handle:
+        handle.write('{"note": "looked better without that trial"}\n')

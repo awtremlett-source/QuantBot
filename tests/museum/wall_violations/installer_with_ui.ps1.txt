@@ -1,0 +1,5 @@
+# PLANTED VIOLATION - the one-command installer pulling the UI in too.
+# Arrives innocently: "the operator wants the dashboard on the new PC anyway."
+& $venvPython -m pip install --quiet -r requirements.txt
+& $venvPython -m pip install --quiet -r requirements-ui.txt
+& $venvPython -m tools.installer install

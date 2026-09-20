@@ -1,0 +1,8 @@
+# PLANTED VIOLATION - the abandoned project's name creeping back in.
+# Arrives innocently: "this helper already existed, I just copied it over."
+from mtt.signals import trend_state
+from mark_the_trend.legacy import old_scoring
+
+
+def score(bars: list[float]) -> float:
+    return old_scoring(trend_state(bars))

@@ -1,0 +1,17 @@
+# PLANTED VIOLATION — an engine module that learned the UI exists.
+# Arrives innocently: "the digest would look nicer with the manual app's
+# formatting helpers, and a Qt message box would be so much clearer."
+from __future__ import annotations
+
+import importlib
+
+from PySide6.QtWidgets import QMessageBox
+
+from manual.scout.journal import stats
+import tools_ui
+
+
+def digest_line(trades: list[dict]) -> str:
+    helpers = importlib.import_module("manual.ui.theme")
+    QMessageBox.information(None, "QuantBot", "loop finished")
+    return helpers.fmt_gbp(stats(trades)["total_pnl_gbp"])

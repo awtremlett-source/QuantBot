@@ -28,6 +28,11 @@ var/
 # Trial log (append-only run tally; lives under data/ but pin the pattern too).
 *.jsonl
 
+# Manual app (manual/) local state: its SQLite DB, price cache and backups.
+# data/ above already covers it -- pinned explicitly so a future narrowing of
+# that rule cannot let the manual app's database into the repo.
+data/manual/
+
 # === Logs & run artifacts ===
 logs/
 *.log
