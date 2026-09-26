@@ -25,8 +25,10 @@ ENGINE_DIRS: tuple[str, ...] = (
     "research", "risk", "strategies", "tools",
 )
 
-# Top-level module names the engine may never import.
-FORBIDDEN_ROOTS = frozenset({"manual", "tools_ui", "PySide6", "shiboken6"})
+# Top-level module names the engine may never import. `qb2` is here because v1
+# is frozen: if v1 imported v2, v1's behaviour would start depending on v2's
+# development and the baseline v2 must beat would stop being independent of it.
+FORBIDDEN_ROOTS = frozenset({"manual", "tools_ui", "qb2", "PySide6", "shiboken6"})
 
 MUSEUM = REPO_ROOT / "tests" / "museum" / "wall_violations"
 

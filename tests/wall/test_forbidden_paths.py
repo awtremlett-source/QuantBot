@@ -20,8 +20,11 @@ MUSEUM = REPO_ROOT / "tests" / "museum" / "wall_violations"
 # The banned tokens, matched case-insensitively.
 FORBIDDEN: tuple[str, ...] = ("mtt", "mark_the_trend")
 
-# Everything this merge created or moved in.
-SCANNED_TREES: tuple[str, ...] = ("manual", "tests/manual", "tools_ui", "docs/merge")
+# Everything the merge created or moved in, plus everything v2 has added since.
+SCANNED_TREES: tuple[str, ...] = (
+    "manual", "tests/manual", "tools_ui", "docs/merge",
+    "qb2", "tests/qb2", "docs/plan", "tests/plan",
+)
 
 
 def scanned_files() -> list[Path]:

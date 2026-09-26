@@ -1,0 +1,19 @@
+# PLANTED VIOLATION - qb2 reaching back into the frozen v1 engine.
+# Arrives innocently: "v1 already has a backtester and a store, why write them
+# twice?" Because v1 is producing a live forward record and is frozen: the
+# moment qb2 imports it, v1's behaviour depends on qb2's development, the
+# fingerprint stops meaning anything, and the baseline v2 is measured against is
+# no longer independent of v2.
+from __future__ import annotations
+
+from data_store import store
+from research.backtester import run_backtest
+import execution.paper_loop as v1_loop
+from monitors.meters import data_freshness
+
+
+def borrow_v1(db) -> None:
+    conn = store.connect(db)
+    run_backtest(conn)
+    v1_loop.main(["--db", str(db)])
+    data_freshness(conn, "2026-09-26")

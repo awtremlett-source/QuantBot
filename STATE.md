@@ -1,7 +1,8 @@
 # STATE.md — resume in seconds
 
 Phase: v2 PLANNED (the Simons direction).  Updated: 2026-09-21.
-NEXT BOX: S1 — qb2 skeleton + its own pinned environment + wall/fingerprint tests.
+NEXT BOX: QT-05 — revise the plan (the two-part bot/advisor design).
+S1 IS DONE (2026-09-26): qb2 skeleton + .venv-qb2 + the qb2 wall.
 PLAN: docs/plan/PLAN_V2.md (gated by tests/plan/test_plan_v2.py).
 
 ## Settled decisions
@@ -301,6 +302,31 @@ PLAN: docs/plan/PLAN_V2.md (gated by tests/plan/test_plan_v2.py).
   NOT EXISTS never altered it). Verified backup taken; the rebuild needs
   PROPOSE->GO (MERGE_PLAN stage 3b).
 
+- S1 DONE (2026-09-26, QT-04): qb2/ exists as a SKELETON — importable and empty
+  of logic (data, research, signals, model, sizing, execution, ui, tools; no
+  signals, no model, no orders). ONE fresh environment: requirements-qb2.txt ->
+  .venv-qb2, all 13 pins resolving exactly (pandas 3.0.2 + yfinance 1.4.1 +
+  PySide6 6.11.1 together — the single-environment claim in PLAN_V2 §8 is now
+  proven, not asserted), 43 transitive versions recorded in
+  docs/plan/ENV_QB2.md. WHAT qb2 INHERITS FROM QT-02 (nothing rebuilt that
+  already works): the one-way wall and its museum of planted violations; the two
+  doorways to v1's books — manual/bot_readonly.py (short-lived, mode=ro, lock
+  timeout) and manual/bot_governance.py (fixed allow-list, engine interpreter,
+  repo-root cwd, one at a time, every press logged); the journal, the five
+  monitors and the data-layer laws; the Bot tab's habit of putting an age on
+  every figure. WALL EXTENDED 44 -> 52: qb2 may not import a v1 engine package
+  (relative imports inside qb2 are fine; a bare `from research import ...` would
+  resolve to V1's research, which is exactly the hazard), v1 may not import qb2,
+  the v1 fingerprint must not cover qb2, the three environments hold no leakage,
+  and the banned-name scan now covers qb2/ tests/qb2/ docs/plan/ tests/plan/.
+  THE CLOCK BUG IS FIXED: the status fixture builds on UTC like run_drill does,
+  SCAR #24 written, and tests/museum/test_drill_utc_local_skew.py recreates the
+  BST hour on demand — re-proved red against HEAD's own fixture, then green.
+  Engine 198/0 failed. v1 UNTOUCHED: fingerprint 4add56ec...743b6 identical, and
+  v1's .venv pip-freeze identical (54 packages, d0e9dd31...) with no UI package
+  leaked. CLAUDE.md trimmed 3957 -> 3540 chars with all 12 law lines
+  byte-identical.
+
 ## Known gap / next
 - §7 VALIDATION FIREWALL: DONE (all 3 parts; birth certificate passed — see Done).
   Deferred hardening for later: purged/embargoed CPCV; sweep-level deflation + cross-ticker
@@ -313,7 +339,8 @@ PLAN: docs/plan/PLAN_V2.md (gated by tests/plan/test_plan_v2.py).
   #2 until the rubric passes (all 7 conditions).
 
 ## Open flags
-- FLAKY TEST found 2026-09-21 00:41 (recorded, NOT fixed — QT-03 was docs-only):
+- FLAKY TEST — FIXED 2026-09-26 (QT-04). Kept here for the story; the scar is
+  #24 and the guard is tests/museum/test_drill_utc_local_skew.py. As found:
   tests/monitors/test_status.py::test_drill_fires_both_meters_and_leaves_no_trace
   fails between 00:00 and 01:00 UK summer time. Its fixture builds bars with
   date.today() (LOCAL) while run_drill defaults to UTC; during the hour when BST

@@ -16,7 +16,9 @@ secrets/
 
 # === Bulk price data & archives (RAW/CLEAN files, parquet, zips, db) ===
 # (data_store/ holds CODE — the storage API — so it stays tracked.)
-data/
+# Anchored to the repo ROOT: /data/ is the engine's store and stays out, but a
+# package's own data/ subpackage (e.g. qb2/data/) is CODE and must be tracked.
+/data/
 var/
 *.db
 *.db-wal
@@ -48,6 +50,10 @@ pms_artifacts/
 # === Python ===
 .venv/
 .venv-ui/
+# qb2's single environment. `venv` also writes its own .gitignore inside
+# itself, but the policy belongs here, where it survives the folder being
+# rebuilt by an older tool.
+.venv-qb2/
 venv/
 env/
 __pycache__/

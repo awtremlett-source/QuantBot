@@ -9,7 +9,10 @@ the running order. The v1 backlog is archived whole at
 
 ## v2 — one box per stage (detail: docs/plan/PLAN_V2.md)
 - [x] S0 Plan + plan gate (2026-09-21; gate proven red before green)
-- [ ] S1 `qb2/` skeleton + its own pinned env + wall/fingerprint tests. NEXT BOX
+- [x] S1 `qb2/` skeleton + its own pinned env + wall/fingerprint tests (2026-09-26):
+      8 importable empty subpackages · .venv-qb2 with 13 pins resolved exactly
+      (docs/plan/ENV_QB2.md) · wall 44 -> 52 · v1 fingerprint and pip-freeze
+      both unchanged. NEXT BOX: QT-05, the two-part plan revision.
 - [ ] S2 Cost model + fill recorder + READ-ONLY T212 demo client + throttle + killswitch
 - [ ] S3 ETF universe PROPOSE→GO + front-door ingest + census ≥95% CLEAN + first chart
 - [ ] S4 Firewall v2: pre-registration file, search trial logging, known-null re-proved on ETFs
@@ -42,13 +45,11 @@ carry on exactly as they are. v2 replaces v1 only by beating it out-of-sample at
 - [ ] Flatten-all half of the killswitch still TBD; monthly fire-drill via the GUI
 
 ## Known defects (found, recorded, not yet fixed)
-- [ ] FLAKY TEST, nightly: `tests/monitors/test_status.py::test_drill_fires_both_meters_and_leaves_no_trace`
-      fails between 00:00 and 01:00 UK summer time. Its fixture builds bars with
-      `date.today()` (LOCAL) while `run_drill` defaults to UTC, so during the hour
-      when BST is a day ahead the drill's doctored mark sorts BEFORE the fixture's
-      healthy one and the drawdown light cannot fire. Fixture bug, NOT a broken
-      monitor: the live drill is unaffected (its newest real mark is far older).
-      Fix = build the fixture on the UTC date. Found 2026-09-21 00:41.
+- [x] FLAKY TEST, nightly (found 2026-09-21, FIXED 2026-09-26): the status fixture
+      built its bars on the LOCAL date while `run_drill` defaults to UTC, so for one
+      hour a night under BST the drill's doctored mark sorted before the fixture's
+      healthy one and the drawdown light could not fire. Fixture now builds on UTC;
+      SCAR #24; tests/museum/test_drill_utc_local_skew.py recreates the hour.
 - [ ] 52 inherited type errors in 5 `manual/scout/*` modules — counts and burn-down
       in `docs/merge/TYPING_DEBT.md`
 - [ ] Manual suite prints 2 pre-existing Qt "access violation" lines at teardown

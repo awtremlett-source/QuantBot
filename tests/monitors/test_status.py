@@ -10,7 +10,7 @@ import glob
 import hashlib
 import tempfile
 from collections.abc import Sequence
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -50,7 +50,10 @@ def db(tmp_path: Path) -> Path:
     store.init_db(the_db)
     conn = store.connect(the_db)
     try:
-        today = date.today()
+        # UTC, because run_drill's own clock is UTC. Building this fixture on
+        # the LOCAL date made the suite fail for one hour every night under
+        # British Summer Time -- see tests/museum/test_drill_utc_local_skew.py.
+        today = datetime.now(timezone.utc).date()
         days = [(today - timedelta(days=i)).isoformat() for i in range(40)]
         store.write_price_clean(conn, [_bar(d) for d in sorted(days)])
         conn.execute(

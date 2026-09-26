@@ -1,0 +1,34 @@
+# qb2 — ONE environment for v2's engine AND its interface.
+#
+# This is the real fix for the pin conflict that forces v1 to run two
+# environments: v1's window was written against pandas 2.x / yfinance 0.2.x,
+# while v1's engine runs pandas 3.x / yfinance 1.x, so they can never share an
+# interpreter. qb2 has no inherited code, so it takes the MODERN pins and the
+# UI toolkit together, and there is only one environment to reason about.
+#
+# v1's .venv and .venv-ui are FROZEN. Never install this file into either.
+#
+# Install (from the repo root):
+#     py -3.13 -m venv .venv-qb2
+#     .venv-qb2\Scripts\python.exe -m pip install -r requirements-qb2.txt
+#
+# Exact resolved versions, including transitive ones: docs/plan/ENV_QB2.md
+
+# --- the engine libraries, at v1's engine pins (deliberately identical) ---
+yfinance==1.4.1
+pandas==3.0.2
+numpy==2.4.4
+pyarrow==24.0.0
+requests==2.33.1
+scikit-learn==1.8.0
+statsmodels==0.14.6
+matplotlib==3.10.8
+
+# --- the interface ---
+PySide6==6.11.1
+
+# --- quality gates ---
+pytest==9.1.0
+hypothesis==6.155.3
+ruff==0.15.17
+mypy==2.1.0
