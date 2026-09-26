@@ -1,15 +1,21 @@
 # STATE.md — resume in seconds
 
 Phase: v2 PLANNED (the Simons direction).  Updated: 2026-09-21.
-NEXT BOX: QT-05 — revise the plan (the two-part bot/advisor design).
-S1 IS DONE (2026-09-26): qb2 skeleton + .venv-qb2 + the qb2 wall.
-PLAN: docs/plan/PLAN_V2.md (gated by tests/plan/test_plan_v2.py).
+NEXT BOX: S2 — the broker doorway, READ-ONLY (T212 demo client, throttle,
+killswitch, fill recorder, cost model, pre-trade price check), plus the two
+facts to verify against T212's own docs: stop-order types, and whether one
+share can hold two positions. S2 also gives qb2 its own fingerprint.
+S0 and S1 ARE DONE (2026-09-26): both plans gated; qb2 skeleton + .venv-qb2.
+PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
+PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 
 ## Settled decisions
 - Repo root: c:\Users\mtrem\TRADING. Remote: github.com/awtremlett-source/QuantBot.
   LOCAL git identity: awtremlett-source <…@users.noreply.github.com>.
 - Prior work: ARCHIVED to archive/ (gitignored), building fresh.
-- Demo capital: £10,000 GBP. £100/day = 1%/day = fantasy; honesty anchor only.
+- Demo capital: £10,000 GBP. (SUPERSEDED 2026-09-26: the £100/day anchor is
+  retired — "forget the £10k, we are looking for percentages". Judged in PERCENT
+  after costs against a do-nothing index fund; see PLAN_V3 P3.)
 - Universe: focused ~100 liquid US names (specific list TBD via PROPOSE→GO).
 - Machine: sometimes-off laptop → loops catch-up-safe.
 - Data sources (locked): Price = yfinance (daily OHLCV; ~15-min delay, fine at 4h
@@ -30,6 +36,26 @@ PLAN: docs/plan/PLAN_V2.md (gated by tests/plan/test_plan_v2.py).
   time, continuous severity blending, early-and-small sizing, blunt stress rules.
 - Validation (locked): walk-forward + final untouched holdout; backtests simulate live
   data delay; Deflated Sharpe (penalised by number of trials).
+- DIRECTION CHANGE (2026-09-26): TWO PARTS, agreed with the operator and written
+  up verbatim in docs/plan/PLAN_V3.md. A BOT that trades by itself on 30% of the
+  account — automatic, holds days, cheapest instruments, Simons' METHOD (many
+  small patterns, one combined calibrated model, strict costs, no overriding on a
+  hunch) — and an ADVISOR on 70% that ONLY EVER SUGGESTS hold / exit / new buy
+  with plain-word reasons, which he then places himself. Weeks to 12 months, and
+  nothing held over a year. Judged in PERCENT after costs against a do-nothing
+  global index fund: "forget the £10k, we are looking for percentages." 16
+  decisions P1-P16, each with a named enforcer; 14 stages S0-S13 with phone
+  alerts deliberately LAST. The bot keeps its 30% even after a poor run (his
+  words: it "should not get less for doing a worse job"); revisiting the split is
+  a later conversation, and the stated aim is full automation. Trailing stop on
+  EVERY trade, only ever raised, held at T212 so it survives the laptop being
+  off. Brakes at 10% and 15% below each pot's own peak — STARTING FIGURES, to be
+  tested on 2008/2020/2022 and against false alarms before they are believed.
+  The honest limit is recorded in the plan: no shorting, no borrowing, delayed
+  free data, so we copy Simons' method and neither his speed nor his returns.
+  THREE OPEN DECISIONS: D1 the advisor's risk rule (a 25% primary with a 15% stop
+  risks ~2.6% of the account, over the 1% rule), D2 how the bot sizes, D3 which
+  benchmark. Defaults recommended in the plan.
 - DIRECTION CHANGE (2026-09-21): v2, the Simons direction — many thin validated
   edges combined into ONE calibrated probability per instrument, searched for by
   machine under pre-registration, sized by a ladder that must first beat equal

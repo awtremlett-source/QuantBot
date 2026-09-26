@@ -1,5 +1,7 @@
 # PLAN v2 — QuantBot, the Simons direction
 
+> **Superseded by [docs/plan/PLAN_V3.md](PLAN_V3.md) (2026-09-26); kept for history.**
+
 Written 2026-09-21. **Nothing in here is built yet.** This is the plan and the
 order; each stage below is one box of work, and every one of them has to prove
 itself before the next starts.
