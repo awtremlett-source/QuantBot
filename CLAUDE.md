@@ -15,17 +15,11 @@ catch-up-safe.
 - Tests: python -m pytest -q · Lint/types: ruff check . && mypy --strict .
 - Run: python -m ingest/reconcile --tickers T --db PATH · python -m execution.paper_loop --db data/quantbot.db [--dry-run]
 
-## Architecture map (one line per area)
-- ingest/ ONLY writer to the data store (front door, §5); unit/scale checks here
-- data_store/ storage API; SQLite(WAL) system-of-record; RAW vs CLEAN (parquet deferred)
-- research/ §7 firewall, backtester, labelers, feature builders
-- strategies/ one file per strategy + trigger_fixture / anti_fixture
-- risk/ sizing (1% rule wins), ratchet exits, killswitch
-- execution/ T212 demo client + paper book
-- monitors/ meters, canary, daily digest
-- tools/ operational scripts
-- tests/ mirrors tree; tests/museum/ = incident regression fixtures
-- docs/ SCARS.md, EDUCATION.md, FOUNDING_DIRECTIVE.md, sessions/
+## Architecture map (full per-folder map → docs/MANIFEST.md)
+- v1 FROZEN, still running: ingest/ (only writer) · data_store/ · research/ ·
+  strategies/ · risk/ · execution/ · monitors/ · tools/
+- v2: qb2/ — data research signals model sizing execution ui tools → qb2/README.md
+- manual/ operator's own app · tests/ mirrors the tree · tests/museum/ = incidents
 
 ## Locked decisions (rationale → STATE.md · v2 detail → docs/plan/PLAN_V2.md)
 - Price=yfinance daily OHLCV, delayed; sources decoupled, point-in-time.

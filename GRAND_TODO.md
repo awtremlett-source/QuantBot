@@ -11,10 +11,13 @@ this page is only the running order. Earlier backlogs are archived whole at
 ## The stages (detail: docs/plan/PLAN_V3.md)
 - [x] S0 Plans V2 + V3, each pinned by its own gate (2026-09-21 / 2026-09-26)
 - [x] S1 `qb2` skeleton + one fresh pinned env + the qb2 wall (2026-09-26, 22c67f7)
-- [ ] S2 Broker doorway, READ-ONLY: T212 demo client, throttle, killswitch, fill
-      recorder, cost model, pre-trade price check. VERIFY against T212's own docs
-      (URL + date): stop-order types, and whether one share can hold two
-      positions. Also: qb2 gets its own fingerprint, separate from v1's. NEXT BOX
+- [x] S2a Broker facts + READ-ONLY demo client (2026-09-27): docs/t212/FACTS.md
+      (one row per fact, sourced and dated) · qb2/execution/t212_client.py, GET-only,
+      practice-host-only, per-endpoint throttle, 429 back-off · no trailing stop and
+      no amend endpoint at T212 -> the stop is OURS (P10) · no price for an instrument
+      we do not hold -> S2b must design around it · auth flag resolved
+- [ ] S2b Cost model, fill recorder, qb2 killswitch, pre-trade price check WITHOUT a
+      broker quote, and qb2's own fingerprint. NEXT BOX
 - [ ] S3 Both universes (bot list PROPOSE→GO · advisor filtered · no-overlap test)
       + ingest incl. dividends, FX and earnings dates + census ≥95% CLEAN + chart
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
@@ -30,9 +33,12 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [ ] S10 Demo execution: batched open orders, stops held at T212 and raised
       daily, daily reconciliation, killswitch fire-drill. **Forward clock starts**
 - [ ] S11 One app: TradeScout rebuilt with advisor screens AND bot screens
-- [ ] S12 Forward paper run → graduation rubric (DSR ≥ 0.95 at then-current N)
-      → Stocks ISA at a size that does not matter yet
-- [ ] S13 Phone alerts — LAST, as asked; prefer T212's own mobile app if it can
+- [ ] S12 Forward paper run → graduation rubric (DSR ≥ 0.95 at then-current N).
+      Demo only; no real money at this stage
+- [ ] S13 Move to the always-on home PC, every check re-proved there. Comes BEFORE
+      real money: our code holds the stops, so it must be a machine that stays awake
+- [ ] S14 Stocks ISA at a size that does not matter yet — only after S13
+- [ ] S15 Phone alerts — LAST, as asked; prefer T212's own mobile app if it can
 
 Every stage ships an Exit gate (proven red-on-broken, #9), an Enforcer and a
 Built/Wired/Armed checklist.
@@ -50,10 +56,15 @@ checked in every box.
 - [ ] OPERATOR ACTION: daily auto clock-sync scheduled task (needs admin)
 - [ ] Run the loop once to clear the catch-up gap (31 trading days unprocessed as
       of 2026-09-21; the loop is catch-up-safe)
-- [ ] Verify T212 auth scheme against the official docs before ANY order (also S2)
+- [x] Verify T212 auth scheme against the official docs (2026-09-27): Basic,
+      base64 of KEY:SECRET — docs/t212/FACTS.md row a
 - [ ] Flatten-all half of the killswitch still TBD; monthly fire-drill via the GUI
 
 ## Known defects (found, recorded, not yet fixed)
+- [ ] `.env.example` still says the T212 auth scheme is "to verify" and may be a
+      single api-key header. It is not: it is Basic KEY:SECRET (FACTS.md row a).
+      The file sits inside the engine fingerprint, so a box that may change engine
+      config must correct the comment and prune the unused name.
 - [ ] 52 inherited type errors in 5 `manual/scout/*` modules — counts and burn-down
       in `docs/merge/TYPING_DEBT.md`
 - [ ] Manual suite prints 2 pre-existing Qt "access violation" lines at teardown

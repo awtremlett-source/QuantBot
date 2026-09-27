@@ -7,6 +7,20 @@ this logic leaves NVDA or this laptop.
 - Python 3.13.7 in .venv; 12 pinned deps (requirements.txt).
 - Windows 10 laptop, sometimes-off → every loop is catch-up-safe by design.
 
+## ARCHITECTURE MAP (moved here from CLAUDE.md 2026-09-27 to keep it small)
+- ingest/ ONLY writer to the data store (front door, §5); unit/scale checks here
+- data_store/ storage API; SQLite(WAL) system-of-record; RAW vs CLEAN (parquet deferred)
+- research/ §7 firewall, backtester, labelers, feature builders
+- strategies/ one file per strategy + trigger_fixture / anti_fixture
+- risk/ sizing (1% rule wins), ratchet exits, killswitch
+- execution/ T212 demo client + paper book
+- monitors/ meters, canary, daily digest
+- tools/ operational scripts
+- tests/ mirrors tree; tests/museum/ = incident regression fixtures
+- docs/ SCARS.md, EDUCATION.md, FOUNDING_DIRECTIVE.md, sessions/
+- manual/ the operator's own app (walled off; two read-only doorways to v1)
+- qb2/ v2 skeleton: data research signals model sizing execution ui tools
+
 ## DATA
 - NVDA: 2,898 CLEAN daily bars, 2015-01-02 → present. Splits pass continuity
   (2021 4:1 boundary move 0.90%; 2024 10:1 move 0.74%).

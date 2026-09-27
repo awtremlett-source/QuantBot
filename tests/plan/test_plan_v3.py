@@ -76,10 +76,16 @@ OPERATOR_WORDS: tuple[str, ...] = (
     "A phone alert should be the last thing to do, unless you can send a message "
     "directly from the Trading 212 app on mobile.",
     "im using an ISA account, but before that we are using a paper trader.",
+    "the project will LATER be ported to a always on home PC, that comes at the "
+    "very end of development.",
+    "well the stop needs to come from either Trading 212 or the algorithm.",
 )
 
 DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 17))
-STAGE_IDS: tuple[str, ...] = tuple(f"S{n}" for n in range(14))
+STAGE_IDS: tuple[str, ...] = (
+    "S0", "S1", "S2a", "S2b", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
+    "S11", "S12", "S13", "S14", "S15",
+)
 STAGE_LINES: tuple[str, ...] = ("Exit gate:", "Enforcer:", "Built/Wired/Armed:")
 
 # Figures he chose. A round number nobody guards is a round number that drifts.
@@ -131,7 +137,7 @@ def decision_blocks() -> dict[str, str]:
 
 
 def stage_blocks() -> dict[str, str]:
-    return _blocks(plan_text(), r"^###\s+(S\d+)\b")
+    return _blocks(plan_text(), r"^###\s+(S\d+[a-z]?)\b")
 
 
 # ------------------------------------------------------------------- (a) ---
@@ -209,12 +215,33 @@ def test_every_stage_states_its_gate_enforcer_and_checklist(stage: str) -> None:
     assert missing == [], f"{stage} is missing: {missing}"
 
 
+def _stage_order(name: str) -> tuple[int, str]:
+    digits = "".join(c for c in name[1:] if c.isdigit())
+    letter = name[1 + len(digits):]
+    return int(digits), letter
+
+
 def test_the_last_stage_is_the_phone_alerts() -> None:
     """He asked for it last, so it is last -- not quietly promoted."""
     blocks = stage_blocks()
-    last = max(blocks, key=lambda name: int(name[1:]))
-    assert last == "S13", f"the highest stage is {last}, expected S13"
+    last = max(blocks, key=_stage_order)
+    assert last == "S15", f"the highest stage is {last}, expected S15"
     assert "phone alert" in blocks[last].lower()
+
+
+def test_the_home_pc_move_comes_before_any_real_money() -> None:
+    """He put the home-PC port at "the very end"; real money waits for it.
+
+    The stop is run by our own code (P10), so it only watches prices while the
+    machine is awake. Real money before the always-on machine would mean a stop
+    that sleeps when the laptop does.
+    """
+    text = plan_text()
+    home = text.index("### S13")
+    isa = text.index("### S14")
+    assert home < isa, "S13 (the home PC) must come before S14 (the ISA)"
+    assert "home" in stage_blocks()["S13"].lower()
+    assert "isa" in stage_blocks()["S14"].lower()
 
 
 def test_s1_is_recorded_as_already_done() -> None:
@@ -272,3 +299,49 @@ def test_the_advisor_only_ever_suggests() -> None:
     """The one thing that must not be misread: it does not trade for him."""
     lowered = flattened().lower()
     assert "only suggests" in lowered or "only ever suggests" in lowered
+
+
+# ------------------------------------------------- QT-06: the broker facts ---
+
+FACTS = REPO_ROOT / "docs" / "t212" / "FACTS.md"
+
+
+def test_the_broker_facts_file_exists_and_dates_every_row() -> None:
+    assert FACTS.is_file(), "docs/t212/FACTS.md is missing"
+    body = FACTS.read_text(encoding="utf-8")
+    assert "2026-09-27" in body
+    for status in ("VERIFIED", "UNVERIFIED", "CONTRADICTED"):
+        assert status in body, f"no row is marked {status}"
+    assert "docs.trading212.com" in body, "no row cites a source URL"
+
+
+def test_the_plan_points_broker_claims_at_the_facts_file() -> None:
+    """A fact in the plan must be traceable to the row that was checked."""
+    assert "docs/t212/FACTS.md" in plan_text() or "t212/FACTS.md" in plan_text()
+
+
+def test_the_stop_is_run_by_our_own_code() -> None:
+    """The decisive finding: the broker has no trailing stop and no amend.
+
+    So P10's stop cannot live at Trading 212. It is ours to run -- which is the
+    half of his sentence that survives contact with the documentation.
+    """
+    block = " ".join(decision_blocks()["P10"].split()).lower()
+    assert "algorithm" in block, "P10 must say the algorithm holds the stop"
+    assert "facts.md" in block, "P10 must cite the checked facts"
+    for kept in ("raised", "never lowered"):
+        assert kept in block, f"P10 lost its {kept!r} rule"
+
+
+def test_the_premortem_guards_the_two_new_dangers() -> None:
+    lowered = flattened().lower()
+    assert "duplicate" in lowered, "no guard for duplicate orders (FACTS row e)"
+    assert "pending orders" in lowered, "the duplicate guard must check pending orders"
+    assert "asleep" in lowered or "laptop off" in lowered or "while the laptop" in lowered
+
+
+def test_stage_s2_is_split_into_a_and_b() -> None:
+    blocks = stage_blocks()
+    assert "read-only" in blocks["S2a"].lower()
+    assert "cost model" in blocks["S2b"].lower()
+    assert "S2" not in blocks, "the old undivided S2 is still present"

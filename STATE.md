@@ -1,11 +1,10 @@
 # STATE.md — resume in seconds
 
 Phase: v2 PLANNED (the Simons direction).  Updated: 2026-09-21.
-NEXT BOX: S2 — the broker doorway, READ-ONLY (T212 demo client, throttle,
-killswitch, fill recorder, cost model, pre-trade price check), plus the two
-facts to verify against T212's own docs: stop-order types, and whether one
-share can hold two positions. S2 also gives qb2 its own fingerprint.
-S0 and S1 ARE DONE (2026-09-26): both plans gated; qb2 skeleton + .venv-qb2.
+NEXT BOX: S2b — cost model, fill recorder, qb2 killswitch, the pre-trade price
+check (which must now work WITHOUT a broker quote -- see below), and qb2's own
+fingerprint. S0, S1 and S2a ARE DONE (S2a 2026-09-27: broker facts checked,
+read-only demo client + throttle).
 PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
 PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 
@@ -36,6 +35,32 @@ PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
   time, continuous severity blending, early-and-small sizing, blunt stress rules.
 - Validation (locked): walk-forward + final untouched holdout; backtests simulate live
   data delay; Deflated Sharpe (penalised by number of trials).
+- S2a DONE (2026-09-27, QT-06): Trading 212's own documentation READ and written
+  down, one row per fact with source URL, date and a VERIFIED / UNVERIFIED /
+  CONTRADICTED verdict -> docs/t212/FACTS.md. FOUR FINDINGS CHANGED THE PLAN:
+  (1) there is NO trailing-stop order type and NO amend endpoint (only cancel),
+  so P10's stop is run by OUR CODE, not parked at the broker -- which is the half
+  of "the stop needs to come from either Trading 212 or the algorithm" that
+  survives contact with the docs. It watches only while the machine is awake,
+  which is why real money now waits for the always-on PC (S13) before the ISA
+  (S14). (2) The API CANNOT price an instrument we do not hold: currentPrice
+  exists only inside a position, and there is no quotes/market-data section at
+  all -- so P14's pre-trade check must be designed around it at S2b. (3) Order
+  endpoints are NOT IDEMPOTENT in their own words, so any future send must read
+  pending orders first. (4) The believed "live = market orders only, stop types
+  demo-only" split appears NOWHERE in the docs -> recorded CONTRADICTED (not
+  established, rather than disproved -- absence of a statement is not proof).
+  AUTH FLAG RESOLVED: Basic auth, base64 of KEY:SECRET, header
+  "Authorization: Basic <credentials>" (their quickstart, checked 2026-09-27) --
+  the long-standing STATE flag is closed. BUILT: qb2/execution/t212_client.py,
+  read-only by construction (no method can order; the one network function
+  refuses every verb but GET; the real-money hostname appears nowhere in qb2 and
+  a wall test enforces that), per-endpoint throttle from the documented limits
+  that also obeys x-ratelimit-reset and backs off on 429, credentials never
+  logged or repr'd, instrument list landing RAW in data/raw/t212/ and entering
+  the store only through S3's front door. Wall 52 -> 62. qb2 suite 18 -> 37 + 1
+  honest skip (no practice keys yet: docs/t212/SETUP.md walks the operator
+  through it). v1 untouched: fingerprint 4add56ec...743b6 identical.
 - DIRECTION CHANGE (2026-09-26): TWO PARTS, agreed with the operator and written
   up verbatim in docs/plan/PLAN_V3.md. A BOT that trades by itself on 30% of the
   account — automatic, holds days, cheapest instruments, Simons' METHOD (many
@@ -378,7 +403,11 @@ PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 - QUANTBOT_BACKUP_DIR not yet set → backups are LOCAL-ONLY (data/backups/ on the
   same laptop). Rubric condition 7 NOT met until the operator points it at an
   off-laptop folder (e.g. OneDrive).
-- T212 auth scheme: verify single-key header vs KEY:SECRET Basic before any order (§6).
+- T212 auth scheme: RESOLVED 2026-09-27 (QT-06) -- HTTP Basic, base64 of
+  KEY:SECRET, per their quickstart; see docs/t212/FACTS.md row a. NOTE:
+  .env.example still carries the old "to verify" note. It is inside the
+  engine fingerprint, so QT-06 could not touch it; correcting that one
+  comment needs a box allowed to change engine config.
 - Daily auto clock-sync task still to set up (admin).
 - gh CLI not installed → use plain git for GitHub ops.
 - Manual app's EXISTING trade journal STILL NOT migrated (stage 3a stopped on

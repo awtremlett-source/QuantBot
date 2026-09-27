@@ -1,0 +1,18 @@
+# PLANTED VIOLATION - qb2 pointed at the real-money account.
+# Arrives innocently: "I'll just add the live URL now so it's ready for later,
+# with a flag to choose." Then one wrong default, one stale environment
+# variable, or one copied line, and code that has never placed an order on a
+# practice account places one with real money.
+#
+# The rule is that the string does not exist in qb2 at all until PLAN_V3 S14.
+from __future__ import annotations
+
+import os
+
+DEMO_BASE_URL = "https://demo.trading212.com/api/v0"
+LIVE_BASE_URL = "https://live.trading212.com/api/v0"
+
+
+def base_url() -> str:
+    # One environment variable between a practice account and real money.
+    return LIVE_BASE_URL if os.environ.get("T212_ENV") == "live" else DEMO_BASE_URL

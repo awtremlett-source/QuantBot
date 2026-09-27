@@ -5,9 +5,15 @@ history. Only **S1 is built** (the `qb2` skeleton and its environment, commit
 `22c67f7`); everything else below is planned, in order, one box at a time.
 
 **How to read this.** Every piece of jargon is explained the first time it
-appears. Any claim about Trading 212 — a fee, a limit, an order type — that is
-not followed by a link and the date it was checked says **UNVERIFIED**, which
-means nobody has checked it yet, so nothing may be built on it.
+appears. Every claim about Trading 212 now lives in one place —
+**[docs/t212/FACTS.md](../t212/FACTS.md)** — with its source, the date it was
+checked, and whether it is VERIFIED, UNVERIFIED or CONTRADICTED. Rows there were
+read from Trading 212's own documentation on 2026-09-27. Nothing may be built on
+an UNVERIFIED row.
+
+**Amended 2026-09-27 (S2a).** Checking those facts changed one decision: the
+broker has no trailing-stop order type and no way to amend an order, so P10's
+stop is run by our own code rather than held at Trading 212. See P10.
 
 Two words used throughout:
 
@@ -20,7 +26,7 @@ Two words used throughout:
 
 ## Operator words
 
-Verbatim, 2026-09-21 → 2026-09-26. Each quote sits on one long line on purpose:
+Verbatim, 2026-09-21 → 2026-09-27. Each quote sits on one long line on purpose:
 re-wrapping or tidying a quote turns evidence into paraphrase. The typos are his.
 
 > "forget the £10k, we are looking for percentages."
@@ -46,6 +52,10 @@ re-wrapping or tidying a quote turns evidence into paraphrase. The typos are his
 > "A phone alert should be the last thing to do, unless you can send a message directly from the Trading 212 app on mobile."
 
 > "im using an ISA account, but before that we are using a paper trader."
+
+> "the project will LATER be ported to a always on home PC, that comes at the very end of development."
+
+> "well the stop needs to come from either Trading 212 or the algorithm."
 
 ---
 
@@ -153,17 +163,32 @@ side as shadow portfolios — halving (50/25/12.5), his gentler 25/20/15, and
 confidence-based-with-a-cap — and the evidence picks the winner. *Enforcer:* the
 shadow portfolios, reconciled daily against recorded suggestions.
 
-**P10 — Every trade gets a trailing stop, and a stop is only ever raised.** Set
-when the position opens; the distance is drawn from how much that instrument
-normally moves, so a jumpy share gets more room than a calm one; tightened when
-markets are unsettled. This is his "moving stop that follows the trends untill
-theres a massive fall". Stops are held **at Trading 212**, not in our code, so
-they still work with the laptop shut, and are raised once a day. Whether the API
-can place and amend the stop types we need is **UNVERIFIED** until S2. A stop
-cannot protect against an overnight gap — if a share opens far below the stop,
-the sale happens down there. *Enforcer:* a **stop ledger** — every open position
-must have a stop, no stop may ever be lowered, and the daily sync with Trading
-212 attaches a stop to any position he opened by hand.
+**P10 — Every trade gets a trailing stop, and the stop is run by the
+ALGORITHM.** He said: *"the stop needs to come from either Trading 212 or the
+algorithm."* It comes from the algorithm, because the broker cannot do it —
+Trading 212 has **no trailing-stop order type and no amend endpoint**
+(FACTS.md rows d1 and d2, checked 2026-09-27), so a stop held there could never
+be moved up without cancelling and re-placing it, and a cancel-and-replace that
+fails halfway leaves a position with no protection at all.
+
+So: our code holds the stop level, checks prices while it is running, and sells
+by **market order** when the level is crossed. Set when the position opens; the
+distance is drawn from how much that instrument normally moves, so a jumpy share
+gets more room than a calm one; tightened when markets are unsettled. It is
+**only ever raised, never lowered**, and every open position has one.
+
+Two limits, stated plainly rather than glossed:
+
+- **It only watches while the machine is awake.** On a sometimes-off laptop the
+  stop is checked on waking and acted on then — a gap, not a guarantee. This is
+  why real money waits for the always-on home PC (S13, S14) rather than arriving
+  before it.
+- **No stop survives an overnight gap.** If a share opens far below the level,
+  the sale happens down there. That is true of broker-held stops too.
+
+*Enforcer:* a **stop ledger** — every open position must have a stop, no stop may
+ever be lowered (a test tries and must fail), the catch-up on waking is logged,
+and the daily sync flags any position he opened by hand that has no stop yet.
 
 **P11 — The bot may also have moving buys.** The opposite of a trailing stop: an
 order that triggers when a price climbs convincingly, which is what he described.
@@ -197,7 +222,7 @@ raises an advisor warning before it.
 demo until the graduation rubric passes; then a Stocks ISA (a UK account where
 gains are not taxed) at a small size. Phone alerts are built last, exactly as he
 asked. *Enforcer:* the rubric in `docs/MANIFEST.md` gates the move to real money,
-and phone alerts are the final stage (S13) so they cannot be built early.
+and phone alerts are the final stage (S15) so they cannot be built early. The order is: prove it on paper (S12), move to the always-on home PC (S13), then the ISA at a small size (S14) — he put the home-PC port at "the very end of development", and the algorithm-held stop of P10 is the reason it comes before real money rather than after it.
 
 ---
 
@@ -251,16 +276,26 @@ cannot import each other.
 - Enforcer: `tools/engine_fingerprint.py` and `tests/wall/test_qb2_separation.py`.
 - Built/Wired/Armed: package and pins written · `.venv-qb2` created and its suite runs in it (18 tests) · wall rules collected by the default run (52 tests).
 
-### S2 — The broker doorway, read-only, and the cost of trading
-A Trading 212 demo client that can only **read**; the rate-limit throttle; qb2's
-killswitch; the fill recorder; the cost model; and the pre-trade price check
-(P14). This stage also **verifies against Trading 212's own documentation, citing
-the page and the date**: which stop-order types exist and can be amended (P10),
-and whether one share can hold two separate positions — which decides how hard
-the no-overlap rule in P6 has to work.
-- Exit gate: the read-only client cannot place an order, proven by a test that tries; the throttle backs off on a simulated rate-limit reply; costs are inside the backtest by construction; the killswitch halts a dry run; the stop-order and one-position-per-share questions are answered with a URL and a date, not an assumption; **and qb2 has its own fingerprint, separate from v1's, now that it holds more than a skeleton**.
+### S2a — The facts, and a read-only doorway — **DONE 2026-09-27**
+Read Trading 212's documentation and write down what it actually says
+([docs/t212/FACTS.md](../t212/FACTS.md)), then build a demo client that can only
+**read** — no method on it can place, amend or cancel anything — with the
+per-endpoint throttle those facts describe.
+- Exit gate: every fact carries a source URL, the date checked and a VERIFIED / UNVERIFIED / CONTRADICTED verdict; the client refuses any HTTP method except GET, proven by a test that plants one; the live base URL appears nowhere in qb2; the throttle backs off on a rate-limited reply without crashing; no key or auth header can reach a log. **Met.**
+- Enforcer: wall tests for the live URL and for key-shaped strings; a fake server that returns 429; the GET-only refusal test.
+- Built/Wired/Armed: facts written and client written · wired to the demo base URL only, keys read from `.env` · armed only as far as reading — the live smoke test is off unless keys exist.
+
+### S2b — Costs, fills, the killswitch, and pricing without a quote
+The cost model, the fill recorder (expected price against actual), qb2's
+killswitch, and the pre-trade price check of P14 — which now needs designing
+around a hard limit: **the API cannot price a share we do not already hold**
+(FACTS.md row h). `currentPrice` exists only inside a position, so a new buy has
+no broker price to check against and must lean on our own data plus a staleness
+rule. This stage also gives qb2 its own fingerprint, separate from v1's, now that
+it holds more than a skeleton.
+- Exit gate: costs are inside the backtest by construction and a test proves a zero-cost path cannot be taken; the killswitch halts a dry run; the pre-trade check has a written, tested answer for the no-quote case; qb2's fingerprint exists and v1's still covers only v1's nine folders.
 - Enforcer: a wall test that no order-placing call exists outside the execution doorway; a cost-model test against a hand-computed example; the two fingerprints, checked in every later box.
-- Built/Wired/Armed: client, throttle, cost model and recorder written · wired into the backtester and a dry-run loop · killswitch armed and fire-drilled.
+- Built/Wired/Armed: cost model, recorder and killswitch written · wired into the backtester and a dry-run loop · killswitch armed and fire-drilled.
 
 ### S3 — Both universes, and the data behind them
 The bot's list (proposed, then agreed before use) and the advisor's filtered list,
@@ -329,14 +364,29 @@ together, plain words, numbers in tooltips, an age on every figure.
 - Enforcer: the interface smoke tests and the existing read-only wall rules.
 - Built/Wired/Armed: screens written · wired to the read path and the suggestion feed · armed as the operator's default way of looking at the system.
 
-### S12 — The forward run, then the rubric, then real money
+### S12 — The forward run, then the rubric
 Run both parts forward on the demo account, then judge against the graduation
-rubric.
+rubric. No real money at this stage.
 - Exit gate: every rubric condition met, including Deflated Sharpe ≥ 0.95 at the then-current trial count, and both parts ahead of the benchmark out-of-sample at 2× costs.
 - Enforcer: the monthly health report and the rubric checklist in `docs/MANIFEST.md`.
-- Built/Wired/Armed: forward run under way · wired to monitors and verified backups · armed for the ISA only at a size that does not matter yet, and only after the rubric passes.
+- Built/Wired/Armed: forward run under way · wired to monitors and verified backups · armed on the demo account only.
 
-### S13 — Phone alerts
+### S13 — Move to the always-on home PC
+He asked for this at "the very end of development", and P10 makes it a
+precondition for real money rather than a convenience: our code holds the stops,
+so it can only watch prices while the machine is awake. Every check is re-proved
+on the new machine — a system that passed on the laptop has not passed here.
+- Exit gate: the full suite green on the home PC; scheduled runs fire there; the killswitch drilled there; stops proven to be watched continuously rather than in bursts; exactly ONE machine has the scheduled tasks registered, because two writers would corrupt the journal.
+- Enforcer: the installer's verify command run on the new machine, plus a single-writer check that fails if tasks exist on two machines.
+- Built/Wired/Armed: installed on the home PC · wired to its scheduler and its backups · armed only after the laptop's tasks are decommissioned.
+
+### S14 — The Stocks ISA, at a size that does not matter
+Only after S13. Real money, smallest sensible size, everything else unchanged.
+- Exit gate: the rubric still passes on the home PC's own forward record; the first real order is reconciled by hand against the broker's own record; the killswitch is drilled against the live account before the first order, not after.
+- Enforcer: the daily reconciliation monitor and the stop ledger, both already proven, now watched against real fills.
+- Built/Wired/Armed: live keys held only in `.env` on the home PC · wired with the live base URL enabled for the first time · armed at a size he would not mind losing entirely.
+
+### S15 — Phone alerts
 Last, as he asked. If Trading 212's own mobile app can carry the message, that is
 preferred over building anything.
 - Exit gate: an alert arrives on the phone for a real event and not for noise; nothing in the alert path can place or cancel an order; a silent failure is impossible because the absence of a heartbeat is itself alerted.
@@ -360,6 +410,9 @@ Each of these has already gone wrong somewhere. The guard goes in first.
 | Survivorship flatters the advisor's backtest | the S4 mark-down, and the forward scorecard treated as the real test |
 | He buys something by hand and the system never sees it | the daily broker sync flags any position with no stop as RED |
 | An untested number gets believed | the "starting figure, tested first" label, and S5 is where they stop being guesses |
+| A resend creates **duplicate orders** — the order endpoints are **not idempotent** in Trading 212's own words (FACTS.md row e) | S10 reads **pending orders** before any resend, and never retries a send blindly |
+| A stop goes unwatched while the laptop is asleep, because our code holds it rather than the broker | the stop is checked and acted on when the machine wakes, and that gap is logged; real money waits for the always-on home PC (S13 before S14) |
+| We try to price a share we do not hold, and there is no quote to be had (FACTS.md row h) | S2b designs the pre-trade check around it: our own data plus a staleness rule, never a pretend broker price |
 
 ---
 
@@ -389,13 +442,15 @@ beating it means nothing.
 
 ## Sources
 
-- Every Trading 212 figure and behaviour — fees, currency conversion, stamp duty,
-  rate limits, daily order limits, available stop-order types, whether one share
-  can hold two positions, whether inverse products need a knowledge check — is
-  **UNVERIFIED** at the time of writing and is not asserted as fact anywhere
-  above. Each must be checked against Trading 212's own page in the box that
-  depends on it, and recorded with the URL and the date it was checked. S2 owns
-  the first of those checks.
+- Every Trading 212 figure and behaviour now lives in
+  **[docs/t212/FACTS.md](../t212/FACTS.md)**, one row each, with its source URL,
+  the date checked, and a VERIFIED / UNVERIFIED / CONTRADICTED verdict. S2a did
+  the first pass on 2026-09-27. Rows still open there include whether one share
+  can hold two positions (strong indirect evidence, not stated), the exact
+  rate-limit headers beyond `x-ratelimit-reset`, the status code returned when a
+  limit is exceeded, fees and stamp duty, and whether inverse products need a
+  knowledge check. Nothing above relies on an open row. The API is in beta, so
+  every row is re-checked in any box that places an order.
 - yfinance is treated as unreliable by design: delayed, occasionally wrong, and
   rate-limited. It is handled with a local cache, exponential back-off and a
   second-source check, not trusted.
