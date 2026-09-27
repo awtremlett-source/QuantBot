@@ -79,9 +79,15 @@ OPERATOR_WORDS: tuple[str, ...] = (
     "the project will LATER be ported to a always on home PC, that comes at the "
     "very end of development.",
     "well the stop needs to come from either Trading 212 or the algorithm.",
+    "the bot trades very short (same day), holds nothing when the PC is off or "
+    "overnight, sells before shutdown including pre-market; add power-off "
+    "detection, UPS, auto-restart and an outside watchdog to the home-PC stage "
+    "(S13); test BOTH markets to the limit after costs — US shares (live "
+    "yfinance prices, currency fee), London (cheap, prices 20 min late) and a "
+    "mix — every attempt counted.",
 )
 
-DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 17))
+DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 18))
 STAGE_IDS: tuple[str, ...] = (
     "S0", "S1", "S2a", "S2b", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
     "S11", "S12", "S13", "S14", "S15",
@@ -345,3 +351,141 @@ def test_stage_s2_is_split_into_a_and_b() -> None:
     assert "read-only" in blocks["S2a"].lower()
     assert "cost model" in blocks["S2b"].lower()
     assert "S2" not in blocks, "the old undivided S2 is still present"
+
+
+# --------------------------------------------------- QT-07: the same-day bot ---
+
+def test_the_bot_is_same_day_and_holds_nothing_overnight() -> None:
+    """P4 reversed: "holds days" is gone, and the reason is written down."""
+    block = " ".join(decision_blocks()["P4"].split()).lower()
+    assert "same day" in block, "P4 must say the bot trades same day"
+    for promise in ("overnight", "shutdown", "flat"):
+        assert promise in block, f"P4 does not mention {promise!r}"
+    assert "15 min" in block or "15 minutes" in block, (
+        "P4 must state the last-sell margin before close")
+    assert "starting figure" in block, (
+        "the 15-minute margin is untested and must say so")
+
+
+def test_the_bot_never_buys_into_a_closed_market() -> None:
+    block = " ".join(decision_blocks()["P4"].split()).lower()
+    assert "closed" in block
+    assert "queued" in block, (
+        "P4 must explain WHY: a queued buy would fill unwatched (FACTS j2)")
+
+
+def test_the_old_multi_day_wording_survives_only_where_it_is_superseded() -> None:
+    """A reversed rule left lying around elsewhere is how a plan lies."""
+    text = plan_text()
+    superseded_at = text.lower().index("superseded in v2")
+    stages_at = text.index("## Stages")
+    # Naming the old rule in order to say it was replaced is fine -- that is
+    # how a record stays readable. What must not survive is the old rule stated
+    # as though it were still true.
+    # These four cannot match inside another word. "old " could -- it hides in
+    # "hold and", which is how an earlier version of this test let a planted
+    # live rule through.
+    replacement_markers = ("replac", "supersede", "reversed", "no longer")
+    for stale in ("holds days", "days not weeks", "daily horizon"):
+        for position in _positions(text.lower(), stale):
+            if superseded_at <= position < stages_at:
+                continue
+            context = text.lower()[max(0, position - 120):position]
+            assert any(marker in context for marker in replacement_markers), (
+                f"{stale!r} appears at character {position} as a LIVE rule -- "
+                f"it was reversed on 2026-09-27; context: "
+                f"...{text[max(0, position - 80):position + 40]}...")
+
+
+def _positions(haystack: str, needle: str) -> list[int]:
+    found: list[int] = []
+    start = 0
+    while True:
+        at = haystack.find(needle, start)
+        if at == -1:
+            return found
+        found.append(at)
+        start = at + 1
+
+
+def test_the_two_parts_table_says_same_day() -> None:
+    table = plan_text()[plan_text().index("## The two parts"):
+                        plan_text().index("**Shared by both")]
+    assert "same day" in table.lower()
+
+
+# ------------------------------------------------ QT-07: the markets test P17 ---
+
+def test_p17_pre_registers_a_three_arm_both_markets_test() -> None:
+    block = " ".join(decision_blocks()["P17"].split())
+    lowered = block.lower()
+    assert "pre-regist" in lowered, "P17 must be pre-registered BEFORE any result"
+    for arm in ("us", "london", "mix"):
+        assert arm in lowered, f"P17 is missing the {arm!r} arm"
+    assert "1x" in lowered or "1×" in block, "P17 must test at 1x costs"
+    assert "2x" in lowered or "2×" in block, "P17 must test at 2x costs"
+    assert "delay" in lowered, "P17 must build each market's data delay in"
+    assert "trials.jsonl" in lowered, "every attempt must be counted"
+    assert "known-null" in lowered or "known null" in lowered
+
+
+def test_p17_says_what_happens_when_nothing_passes() -> None:
+    """The honest branch: no arm passes -> the bot stays off."""
+    block = " ".join(decision_blocks()["P17"].split()).lower()
+    assert "stays off" in block or "bot stays off" in block
+    assert "never" in block and "loosen" in block
+
+
+# ------------------------------------------- QT-07: pricing without a quote ----
+
+def test_p14_is_redesigned_around_having_no_broker_quote() -> None:
+    block = " ".join(decision_blocks()["P14"].split()).lower()
+    assert "facts.md" in block or "row h" in block
+    for check in ("age", "band", "cap"):
+        assert check in block, f"P14 is missing the {check!r} check"
+    assert "stop_new_trades" in block or "stop new trades" in block
+
+
+# ------------------------------------------ QT-07: power safety on the home PC -
+
+def test_s13_adds_the_four_power_safety_pieces() -> None:
+    block = " ".join(stage_blocks()["S13"].split()).lower()
+    for piece in ("power-off", "ups", "auto-restart", "watchdog"):
+        assert piece in block, f"S13 is missing {piece!r}"
+    assert "heartbeat" in block
+    for drill in ("unplug", "kill", "network"):
+        assert drill in block, f"S13's exit gate is missing the {drill!r} drill"
+
+
+def test_the_laptop_gets_the_same_rules_from_the_first_demo_trade() -> None:
+    lowered = " ".join(plan_text().split()).lower()
+    assert "lid" in lowered, "the laptop phase must cover closing the lid"
+    assert "battery" in lowered, "the laptop's battery is its UPS -- say so"
+
+
+def test_s3_records_intraday_data_before_it_is_lost() -> None:
+    block = " ".join(stage_blocks()["S3"].split()).lower()
+    assert "intraday" in block
+    assert "recorder" in block
+    assert "fx" in block or "currency" in block
+
+
+# --------------------------------------------- QT-07: FACTS row c stays honest -
+
+def test_facts_row_c_cites_both_sources_and_stays_unresolved() -> None:
+    """It must never quietly become VERIFIED on one source again."""
+    body = FACTS.read_text(encoding="utf-8")
+    row = next(line for line in body.splitlines() if line.startswith("| c |"))
+    assert "docs.trading212.com" in row, "row c lost the API-reference source"
+    assert "helpcentre.trading212.com" in row, "row c lost the help-centre source"
+    assert "CONFLICT" in row and "UNRESOLVED" in row
+    assert "**VERIFIED**" not in row, (
+        "row c must not be marked VERIFIED: one source asserts it, the other is "
+        "silent, and that is not corroboration")
+    assert "S14" in row, "row c must name where it gets resolved"
+
+
+def test_s14_will_not_go_live_until_row_c_is_settled() -> None:
+    block = " ".join(stage_blocks()["S14"].split())
+    assert "row c" in block.lower() or "FACTS" in block
+    assert "stop" in block.lower()

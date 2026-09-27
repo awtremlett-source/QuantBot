@@ -1,0 +1,27 @@
+qb2 FINGERPRINT (v2 only -- v1 has its own, deliberately separate)
+
+folders: qb2
+files:   requirements-qb2.txt
+excluded: __pycache__, *.pyc, *.pyo (generated, not source)
+
+files: 17   bytes: 51159
+
+196cf24d9864ea1102490b13462106873bade2c826453d4923cfce6c591d5ae3       2221  qb2/README.md
+15cb2efdbd231c8ae73820be2c429c34548742f3de98ad94d3dd5c3e834ff84c        870  qb2/__init__.py
+4cbe5346c3348dae420a351ca92b82aeee2ad3e404b6987a80db88504522e89e        269  qb2/data/__init__.py
+23baa25dd53d16101e289672094eb026e29206f528cac205620fe16921069deb        306  qb2/execution/__init__.py
+4907b96309a7411dacb1a191629c8b886d7e4680d9a2ec8e1f0af5c00e563e4b       6972  qb2/execution/costs.py
+240ab21e9c08357501ea3012d71cce67837fd25c21982f1db9083f7884e4fad6       7536  qb2/execution/fill_recorder.py
+0e787fc408c9aa942a6af186b596fdf8da18489b9a5a033b83d4992226230516       7657  qb2/execution/safety.py
+9954cc55f4577c6e5fb09b64fa273160f05da2d04fbca350c8ba178b176666e7       4788  qb2/execution/sender.py
+ccaa288d4e33fddb450c07fe6cb3afe90dfa973bca2a95ebf92d94cc9a14d288      13500  qb2/execution/t212_client.py
+52bbf4e41e3dc6b9307e090bbe55d8ee3b72cc0a48d8147429dba4a488c7b42c        324  qb2/model/__init__.py
+540a9a31adbda7cbd0fc096bcd66f9976b05fa1099aeee7c54c54f6624e80db5        342  qb2/research/__init__.py
+c82151a09d9d10c320eb1369615462976802dd51c878909bf315cd5a96317583        308  qb2/signals/__init__.py
+e903249e92df104a233277fcf2690cd33bbab947b8ada1993545dfd618e7a40b        284  qb2/sizing/__init__.py
+99882b1c92e03546b579e129736cfe60282026b0c13edb5931d22be9658b5028        153  qb2/tools/__init__.py
+a64b813f522ba080b7c071a4e0c32844966b06c549e8879ef9607392b8ff727b       4325  qb2/tools/fingerprint.py
+cb0b557b699461d69b4a3a95799038eeb76920918bfcf0f137cabce138c57320        229  qb2/ui/__init__.py
+1741ad785d0ecff13011533218ea5f89e8c6dd458a3b141ec761c69951c447b2       1075  requirements-qb2.txt
+
+COMBINED: 49ce8ea4f35e40986a7e7951467d10b8cbf31fb45e214189f3f3b243a03dff4d

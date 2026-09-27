@@ -1,10 +1,13 @@
 # STATE.md — resume in seconds
 
 Phase: v2 PLANNED (the Simons direction).  Updated: 2026-09-21.
-NEXT BOX: S2b — cost model, fill recorder, qb2 killswitch, the pre-trade price
-check (which must now work WITHOUT a broker quote -- see below), and qb2's own
-fingerprint. S0, S1 and S2a ARE DONE (S2a 2026-09-27: broker facts checked,
-read-only demo client + throttle).
+NEXT BOX: S3 — both universes (bot list PROPOSE→GO, advisor filter, no-overlap
+test), ingest with dividends/FX/earnings dates, census ≥95% CLEAN, first chart —
+and FIRST of all the INTRADAY RECORDER, because intraday history is short and
+every unrecorded day is lost (FACTS row n). S3 also MEASURES the quote delay
+that row o could not (markets were shut).
+S0, S1, S2a and S2b ARE DONE (S2b 2026-09-27).
+FINGERPRINTS: v1 4add56ec…743b6 (must never move) · qb2 49ce8ea4…
 PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
 PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 
@@ -35,6 +38,52 @@ PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
   time, continuous severity blending, early-and-small sizing, blunt stress rules.
 - Validation (locked): walk-forward + final untouched holdout; backtests simulate live
   data delay; Deflated Sharpe (penalised by number of trials).
+- S2b DONE (2026-09-27, QT-07) — and the BOT'S HORIZON REVERSED ON OPERATOR
+  INSTRUCTION. THE PLAN CHANGE: the bot now trades SAME DAY and holds nothing
+  overnight (PLAN_V3 P4 replaces "holds days"): flat before each close (last sell
+  15 min before the bell, STARTING FIGURE), flat before any shutdown/sleep/
+  lid-close, never a buy into a shut market (a queued buy would fill unwatched),
+  pending bot orders cancelled at close, and on waking from an unplanned stop it
+  SELLS FIRST then writes an incident. Consequence: the laptop-off gap for the
+  BOT is now zero — a stop it never needs cannot fail. v1's locked "daily horizon,
+  short horizons rejected as cost-fatal" is REOPENED, and not by preference:
+  P17 (new, PRE-REGISTERED before any intraday result exists) decides it by test
+  — three arms (US shares · London shares+ETFs costed separately · a mix), each
+  at 1× and 2× costs, each market's data delay built in, known-null re-proved on
+  intraday data first, every variant into trials.jsonl with Deflated Sharpe over
+  the whole count. If no arm passes, the bot stays off and we say so. S13 gained
+  real power safety (power-off detection + heartbeat-gap reconcile, a UPS for PC
+  and router ≥10 min, auto-restart at boot with no login, an outside watchdog
+  that emails on silence — the only alert before S15 because it is safety), with
+  four drills: unplug, UPS flat, kill the program, drop the network. The same
+  flat-on-shutdown rules apply from the FIRST demo trade on the laptop (S5
+  designs, S10 builds). FACTS ROW 2c CORRECTED to CONFLICT/UNRESOLVED: the help
+  centre says Limit/Stop/Stop-Limit DO work on live accounts, the API reference
+  neither confirms nor denies (its only limitation line is about account
+  currency), and the page that once restricted live to market orders now 404s —
+  one source asserting and one silent is not corroboration, so an earlier
+  VERIFIED read from one page alone was premature. No design impact (our
+  algorithm holds every stop; the bot is same-day) and it MUST be settled before
+  S14, which now says so in its exit gate. NEW FACTS j–o: market orders take
+  extendedHours; US pre-market 04:00–09:30 ET and after-hours 16:00–20:00 ET
+  (the UK-clock conversion is DERIVED, and the offset is 4 hours for ~2 weeks a
+  year, so code must use a real timezone database); no extended hours documented
+  for London; FX fee 0.15% EACH leg (0.30% a round trip); UK stamp duty 0.5% on
+  share BUYS only, none on ETFs or AIM; PTM levy £1.50 over £10,000 on both
+  sides; yfinance intraday depth PROBED — 1m only 8 days per request, 5m/15m
+  ~60 trading days, 1h ~2.9 years; quote delay UNMEASURED because it was Sunday
+  night (both markets shut) → moved to S3's exit gate, and the popular
+  "20 minutes" is assumed nowhere. BUILT: per-instrument cost model (UK share vs
+  UK ETF vs AIM vs US all costed differently, 2× switch doubling everything),
+  append-only fill recorder (INTENT before, OUTCOME after, so a crash between
+  them leaves a visible unresolved intent rather than silence), killswitch
+  (blocks buys, NEVER sells; flatten sells only bot-tagged quantity and leaves
+  the advisor's and the operator's alone), the P14 checks (quote age, price band,
+  order-size cap, post-fill gap), and a DISARMED order sender with no code path
+  in qb2 that can arm it and nothing behind the door if it were. 2g still
+  UNSETTLED: demo keys are absent from .env, so the one-position-per-ticker
+  question could not be answered empirically. qb2 fingerprint 49ce8ea4f35e40986a7e7951467d10b8cbf31fb45e214189f3f3b243a03dff4d.
+  v1 fingerprint unchanged.
 - S2a DONE (2026-09-27, QT-06): Trading 212's own documentation READ and written
   down, one row per fact with source URL, date and a VERIFIED / UNVERIFIED /
   CONTRADICTED verdict -> docs/t212/FACTS.md. FOUR FINDINGS CHANGED THE PLAN:

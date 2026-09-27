@@ -184,3 +184,41 @@ def test_nothing_in_qb2_calls_the_network_at_import_time() -> None:
             if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
                 offenders.append(f"{_relative(path)}: call at import time")
     assert offenders == [], f"module-level calls found: {offenders}"
+
+
+# ------------------------------------------- QT-07: the sender stays disarmed ---
+
+def test_nothing_in_qb2_arms_the_order_sender() -> None:
+    """S2b builds the refusals; S10 builds the sending.
+
+    ``ARMED`` must be defined False and never assigned True anywhere in qb2. A
+    test may monkeypatch it -- that is a test reaching in deliberately -- but no
+    line of qb2 may flip it, so there is no path from a signal to a real order.
+    """
+    offenders: list[str] = []
+    for path in sorted(QB2.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if not isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
+                continue
+            targets = (node.targets if isinstance(node, ast.Assign)
+                       else [node.target])
+            for target in targets:
+                named = (isinstance(target, ast.Name) and target.id == "ARMED")
+                attributed = (isinstance(target, ast.Attribute)
+                              and target.attr == "ARMED")
+                if not (named or attributed):
+                    continue
+                value = getattr(node, "value", None)
+                if isinstance(value, ast.Constant) and value.value is False:
+                    continue                      # the definition itself
+                offenders.append(f"{_relative(path)}:{node.lineno}")
+    assert offenders == [], f"qb2 contains a path that arms the sender: {offenders}"
+
+
+def test_the_sender_declares_itself_disarmed() -> None:
+    source = (QB2 / "execution" / "sender.py").read_text(encoding="utf-8")
+    assert "ARMED = False" in source
+    assert "NotImplementedError" in source, (
+        "even armed, the placing function must refuse to exist until S10")

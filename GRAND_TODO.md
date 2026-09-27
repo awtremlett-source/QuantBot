@@ -16,10 +16,14 @@ this page is only the running order. Earlier backlogs are archived whole at
       practice-host-only, per-endpoint throttle, 429 back-off · no trailing stop and
       no amend endpoint at T212 -> the stop is OURS (P10) · no price for an instrument
       we do not hold -> S2b must design around it · auth flag resolved
-- [ ] S2b Cost model, fill recorder, qb2 killswitch, pre-trade price check WITHOUT a
-      broker quote, and qb2's own fingerprint. NEXT BOX
-- [ ] S3 Both universes (bot list PROPOSE→GO · advisor filtered · no-overlap test)
-      + ingest incl. dividends, FX and earnings dates + census ≥95% CLEAN + chart
+- [x] S2b Cost model, fill recorder, killswitch, price checks, disarmed sender,
+      qb2 fingerprint (2026-09-27). Bot horizon REVERSED to same-day (P4); P17 added
+      to decide the market by test; S13 gained power safety; FACTS 2c → CONFLICT
+- [ ] S3 INTRADAY RECORDER FIRST (history is short: 1m only 8 days/request, 5m/15m
+      ~60 trading days — every unrecorded day is lost), then both universes (bot list
+      PROPOSE→GO · advisor filtered · no-overlap test) + ingest incl. dividends, FX and
+      earnings dates + MEASURE the quote delay (FACTS row o) + census ≥95% CLEAN +
+      chart. NEXT BOX
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
       survivorship mark-down
 - [ ] S5 Safety layer FIRST: stops, brakes, pot limits, age + earnings checks,
@@ -46,6 +50,12 @@ Built/Wired/Armed checklist.
 ## Awaiting the operator
 - [ ] D1 advisor risk rule (loss-at-stop cap vs the 1% rule) · D2 bot sizing ·
       D3 the benchmark — recommended defaults in PLAN_V3 "DECISION REQUESTED"
+- [ ] PRACTICE API KEY: generate one in the phone app and paste it into .env —
+      docs/t212/SETUP.md walks through it. Until then the demo smoke test skips and
+      FACTS row 2g (one position per ticker) stays unsettled
+- [ ] FACTS row 2c must be settled before S14: can Limit/Stop/Stop-Limit orders be
+      placed on a REAL-MONEY account? One tiny live test, or a written answer from
+      T212 support. Sources disagree and going live on a guess is not acceptable
 
 ## v1 — KEEPS RUNNING, UNTOUCHED (the baseline v2 must beat)
 The live NVDA regime-switcher, its journal, monitors, backups and scheduled runs
