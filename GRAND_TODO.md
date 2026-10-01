@@ -23,10 +23,13 @@ this page is only the running order. Earlier backlogs are archived whole at
       5m/1h backfill, forming-bar drop, quarantine-never-overwrite, DST-week tested,
       LOST gaps recorded, freshness meter red-on-broken, QB2-Recorder task registered
       per-user MON-FRI hourly. Demo smoke test run; key is read-only (no orders scope)
-- [ ] S3b Both universes (bot list PROPOSE→GO · advisor filtered · no-overlap test) +
-      FRONT DOOR ingesting the recorded raw bars + dividends, FX and earnings dates +
-      MEASURED quote delay from the recorder's samples + census ≥95% CLEAN + chart.
-      NEXT BOX
+- [~] S3b (2026-10-01) Universes built from evidence: 226 recorded, bot 50 PROPOSED
+      in three tagged sleeves, advisor 171, provably disjoint · every name resolved
+      against T212's own instrument list (4 old names were WRONG, incl. a company
+      that became another company) · FRONT DOOR RAW→CLEAN, one writer, manifest as
+      commit point, pence→pounds once, splits never re-applied · census + meter with
+      birth certificate · first-light charts. STILL OPEN: earnings dates not
+      ingested (S3 gate line) · quote delay still UNMEASURED (0 samples)
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
       survivorship mark-down
 - [ ] S5 Safety layer FIRST: stops, brakes, pot limits, age + earnings checks,
@@ -54,12 +57,16 @@ Built/Wired/Armed checklist.
 - [ ] D1 advisor risk rule (loss-at-stop cap vs the 1% rule) · D2 bot sizing ·
       D3 the benchmark — recommended defaults in PLAN_V3 "DECISION REQUESTED"
 - [x] PRACTICE API KEY in .env (2026-09-30) — smoke test connects and reads
-- [ ] OPTIONAL, closes two gaps: regenerate the practice key with the INSTRUMENTS
-      (and ideally HISTORY) permission. Without instruments we cannot check the
-      recording list against what T212 actually offers; without history we cannot
-      settle FACTS row g automatically. docs/t212/SETUP.md explains both
-- [ ] TWO-MINUTE MANUAL CHECK for FACTS row g: in the Practice app buy 1 share of
-      something cheap, then 1 more of the same, then say "check 2g" 
+- [x] KEY REPLACED (2026-10-01) with all ten read endpoints granted, Execute OFF.
+      Closed both gaps: instrument list saved and the recording list verified
+      against it; FACTS row g settled from order history (one position per share)
+- [ ] OPERATOR ACTION, loses data every day it waits: the QB2-Recorder task will
+      not start on battery, is killed when the charger comes out, never makes up a
+      missed run, and refuses the next hourly trigger because a run now takes over
+      an hour. ONE command in docs/sessions/2026-10-01 fixes all four
+- [ ] DECISION REQUESTED: the bot's universe (50 names, three tagged sleeves) is
+      PROPOSED and not tradable. S4 cannot open until you agree it in your own
+      words — docs/universe/README.md
 - [ ] FACTS row 2c must be settled before S14: can Limit/Stop/Stop-Limit orders be
       placed on a REAL-MONEY account? One tiny live test, or a written answer from
       T212 support. Sources disagree and going live on a guess is not acceptable

@@ -11,6 +11,7 @@ skipped unless real credentials exist, and it never places anything.
 from __future__ import annotations
 
 import json
+import socket
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -106,6 +107,47 @@ def test_a_planted_non_get_is_refused_at_the_network_layer() -> None:
     for method in ("PUT", "DELETE", "PATCH", "HEAD"):
         with pytest.raises(ReadOnlyViolation):
             t212.urllib_transport(method, t212.DEMO_BASE_URL, {})
+
+
+class SocketOpened(Exception):
+    """Raised by the stub below so an opened socket is unmistakable."""
+
+
+def test_a_non_get_is_refused_before_any_socket_is_opened(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """Failure mode: the refusal arrives, but only after the bytes have gone.
+
+    "It raised an exception" is not enough. If the guard sat after the request
+    were built and sent, an order could reach Trading 212 and still raise on the
+    way back -- the money would already have moved. So networking itself is taken
+    away: any attempt to open a socket raises, and the refusal must still happen.
+
+    The second half is the birth certificate for the first half (SCARS #9). If
+    blocking sockets quietly blocked nothing, the loop above would pass while
+    proving nothing at all, so a GET must demonstrably hit the block.
+    """
+    opened: list[str] = []
+
+    def no_sockets(address: object, *args: object, **kwargs: object) -> None:
+        opened.append(str(address))
+        raise SocketOpened(f"a socket was opened to {address!r}")
+
+    monkeypatch.setattr(socket, "create_connection", no_sockets)
+
+    for method in ("POST", "PUT", "DELETE", "PATCH"):
+        with pytest.raises(ReadOnlyViolation):
+            t212.urllib_transport(
+                method, f"{t212.DEMO_BASE_URL}/equity/orders/market",
+                {"Authorization": "Basic x"})
+    assert opened == [], (
+        "a non-GET got as far as opening a socket: the read-only guard is too "
+        f"late in urllib_transport. Reached: {opened}")
+
+    # Positive control: prove the trap is armed.
+    with pytest.raises(SocketOpened):
+        t212.urllib_transport("GET", f"{t212.DEMO_BASE_URL}/equity/positions",
+                              {"Authorization": "Basic x"})
+    assert opened, "blocking sockets blocked nothing, so the test above proved nothing"
 
 
 def test_the_client_refuses_a_non_practice_base_url() -> None:

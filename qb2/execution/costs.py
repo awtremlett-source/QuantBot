@@ -45,6 +45,18 @@ SLIPPAGE_BPS = 2.0
 BASIS_POINT = 1e-4
 
 
+# The vocabulary is Trading 212's, read off the saved instrument list on
+# 2026-10-01 (FACTS row q): 12,177 STOCK, 6,283 ETF, 23 WARRANT. We used to say
+# "SHARE", which no broker field ever contains -- see the validation below for
+# why that mattered so much.
+KINDS = frozenset({"STOCK", "ETF", "WARRANT"})
+MARKETS = frozenset({"US", "LSE"})
+# All sterling, all the same money. T212 writes pence "GBX" and yfinance writes it
+# "GBp" (FACTS row r); a London share quoted in pence needs no conversion from a
+# sterling account, so it must not be charged the row-l fee.
+STERLING = frozenset({"GBP", "GBX", "GBp"})
+
+
 @dataclass(frozen=True, slots=True)
 class Instrument:
     """The facts about an instrument that change what it costs to trade.
@@ -52,23 +64,44 @@ class Instrument:
     ``aim`` cannot be inferred from a ticker, and neither can ``kind`` reliably,
     so both are carried explicitly. Getting one wrong makes a strategy look
     cheaper than it is, which is the expensive direction to be wrong in.
+
+    ``kind`` and ``market`` are checked here rather than trusted, because both
+    of this model's real defects worked the same way: an unrecognised value fell
+    through a comparison and the charge silently became zero. A model that is
+    quietly optimistic is worse than one that stops.
     """
 
     ticker: str
-    currency: str                    # "GBP", "USD", ...
+    currency: str                    # "GBP", "GBX"/"GBp" (pence), "USD", ...
     market: str                      # "LSE" or "US"
-    kind: str                        # "SHARE" or "ETF"
+    kind: str                        # T212's own word: "STOCK", "ETF", "WARRANT"
     aim: bool = False                # AIM shares are exempt from stamp duty
+
+    def __post_init__(self) -> None:
+        if self.kind not in KINDS:
+            raise ValueError(
+                f"unknown instrument kind {self.kind!r} for {self.ticker!r}: "
+                f"use one of Trading 212's own words {sorted(KINDS)}. Refusing "
+                "rather than costing this trade at zero stamp duty")
+        if self.market not in MARKETS:
+            raise ValueError(
+                f"unknown market {self.market!r} for {self.ticker!r}: "
+                f"use one of {sorted(MARKETS)}")
 
     @property
     def pays_stamp_duty_on_buy(self) -> bool:
         """UK shares only -- not ETFs (row m2), not AIM (row m3)."""
-        return (self.market == "LSE" and self.kind == "SHARE" and not self.aim)
+        return (self.market == "LSE" and self.kind == "STOCK" and not self.aim)
 
     @property
     def pays_fx_fee(self) -> bool:
-        """Anything not priced in the account currency (row l)."""
-        return self.currency != "GBP"
+        """Anything not priced in sterling, whatever sterling is spelled (row l).
+
+        This is true of some LONDON lines too: T212 quotes AGGG.L, IGLN.L,
+        XDWD.L and even CPG.L -- a FTSE 100 member -- in US dollars, so a UK
+        name can pay the conversion fee on both legs (FACTS row r).
+        """
+        return self.currency not in STERLING
 
 
 @dataclass(frozen=True, slots=True)

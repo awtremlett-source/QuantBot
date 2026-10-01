@@ -23,6 +23,12 @@ requests==2.33.1
 scikit-learn==1.8.0
 statsmodels==0.14.6
 matplotlib==3.10.8
+# Real exchange calendars: which minutes a market was actually open, so a
+# missing bar on a half-day is not counted as missing data (S3b census).
+# MUST be >= 4.13: pandas 3 made MICROSECONDS the default resolution, and 4.11
+# compares its microsecond session values against Timestamp.value, which is still
+# in nanoseconds -- so every date read as "out of bounds". Found 2026-10-01.
+exchange_calendars==4.13.2
 
 # --- the interface ---
 PySide6==6.11.1

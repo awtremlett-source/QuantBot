@@ -1,75 +1,72 @@
 # Recording list — what gets CAPTURED (not what gets traded)
 
-Generated from `qb2/ingest/tickers.py` on 2026-09-30, so the counts here
-cannot drift from the code.
+**Superseded 2026-10-01 by `docs/universe/`.** The list is no longer kept by hand:
+it is built from evidence and written to a dated file, so it cannot drift from the
+code or from the broker. Read **`docs/universe/README.md`** for the names, the
+rules, the sources and the traps found along the way.
 
-**This is not a universe decision.** S3b picks the bot's universe out of
-this list under PROPOSE→GO. The list is deliberately wider than anything we
-will trade, for one reason: recording something we never trade costs a little
-disk, while failing to record something we later want costs the data
-permanently. Intraday history cannot be fetched after the fact — minute bars
-come only 8 days per request (docs/t212/FACTS.md row n).
+This page keeps only what does not live there.
 
-## Counts
+## Counts (v2, 2026-10-01)
 
 | group | count |
 |---|---:|
-| US shares | 64 |
-| UK shares (FTSE-100 subset) | 30 |
-| UK-listed ETFs | 20 |
+| US shares (S&P 500, ≥ $800m traded/day) | 98 |
+| UK shares (the whole FTSE 100) | 100 |
+| UK-listed ETFs (sterling, ≥ £6m/day, one line per fund) | 23 |
 | gauges (^FTSE ^FTMC ^GSPC ^VIX) | 4 |
 | exchange rate (GBPUSD) | 1 |
-| **total recorded** | **119** |
+| **total recorded** | **226** |
 
-## The honest gap: not checked against Trading 212
+Was 119 on 2026-09-30. Nothing recorded under the old names was deleted.
 
-Every name must exist on Trading 212 before it can ever be traded. **We could
-not check that.** The practice API key returns 403 on the instruments
-endpoint (FACTS row p), so T212's own list is unreadable with this key.
+## The gap of 2026-09-30 is CLOSED
 
-So membership of this list means only *"yfinance has it"*. The names below
-are the ONLY ones proven to exist on T212, because the live practice account
-held them on 2026-09-30:
+That version of this page said, honestly, that membership meant only *"yfinance has
+it"* — the practice API key returned 403 on the instruments endpoint, so Trading
+212's own list could not be read.
 
-| T212 ticker | yfinance | certain? |
-|---|---|---|
-| `GEV_US_EQ` | `GEV` | yes |
-| `MU_US_EQ` | `MU` | yes |
-| `RXRX_US_EQ` | `RXRX` | yes |
-| `SPCX_US_EQ` | `SPCX` | yes |
-| `IREN_US_EQ` | `IREN` | yes |
-| `SGLNl_EQ` | `SGLN.L` | yes |
-| `TSLA_US_EQ` | `TSLA` | yes |
-| `ALCC1_US_EQ` | — | NO — trailing digit: T212 disambiguator, yfinance name unknown -- needs a human |
-| `3LGO1l_EQ` | — | NO — trailing digit: T212 disambiguator, yfinance name unknown -- needs a human |
-| `SNDK1_US_EQ` | — | NO — trailing digit: T212 disambiguator, yfinance name unknown -- needs a human |
+The key replaced on 2026-10-01 can read it. **All 503 S&P 500 names and all 100
+FTSE 100 names resolve to a real Trading 212 instrument**, matched on exchange and
+currency rather than on spelling, each recorded with its ISIN. See FACTS rows q, r
+and s for what that check turned up — including that T212's ticker does not track
+company renames, which made four of our old names wrong.
 
-S3b must verify the rest against T212's instrument list, which needs a key
-with the instruments permission (docs/t212/SETUP.md explains how).
+## What it costs to record this much
 
-## The mapping rule
+Measured from the files on disk, not estimated:
 
-Read off the live account, not invented:
+| interval | median file | what one file holds |
+|---|---:|---|
+| 1m | 15,505 B | one ticker, one trading day |
+| 5m | 7,226 B | one ticker, one trading day |
+| 1h | 10,222 B | one ticker, one **month** |
 
-```
-AAPL_US_EQ   ->  AAPL        (SYMBOL_US_EQ -> SYMBOL)
-SGLNl_EQ     ->  SGLN.L      (SYMBOLl_EQ   -> SYMBOL.L)
-SNDK1_US_EQ  ->  UNCERTAIN   (a trailing digit is T212's disambiguator)
-```
+Per ticker per weekday that is **22.7 KiB** (one 1m file + one 5m file + a
+twenty-first of a monthly 1h file).
 
-Anything with T212's trailing digit is returned as **uncertain** and listed
-for a human. It is never mapped by guesswork: mapping `SNDK1_US_EQ` to the
-wrong `SNDK` would quietly record a different company's prices, and no test
-of a strategy would notice.
+| names | per weekday | per month | per year |
+|---:|---:|---:|---:|
+| 119 (the old list) | 2.6 MiB | 55 MiB | 0.65 GiB |
+| **226 (now)** | **5.0 MiB** | **105 MiB** | **1.23 GiB** |
 
-## What is captured for each name
+Disk is not the constraint and was not the reason the list stayed small. Widening
+costs about 2.4 MiB a weekday more. **Time** is the constraint: see the warning
+below.
 
-- **1-minute bars**, every run, catching up since the last saved bar.
-- **5-minute** (~60 trading days) and **1-hour** (~2.9 years) as a one-time
-  backfill, because those reach back and minutes do not.
-- Closed bars only. The still-forming bar is dropped every time.
+## ⚠ The recorder's schedule needs changing before this list is safe
 
-Files land in `data/raw/intraday/<interval>/<ticker>/<date>.parquet`
-(gitignored), with one append-only manifest line per capture recording the
-first and last bar, the row count, the currency, the fetch time and a file
-hash. A gap that cannot be filled is written down as **LOST**, never faked.
+Found 2026-10-01 while checking whether the delay had been measured. The
+`QB2-Recorder` scheduled task is configured in three ways that quietly lose data on
+a laptop:
+
+- `DisallowStartIfOnBatteries: True` — it **will not start** on battery.
+- `StopIfGoingOnBatteries: True` — it is **killed** the moment the charger comes out.
+- `StartWhenAvailable: False` — a missed run is **never made up**.
+- `MultipleInstances: IgnoreNew` — and a run now takes **over an hour**, so the next
+  hourly trigger is refused. That is the `4320` ("the operator or administrator has
+  refused the request") recorded against today's 20:55 run.
+
+Every day the recorder does not run is a day of minute bars that can never be
+recovered. The one command that fixes all four is in the session log for
+2026-10-01; it is the operator's to run, since it changes a system setting.

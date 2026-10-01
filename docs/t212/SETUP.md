@@ -97,45 +97,54 @@ The full list with sources and dates is in [FACTS.md](FACTS.md).
 
 ---
 
-## Two things the key cannot currently do (2026-09-30)
+## What the key is allowed to do (2026-10-01)
 
-When the key was tested against the practice account, it could read the account
-and the portfolio, but three endpoints came back "403 Forbidden": orders,
-instruments and exchanges. That means the key was granted **account data** and
-**portfolio** permissions only.
+You replaced the key on 2026-10-01 and deleted the old one. You described its
+permissions, in your own words:
 
-**The good news:** a key that cannot even *read* orders cannot *place* one. That
-is the strongest read-only evidence available without ever trying to send an
-order, which this project does not do.
+> **"Orders – Execute OFF, Pies – Write OFF"**
 
-**The cost:** we cannot download Trading 212's list of tradable instruments, so
-the recording list in `docs/RECORDING_LIST.md` is not checked against what T212
-actually offers. Names on it may not be tradable there.
+Tested against the practice account with GET requests only, **all ten documented
+read endpoints are granted**: account summary, cash and info; positions; orders;
+instruments; exchanges; and the three history endpoints. That is wider than the
+previous key, which was 403 on five of them.
 
-### If you want to close that gap
+**No order can be placed, for two independent reasons.** Execute is OFF at Trading
+212's end, and the client in this repository physically cannot send anything but a
+GET — a test takes networking away entirely and proves the refusal happens *before
+a socket is even opened*. Either reason alone would be enough; we keep both.
 
-Generate a new practice key with the **instruments / metadata** permission ticked
-as well (and **history**, if you would like the check below done automatically),
-then paste it into `.env` exactly as before. Nothing else changes.
+**Two gaps from 2026-09-30 are now closed:**
 
-## The manual check for "one position per share" (FACTS row g)
+- Trading 212's instrument list has been downloaded and saved
+  (`data/raw/t212/instruments-2026-10-01.json`, 18,483 rows). Every name we record
+  is now checked against it — see `docs/universe/README.md`, which is worth reading:
+  the check found that four of our old names were wrong, one of them a company that
+  had become a different company.
+- Order history is readable, which settled the question below without you having to
+  do anything.
 
-We still cannot prove whether buying the same share twice makes **one** position
-or **two**. The account currently holds 10 shares in 10 separate rows, which
-points strongly at one-row-per-share, but none of them is known to have been
-bought twice, and the key cannot read order history to find out.
+### If the key ever stops working
 
-It matters because the bot and the advisor must never hold the same share: if
-two buys became two separate positions, one part's sell could close the other
-part's holding.
+Keys can be revoked or expire. The symptom is `401` on every endpoint. Generate a
+new practice key with the same permissions (**Execute OFF**), paste it into `.env`
+in place of the old one, and delete the old key at Trading 212's end. Nothing else
+changes, and nothing in this project ever prints the key.
 
-**Two minutes in the Practice app settles it:**
+## "One position per share" — SETTLED (FACTS row g)
 
-1. Pick the cheapest share you already hold, or any cheap one.
-2. Buy **1 share**.
-3. Buy **1 more share** of the same thing.
-4. Tell Claude Code: **"check 2g"**.
+**You do not need to do anything. The answer is one position.**
 
-It will read your positions and report whether that share appears as one row
-with a quantity of 2, or as two rows of 1. Either answer is useful; the guessing
-is what is not.
+This was an open question on 2026-09-30: if buying the same share twice created
+*two* positions, then one part of the system selling could close the other part's
+holding. The two-minute manual check that used to be written here is no longer
+needed — the new key can read order history, and the practice account already
+contained the decisive case:
+
+`MU_US_EQ` has **two separate filled BUY orders** (12.5711224 and 10.0) and one
+filled SELL (10.0). The positions endpoint returns it as **exactly one row, with a
+quantity of 12.5711224** — the net of all three.
+
+So Trading 212 aggregates. A second buy of something you already hold adds to the
+existing position; there is no second row and no position id to track. "How much do
+I hold?" is always one number, found by the ticker alone.

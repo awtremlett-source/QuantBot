@@ -1,12 +1,23 @@
 # STATE.md — resume in seconds
 
-Phase: v2 PLANNED (the Simons direction).  Updated: 2026-09-21.
-NEXT BOX: S3b — both universes (bot list PROPOSE→GO, advisor filter, no-overlap
-test), the FRONT DOOR that ingests the recorded raw bars into the store, census
-≥95% CLEAN, first chart, and the MEASURED quote delay from the recorder's own
-samples. The recorder itself is DONE and running (S3a).
-S0, S1, S2a and S2b ARE DONE (S2b 2026-09-27).
-FINGERPRINTS: v1 4add56ec…743b6 (must never move) · qb2 8f291413…b1650
+Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-01.
+S0, S1, S2a, S2b, S3a and S3b ARE DONE. **S3 ITSELF IS NOT COMPLETE** — two of its
+exit-gate items are open, both recorded in PLAN_V3 rather than waved through:
+  1. The data census is **RED at 40.7%**; the gate asks 95%. Not a data fault: the
+     recording list went from 119 names to 226 today, and the 131 new names have no
+     history yet. It resolves by the recorder running — see the WARNING below.
+  2. **Earnings dates are not ingested.** P13 and the S5 earnings check need them.
+NEXT BOX: finish S3 (earnings dates + let the census fill), NOT S4. S4 is also
+blocked on the operator agreeing the bot's universe.
+
+⚠ WARNING, costs data every day it waits: the QB2-Recorder scheduled task will not
+start on battery, is killed when the charger is unplugged, never makes up a missed
+run, and refuses its next hourly trigger because a run now takes over an hour
+(that is the "4320" against today's 20:55 run). Minute bars cannot be fetched
+later. ONE command to fix all four: docs/sessions/2026-10-01-S3b.md.
+
+FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-01) ·
+qb2 3445d0d6…2d331 (was 8f291413…b1650 before S3b)
 PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
 PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 
@@ -17,7 +28,16 @@ PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 - Demo capital: £10,000 GBP. (SUPERSEDED 2026-09-26: the £100/day anchor is
   retired — "forget the £10k, we are looking for percentages". Judged in PERCENT
   after costs against a do-nothing index fund; see PLAN_V3 P3.)
-- Universe: focused ~100 liquid US names (specific list TBD via PROPOSE→GO).
+- Universe (2026-10-01, built from evidence, versioned in docs/universe/):
+  RECORDED 226 = 98 US (S&P 500 over $800m/day) + 100 FTSE 100 + 23 sterling London
+  ETFs (over £6m/day, one line per fund) + 4 gauges + GBPUSD. BOT 50 in three tagged
+  sleeves (30 US / 10 ETF / 10 UK share) — **PROPOSED, not agreed, not tradable**.
+  ADVISOR 171, disjoint from the bot by construction and by test (P6).
+  Every name resolved against T212's OWN instrument list: T212's ticker is a
+  HISTORICAL id (Meta is FB_US_EQ, NatWest is RBSl_EQ — and NWG_US_EQ is the New
+  York ADR, so building tickers from letters trades the wrong share). 4 old names
+  were WRONG: AHT.L is no longer Ashtead, IEUR.L does not exist, IGLN.L duplicated
+  SGLN.L by ISIN, RXRX is far too thin. Their data is KEPT, just not updated.
 - Machine: sometimes-off laptop → loops catch-up-safe.
 - Data sources (locked): Price = yfinance (daily OHLCV; ~15-min delay, fine at 4h
   cadence). Sentiment = StockGeist (free 10k credits/month). Sources decoupled;

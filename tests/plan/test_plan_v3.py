@@ -512,3 +512,32 @@ def test_s10_carries_the_killswitch_dry_run() -> None:
     assert "dry run" in block
     assert "stop_new_trades" in block
     assert "flatten" in block
+
+
+# ============================================================ S3b's two gates ==
+# Both were written fail-first: each assertion was watched to fail on the plan as
+# it stood before S3b, so neither can be deleted without the gate going red.
+
+def test_s4_cannot_open_on_a_universe_nobody_agreed_to() -> None:
+    """S3b proposed the bot's 50 names. Proposing is not agreeing.
+
+    The failure this prevents is subtle and total: a firewall run against a list
+    the operator never chose produces numbers that have to be thrown away, and
+    nobody notices until the list is questioned much later.
+    """
+    gate = stage_blocks()["S4"]
+    assert "AGREED" in gate
+    assert "operator's own words" in gate
+    assert "date" in gate.lower()
+
+
+def test_s3_still_says_earnings_dates_are_missing() -> None:
+    """The plan asked for earnings dates in S3. S3b did not build them.
+
+    An unbuilt requirement that quietly disappears from the plan is the most
+    expensive kind of omission, because the plan is what we check against later.
+    """
+    gate = stage_blocks()["S3"]
+    assert "earnings dates are not ingested" in gate
+    assert "OPEN" in gate
+    assert "P13" in gate

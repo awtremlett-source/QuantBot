@@ -380,14 +380,33 @@ def test_the_recording_list_is_wide_and_has_no_duplicates() -> None:
     assert counts["uk_etfs"] >= 20
 
 
-def test_every_london_entry_is_marked_gbp_and_every_us_entry_usd() -> None:
+def test_every_london_entry_defaults_to_pence_and_every_us_entry_to_dollars() -> None:
+    """London's default is PENCE, which is what both our sources actually say.
+
+    This test used to assert "GBP" for every London name and passed for a week,
+    because the list and the test shared one wrong assumption. Trading 212 quotes
+    2,420 London instruments in GBX and yfinance spells the same unit GBp
+    (FACTS row r), so pence is the common case and pounds is the exception. The
+    default here only has to be the USUAL unit; the authority for any single
+    instrument is the resolved universe file, and the front door carries the
+    currency per row.
+    """
     for ticker, market, currency in tickers.recording_list():
-        if ticker.endswith(".L"):
-            assert market == "LSE" and currency == "GBP", ticker
-        elif ticker.startswith("^") or ticker.endswith("=X"):
+        if ticker.startswith("^") or ticker.endswith("=X"):
             assert currency in ("INDEX", "FX"), ticker
+            continue
+        assert market == ("LSE" if ticker.endswith(".L") else "US"), ticker
+        # Not a default: this is what T212 says about this one instrument.
+        assert currency == tickers.quote_currency(ticker), ticker
+        if market == "LSE":
+            assert currency in ("GBp", "GBP", "USD", "EUR"), ticker
         else:
-            assert market == "US" and currency == "USD", ticker
+            assert currency == "USD", ticker
+    # The London split is real and must not quietly collapse to one currency.
+    london = {tickers.quote_currency(t) for t, m, _ in tickers.recording_list()
+              if m == "LSE"}
+    assert {"GBp", "GBP"} <= london, (
+        f"London should span pence AND pounds (FACTS row r); got {london}")
 
 
 def test_the_exchange_rate_is_recorded_because_p3_needs_it() -> None:

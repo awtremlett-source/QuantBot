@@ -19,7 +19,19 @@ this logic leaves NVDA or this laptop.
 - tests/ mirrors tree; tests/museum/ = incident regression fixtures
 - docs/ SCARS.md, EDUCATION.md, FOUNDING_DIRECTIVE.md, sessions/
 - manual/ the operator's own app (walled off; two read-only doorways to v1)
-- qb2/ v2 skeleton: data research signals model sizing execution ui tools
+- qb2/ v2: data research signals model sizing execution ui tools (-> qb2/README.md)
+  - qb2/ingest/ recorder.py (RAW capture) · tickers.py (T212<->yfinance spelling)
+    verify_universe.py (resolve names against T212's OWN list; never constructs a
+    ticker) · constituents.py (index membership, parsed from a saved page)
+  - qb2/data/ front_door.py (the ONLY writer into data/clean) · census.py (how much
+    data is really there, with a red-on-broken meter)
+  - qb2/execution/ t212_client.py (GET-only) · costs.py · fill_recorder.py ·
+    safety.py (killswitch, P14 checks) · sender.py (ARMED = False)
+  - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
+    from CLEAN only) · sample_delay.py (measures FACTS row o) · record_now.py ·
+    fingerprint.py
+- docs/universe/ the versioned universes + README (start here for what we trade)
+- reports/first_light/ the dated charts drawn from the clean store
 
 ## DATA
 - NVDA: 2,898 CLEAN daily bars, 2015-01-02 → present. Splits pass continuity

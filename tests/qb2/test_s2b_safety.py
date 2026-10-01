@@ -21,10 +21,10 @@ from qb2.execution.safety import BOT, ADVISOR, MANUAL, Blocked, Holding
 from qb2.execution.sender import OrderRequest
 
 # Instruments whose cost treatment genuinely differs (FACTS.md rows l, m1-m4).
-US_SHARE = Instrument("AAPL_US_EQ", "USD", "US", "SHARE")
-UK_SHARE = Instrument("VODl_EQ", "GBP", "LSE", "SHARE")
-UK_ETF = Instrument("ISFl_EQ", "GBP", "LSE", "ETF")
-AIM_SHARE = Instrument("ASCl_EQ", "GBP", "LSE", "SHARE", aim=True)
+US_SHARE = Instrument("AAPL_US_EQ", "USD", "US", "STOCK")
+UK_SHARE = Instrument("VODl_EQ", "GBX", "LSE", "STOCK")
+UK_ETF = Instrument("ISFl_EQ", "GBX", "LSE", "ETF")
+AIM_SHARE = Instrument("ASCl_EQ", "GBX", "LSE", "STOCK", aim=True)
 
 
 # ============================================================ the cost model ==
@@ -65,6 +65,71 @@ def test_a_uk_share_pays_no_currency_fee_and_a_us_share_pays_no_stamp_duty() -> 
     assert us.buy.stamp_duty_gbp == 0.0
 
 
+# ---------------------------------------------------------------------------
+# These four use Trading 212's OWN vocabulary, read off the saved instrument list
+# (FACTS rows q, r and s), rather than the words we invented before we had seen
+# the data. The fixtures above say kind "SHARE" and currency "GBP"; the real list
+# says kind "STOCK" and quotes 2,420 London lines in "GBX" (pence). The model and
+# those fixtures were written from the same guess, so they agreed with each other
+# and disagreed with the broker -- which is exactly how a cost goes missing
+# without a single test turning red.
+REAL_UK_SHARE = Instrument("BTl_EQ", "GBX", "LSE", "STOCK")
+REAL_UK_SHARE_YF_SPELLING = Instrument("BP.L", "GBp", "LSE", "STOCK")
+REAL_UK_ETF = Instrument("CSP1_EQ", "GBX", "LSE", "ETF")
+REAL_USD_LONDON_ETF = Instrument("AGGGl_EQ", "USD", "LSE", "ETF")
+
+
+def test_stamp_duty_still_applies_when_the_kind_is_t212s_word_stock() -> None:
+    """The 0.5% must not vanish because the broker says STOCK and we said SHARE.
+
+    Failure mode this catches: the single largest cost in the model silently
+    becoming zero on every UK buy, which would make every UK back-test look
+    0.5% per trade better than reality.
+    """
+    trip = costs.round_trip(REAL_UK_SHARE, 1_000.0)
+    assert trip.buy.stamp_duty_gbp == pytest.approx(5.00)
+    assert trip.sell.stamp_duty_gbp == 0.0
+
+
+def test_a_pence_quoted_london_share_pays_no_currency_fee() -> None:
+    """Pence are sterling. "GBX" and "GBp" are spellings, not foreign money.
+
+    Failure mode this catches: charging 0.15% a leg to convert pounds into
+    pounds, which would wrongly condemn 97 of the 100 FTSE 100 names.
+    """
+    for instrument in (REAL_UK_SHARE, REAL_UK_SHARE_YF_SPELLING, REAL_UK_ETF):
+        trip = costs.round_trip(instrument, 1_000.0)
+        assert trip.buy.fx_fee_gbp == 0.0, f"{instrument.ticker} charged FX on a buy"
+        assert trip.sell.fx_fee_gbp == 0.0, f"{instrument.ticker} charged FX on a sell"
+
+
+def test_a_london_line_quoted_in_dollars_pays_fx_twice_and_no_duty() -> None:
+    """FACTS row r: some London ETFs really are priced in USD (AGGG.L, IGLN.L).
+
+    They are the expensive corner of the London list: the FX fee lands on both
+    legs because the account holds pounds, while the ETF exemption still spares
+    them stamp duty.
+    """
+    trip = costs.round_trip(REAL_USD_LONDON_ETF, 1_000.0)
+    assert trip.buy.fx_fee_gbp == pytest.approx(1.50)
+    assert trip.sell.fx_fee_gbp == pytest.approx(1.50)
+    assert trip.buy.stamp_duty_gbp == 0.0
+
+
+def test_an_unknown_instrument_kind_is_refused_rather_than_untaxed() -> None:
+    """Why the two defects above were silent, fixed at the root.
+
+    An unrecognised ``kind`` or ``market`` used to mean "no stamp duty" -- the
+    cost quietly fell to zero and nothing complained. A wrong word must now be
+    an error at construction, because a cost model that fails loudly is worth
+    more than one that is quietly optimistic.
+    """
+    with pytest.raises(ValueError, match="kind"):
+        Instrument("VODl_EQ", "GBX", "LSE", "SHARE")       # our old invented word
+    with pytest.raises(ValueError, match="market"):
+        Instrument("VODl_EQ", "GBX", "London", "STOCK")
+
+
 def test_the_ptm_levy_applies_only_over_ten_thousand_pounds() -> None:
     """Row m4: GBP 1.50 per trade over GBP 10,000, on buy and on sell."""
     small = costs.round_trip(UK_SHARE, 9_999.0)
@@ -97,10 +162,27 @@ def test_extended_hours_cost_more_than_the_regular_session() -> None:
 
 
 def test_an_unknown_market_is_refused_rather_than_costed_at_zero() -> None:
-    """Silently costing a trade at zero is the most expensive bug available."""
-    unknown = Instrument("XYZ", "EUR", "XETRA", "SHARE")
+    """Silently costing a trade at zero is the most expensive bug available.
+
+    The refusal now happens at construction, which is earlier and better: an
+    instrument we cannot cost cannot be built in the first place.
+    """
+    with pytest.raises(ValueError, match="unknown market"):
+        Instrument("XYZ", "EUR", "XETRA", "STOCK")
+
+
+def test_a_market_with_no_spread_figure_is_still_refused(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    """The second line of defence, kept alive on purpose.
+
+    A market can be known and still have no measured spread -- that is what
+    happens the day someone adds one. Removing LSE's figure must stop the costing
+    rather than quietly return a cheaper number.
+    """
+    monkeypatch.setitem(costs.SPREAD_BPS_BY_MARKET, "LSE", None)
+    monkeypatch.delitem(costs.SPREAD_BPS_BY_MARKET, "LSE")
     with pytest.raises(ValueError, match="no spread figure"):
-        costs.leg_cost(unknown, 1_000.0, "BUY")
+        costs.leg_cost(UK_SHARE, 1_000.0, "BUY")
 
 
 def test_the_real_cost_of_a_same_day_uk_share_trade_is_stated_plainly() -> None:

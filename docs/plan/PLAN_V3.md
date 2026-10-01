@@ -386,7 +386,7 @@ about 60 trading days. **Every day we do not record is a day we can never test
 on.** It records both markets from the first run. This stage also captures FX
 rates, and **measures the quote delay that row o could not** (the markets were
 shut when it was attempted).
-- Exit gate: both lists agreed; the two lists provably disjoint; at least 95% of the active universe passes the data census; every instrument asserted to be the GBP line where one exists; a chart renders from clean data.
+- Exit gate: both lists agreed; the two lists provably disjoint; at least 95% of the active universe passes the data census; every instrument asserted to be the GBP line where one exists; a chart renders from clean data. **Still OPEN after S3b: earnings dates are not ingested.** P13 and the S5 earnings check cannot be honest without them — a same-day bot holding a share through its results announcement is gambling on a coin-flip it did not price — so this stage is NOT complete until they are. Recorded here rather than quietly dropped.
 - Enforcer: the front-door ingest checks, the universe test, the census meter.
 - Built/Wired/Armed: universe files written · ingest wired to the scheduler with catch-up · census armed in the daily digest.
 
@@ -396,7 +396,7 @@ candidate written down before it is tested), the benchmark (D3), and a
 **survivorship mark-down**: historic lists quietly omit companies that failed, so
 an untouched backtest of "today's shares" flatters itself, and the result is
 marked down for it.
-- Exit gate: the known-null gate re-proved — a coin-flip strategy is REJECTED and a deliberately exploitable pattern PASSES; an unregistered candidate cannot be scored; the benchmark appears in every report; **costs inside the backtest — the cost model (qb2 S2b) applied to every simulated fill, gross AND net reported, 2× stress available**. (Carried from S2b, which built the cost model before any backtest existed to put it inside.)
+- Exit gate: the known-null gate re-proved — a coin-flip strategy is REJECTED and a deliberately exploitable pattern PASSES; an unregistered candidate cannot be scored; the benchmark appears in every report; **costs inside the backtest — the cost model (qb2 S2b) applied to every simulated fill, gross AND net reported, 2× stress available**. (Carried from S2b, which built the cost model before any backtest existed to put it inside.) **AND the bot's universe is AGREED, not merely proposed: the versioned bot file says AGREED and carries the operator's own words granting it, with the date.** (Carried from S3b, which proposed a list of 50 names across three tagged sleeves and deliberately left it unagreed; S3's own gate requires both lists agreed, and a backtest run on a list nobody chose would have to be thrown away.)
 - Enforcer: the firewall tests, extended to the new universes, plus the pre-registration check.
 - Built/Wired/Armed: pre-registration format written · wired so every scoring path refuses unregistered candidates · trial logging armed on the search path.
 
