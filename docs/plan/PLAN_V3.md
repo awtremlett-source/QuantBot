@@ -396,7 +396,7 @@ candidate written down before it is tested), the benchmark (D3), and a
 **survivorship mark-down**: historic lists quietly omit companies that failed, so
 an untouched backtest of "today's shares" flatters itself, and the result is
 marked down for it.
-- Exit gate: the known-null gate re-proved — a coin-flip strategy is REJECTED and a deliberately exploitable pattern PASSES; an unregistered candidate cannot be scored; the benchmark appears in every report.
+- Exit gate: the known-null gate re-proved — a coin-flip strategy is REJECTED and a deliberately exploitable pattern PASSES; an unregistered candidate cannot be scored; the benchmark appears in every report; **costs inside the backtest — the cost model (qb2 S2b) applied to every simulated fill, gross AND net reported, 2× stress available**. (Carried from S2b, which built the cost model before any backtest existed to put it inside.)
 - Enforcer: the firewall tests, extended to the new universes, plus the pre-registration check.
 - Built/Wired/Armed: pre-registration format written · wired so every scoring path refuses unregistered candidates · trial logging armed on the search path.
 
@@ -444,7 +444,7 @@ reasons, and the scorecard of P9.
 ### S10 — Demo execution, and the moment the clock starts
 Batched orders near the open, stops placed at Trading 212 and raised daily, daily
 reconciliation against the broker's own record, and a killswitch fire-drill.
-- Exit gate: our book and the broker's record agree to a stated tolerance for five consecutive days; every open position has a stop at the broker; the killswitch stops new orders under drill; expected-versus-actual price recorded for every fill.
+- Exit gate: our book and the broker's record agree to a stated tolerance for five consecutive days; every open position has a stop at the broker; expected-versus-actual price recorded for every fill; **the killswitch halts a demo dry run — STOP_NEW_TRADES set mid-run, no new buy leaves the process, and flatten-bot empties the bot's holdings while leaving the advisor's alone**. (Carried from S2b, which had no dry-run loop to halt.)
 - Enforcer: the daily reconciliation monitor and the stop ledger, both proven red-on-broken on doctored copies.
 - Built/Wired/Armed: client upgraded to place demo orders · wired to the scheduler · armed with throttle, brakes and killswitch live. **The forward clock starts here.**
 

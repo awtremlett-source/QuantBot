@@ -1,13 +1,12 @@
 # STATE.md — resume in seconds
 
 Phase: v2 PLANNED (the Simons direction).  Updated: 2026-09-21.
-NEXT BOX: S3 — both universes (bot list PROPOSE→GO, advisor filter, no-overlap
-test), ingest with dividends/FX/earnings dates, census ≥95% CLEAN, first chart —
-and FIRST of all the INTRADAY RECORDER, because intraday history is short and
-every unrecorded day is lost (FACTS row n). S3 also MEASURES the quote delay
-that row o could not (markets were shut).
+NEXT BOX: S3b — both universes (bot list PROPOSE→GO, advisor filter, no-overlap
+test), the FRONT DOOR that ingests the recorded raw bars into the store, census
+≥95% CLEAN, first chart, and the MEASURED quote delay from the recorder's own
+samples. The recorder itself is DONE and running (S3a).
 S0, S1, S2a and S2b ARE DONE (S2b 2026-09-27).
-FINGERPRINTS: v1 4add56ec…743b6 (must never move) · qb2 49ce8ea4…
+FINGERPRINTS: v1 4add56ec…743b6 (must never move) · qb2 8f291413…b1650
 PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
 PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 
@@ -38,6 +37,54 @@ PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
   time, continuous severity blending, early-and-small sizing, blunt stress rules.
 - Validation (locked): walk-forward + final untouched holdout; backtests simulate live
   data delay; Deflated Sharpe (penalised by number of trials).
+- S3a DONE (2026-09-30, QT-08): THE INTRADAY RECORDER IS LIVE, and it had to be
+  built first because the data cannot be fetched later (FACTS row n, measured).
+  qb2/ingest/recorder.py captures 1-minute bars for a PROVISIONAL 119-name
+  recording list (64 US shares, 30 FTSE-100 names, 20 UK ETFs, 4 gauges,
+  GBPUSD), plus a one-time 5m (~60 trading days) and 1h (~2.9 years) backfill.
+  Raw only: data/raw/intraday/<interval>/<ticker>/<date>.parquet (gitignored)
+  with one append-only manifest line per capture (first/last bar UTC, rows,
+  currency, fetch time, file hash). S3b's front door is the only thing that may
+  put it in the store. WHAT IT REFUSES TO GET WRONG: the still-forming bar is
+  dropped (saving it would store a high that has not happened); a bar that comes
+  back CHANGED goes to quarantine and the original stands, never overwritten; a
+  100x price jump is a pence/pounds unit change, not a market move; clocks are
+  converted with a real timezone database, tested across the week when the UK has
+  changed and the US has not (2026-10-25 vs 2026-11-01, when the gap is 4 hours
+  not 5); impossible OHLC rows are quarantined and counted; a gap it cannot fill
+  is written down as LOST, never interpolated. Throttling gets a patient retry
+  with backoff, then an honest LOST. Freshness meter per interval, RED after 2
+  weekdays (STARTING FIGURE), with its birth certificate: proven RED on a planted
+  week-old manifest. SCHEDULED: QB2-Recorder registered per-user, no admin,
+  MON-FRI hourly for 14 hours from 07:00 (covers London 08:00-16:30 and US
+  14:30-21:00 UK). The at-logon trigger needs admin and was NOT forced — catch-up
+  makes it optional; the one command is in the session log.
+  DEMO KEY SMOKE TEST RUN: connected, 10 positions, 10 distinct tickers — ONE ROW
+  PER TICKER, which strongly corroborates FACTS row g without settling it (the
+  decisive test needs a ticker bought twice, and the key cannot read order
+  history). KEY PERMISSIONS FOUND (new FACTS row p): account/summary and
+  positions GRANTED; orders, instruments and exchanges all 403. A key that cannot
+  READ orders cannot place one — that is the read-only proof, obtained without
+  ever probing an order endpoint. The cost: T212's instrument list is unreadable,
+  so the recording list is NOT verified against what T212 offers, except the 10
+  tickers the live account proved. FACTS row f9 UPGRADED: 429 is the
+  rate-limit status, observed live (still undocumented). The two S2b gaps were
+  CARRIED, not dropped: S4's exit gate now requires the cost model inside the
+  backtest, S10's requires the killswitch to halt a demo dry run.
+  FIRST REAL CAPTURE (2026-09-30/10-01): 1,686,600 bars across 12,092 parquet
+  files, 101.7 MiB — 1m 117 tickers/379,281 bars · 5m 117/619,535 · 1h
+  116/687,784. 13 LOST gaps (all "provider returned nothing": AAPL x6 — almost
+  certainly Yahoo throttling after this session's own earlier probing — plus
+  AHT.L, IEUR.L, GEV; catch-up refills them on the next run). ONE bar
+  quarantined for real: AGGG.L failed the OHLC sanity check on live data, so the
+  guard earned its place on day one. ZERO delay samples: both markets were shut,
+  so row o is still unmeasured and the recorder will take samples automatically
+  during the next weekday session. A DESIGN MISTAKE WAS FOUND AND FIXED MID-RUN:
+  the 1h backfill was writing one file per trading day per ticker (~59,000 tiny
+  files for 2.9 years); hourly data is now partitioned BY MONTH (~36 files per
+  ticker) while 1m and 5m stay per-day, and the 1,382 day-files already written
+  were MOVED ASIDE to data/raw/superseded-1h-dayfiles-2026-09-30, not deleted,
+  with a manifest note saying why. qb2 fingerprint now 8f291413…b1650.
 - S2b DONE (2026-09-27, QT-07) — and the BOT'S HORIZON REVERSED ON OPERATOR
   INSTRUCTION. THE PLAN CHANGE: the bot now trades SAME DAY and holds nothing
   overnight (PLAN_V3 P4 replaces "holds days"): flat before each close (last sell

@@ -287,18 +287,48 @@ def test_the_instrument_list_lands_raw_and_goes_no_further(tmp_path: Path) -> No
                     reason="no T212 practice credentials in .env -- "
                            "see docs/t212/SETUP.md (this is not a failure)")
 def test_live_demo_smoke_read_only() -> None:
-    """Reads the real practice account. Places nothing. Off unless keys exist."""
+    """Reads the real practice account. Places nothing. Off unless keys exist.
+
+    It asserts only what a smoke test should: the credentials work and the
+    account can be read. It does NOT assume the key holds every read scope -- a
+    key granted fewer permissions is SAFER, not broken, so a 403 on the metadata
+    endpoints is reported as a scope finding rather than failed. What still fails
+    here is what matters: bad credentials, or no connection at all.
+    """
     client = T212DemoClient()
-    positions = client.positions()
-    instruments = client.instruments()
-    print(f"\nT212 practice smoke: connected: yes, "
-          f"{len(instruments)} instruments, {len(positions)} positions")
+
+    summary = client.account_summary()        # this is the authentication test
+    positions = client.positions()            # portfolio scope
+    assert isinstance(summary, dict) and summary, "the account read came back empty"
     assert isinstance(positions, list)
-    assert len(instruments) > 0
-    # Settles FACTS.md row g empirically: one row per ticker, or not.
+
+    # These two are already proven granted by the reads above. Re-probing them
+    # would only hit the rate limit and report 429, which is NOT a permission
+    # problem -- confusing the two is how a working key looks broken.
+    scopes: dict[str, str] = {"account_summary": "granted",
+                              "positions": "granted"}
+    for name in ("pending_orders", "instruments", "exchanges"):
+        url = f"{t212.DEMO_BASE_URL}{t212.ENDPOINTS[name].path}"
+        reply = client._transport("GET", url, client._headers())
+        scopes[name] = ("granted" if reply.status == 200
+                        else f"HTTP {reply.status}"
+                        + (" (no scope)" if reply.status == 403 else ""))
+
     tickers = [row.get("instrument", {}).get("ticker") for row in positions]
-    print(f"T212 practice smoke: distinct tickers {len(set(tickers))} "
-          f"of {len(tickers)} position rows")
+    distinct = len(set(tickers))
+    print(f"\nT212 practice smoke: connected: yes, {len(positions)} positions, "
+          f"{distinct} distinct tickers")
+    print("T212 practice smoke: rows per ticker = "
+          + ("one each" if distinct == len(tickers) else "SOME REPEAT"))
+    for name, state in scopes.items():
+        print(f"T212 practice smoke: {name:16} {state}")
+
+    # A key that cannot even READ orders certainly cannot place one. That is the
+    # read-only evidence, gathered without ever probing an order endpoint.
+    if scopes["pending_orders"] != "granted":
+        print("T212 practice smoke: the orders scope is NOT granted, so this "
+              "key cannot place an order")
+
 
 
 # ------------------------------------------- nothing secret reaches a log ---

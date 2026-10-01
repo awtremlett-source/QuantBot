@@ -19,11 +19,14 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [x] S2b Cost model, fill recorder, killswitch, price checks, disarmed sender,
       qb2 fingerprint (2026-09-27). Bot horizon REVERSED to same-day (P4); P17 added
       to decide the market by test; S13 gained power safety; FACTS 2c → CONFLICT
-- [ ] S3 INTRADAY RECORDER FIRST (history is short: 1m only 8 days/request, 5m/15m
-      ~60 trading days — every unrecorded day is lost), then both universes (bot list
-      PROPOSE→GO · advisor filtered · no-overlap test) + ingest incl. dividends, FX and
-      earnings dates + MEASURE the quote delay (FACTS row o) + census ≥95% CLEAN +
-      chart. NEXT BOX
+- [x] S3a INTRADAY RECORDER (2026-09-30): 119-name provisional recording list, 1m +
+      5m/1h backfill, forming-bar drop, quarantine-never-overwrite, DST-week tested,
+      LOST gaps recorded, freshness meter red-on-broken, QB2-Recorder task registered
+      per-user MON-FRI hourly. Demo smoke test run; key is read-only (no orders scope)
+- [ ] S3b Both universes (bot list PROPOSE→GO · advisor filtered · no-overlap test) +
+      FRONT DOOR ingesting the recorded raw bars + dividends, FX and earnings dates +
+      MEASURED quote delay from the recorder's samples + census ≥95% CLEAN + chart.
+      NEXT BOX
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
       survivorship mark-down
 - [ ] S5 Safety layer FIRST: stops, brakes, pot limits, age + earnings checks,
@@ -50,9 +53,13 @@ Built/Wired/Armed checklist.
 ## Awaiting the operator
 - [ ] D1 advisor risk rule (loss-at-stop cap vs the 1% rule) · D2 bot sizing ·
       D3 the benchmark — recommended defaults in PLAN_V3 "DECISION REQUESTED"
-- [ ] PRACTICE API KEY: generate one in the phone app and paste it into .env —
-      docs/t212/SETUP.md walks through it. Until then the demo smoke test skips and
-      FACTS row 2g (one position per ticker) stays unsettled
+- [x] PRACTICE API KEY in .env (2026-09-30) — smoke test connects and reads
+- [ ] OPTIONAL, closes two gaps: regenerate the practice key with the INSTRUMENTS
+      (and ideally HISTORY) permission. Without instruments we cannot check the
+      recording list against what T212 actually offers; without history we cannot
+      settle FACTS row g automatically. docs/t212/SETUP.md explains both
+- [ ] TWO-MINUTE MANUAL CHECK for FACTS row g: in the Practice app buy 1 share of
+      something cheap, then 1 more of the same, then say "check 2g" 
 - [ ] FACTS row 2c must be settled before S14: can Limit/Stop/Stop-Limit orders be
       placed on a REAL-MONEY account? One tiny live test, or a written answer from
       T212 support. Sources disagree and going live on a guess is not acceptable

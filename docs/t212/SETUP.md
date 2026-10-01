@@ -94,3 +94,48 @@ The full list with sources and dates is in [FACTS.md](FACTS.md).
    only reports a price for something in your portfolio. So checking a price
    before buying something new has to lean on our own data, which is the next
    stage's problem to solve honestly.
+
+---
+
+## Two things the key cannot currently do (2026-09-30)
+
+When the key was tested against the practice account, it could read the account
+and the portfolio, but three endpoints came back "403 Forbidden": orders,
+instruments and exchanges. That means the key was granted **account data** and
+**portfolio** permissions only.
+
+**The good news:** a key that cannot even *read* orders cannot *place* one. That
+is the strongest read-only evidence available without ever trying to send an
+order, which this project does not do.
+
+**The cost:** we cannot download Trading 212's list of tradable instruments, so
+the recording list in `docs/RECORDING_LIST.md` is not checked against what T212
+actually offers. Names on it may not be tradable there.
+
+### If you want to close that gap
+
+Generate a new practice key with the **instruments / metadata** permission ticked
+as well (and **history**, if you would like the check below done automatically),
+then paste it into `.env` exactly as before. Nothing else changes.
+
+## The manual check for "one position per share" (FACTS row g)
+
+We still cannot prove whether buying the same share twice makes **one** position
+or **two**. The account currently holds 10 shares in 10 separate rows, which
+points strongly at one-row-per-share, but none of them is known to have been
+bought twice, and the key cannot read order history to find out.
+
+It matters because the bot and the advisor must never hold the same share: if
+two buys became two separate positions, one part's sell could close the other
+part's holding.
+
+**Two minutes in the Practice app settles it:**
+
+1. Pick the cheapest share you already hold, or any cheap one.
+2. Buy **1 share**.
+3. Buy **1 more share** of the same thing.
+4. Tell Claude Code: **"check 2g"**.
+
+It will read your positions and report whether that share appears as one row
+with a quantity of 2, or as two rows of 1. Either answer is useful; the guessing
+is what is not.

@@ -489,3 +489,26 @@ def test_s14_will_not_go_live_until_row_c_is_settled() -> None:
     block = " ".join(stage_blocks()["S14"].split())
     assert "row c" in block.lower() or "FACTS" in block
     assert "stop" in block.lower()
+
+
+# ------------------------------- QT-08: the two S2b gaps, carried to later gates ---
+
+def test_s4_carries_the_cost_model_into_the_backtest() -> None:
+    """S2b built the cost model but had no backtest to put it inside.
+
+    That half of S2b's exit gate could not be met then, so it is carried here
+    rather than quietly dropped -- which is how a gap becomes a hole.
+    """
+    block = " ".join(stage_blocks()["S4"].split()).lower()
+    assert "cost model" in block, "S4 must require the S2b cost model be applied"
+    assert "every simulated fill" in block
+    assert "gross" in block and "net" in block
+    assert "2x" in block or "2×" in stage_blocks()["S4"]
+
+
+def test_s10_carries_the_killswitch_dry_run() -> None:
+    """The other S2b half: no dry-run loop existed to halt."""
+    block = " ".join(stage_blocks()["S10"].split()).lower()
+    assert "dry run" in block
+    assert "stop_new_trades" in block
+    assert "flatten" in block
