@@ -254,16 +254,55 @@ def test_every_traded_name_carries_the_identity_it_was_resolved_to() -> None:
             assert entry["quote_currency"], f"{which}: {entry['yfinance']} has no unit"
 
 
-def test_the_bot_list_is_not_yet_agreed() -> None:
+def test_the_bot_list_is_agreed_in_the_operators_own_words() -> None:
     """PLAN_V3 S3 requires the bot's list to be AGREED before use.
 
-    This test is the enforcement: while the file says PROPOSED, nothing may trade
-    on it, and the S4 gate stays shut. It is expected to be changed deliberately,
-    by the operator, and that change should be visible in a diff.
+    Agreed on 2026-10-02. The S4 exit gate asks for three things and this checks
+    all three, because "AGREED" on its own is just a word somebody typed: the
+    status, the operator's words exactly as they were given, and the date they
+    were given on (FRAMEWORK requirements-verbatim).
     """
     bot = _newest("bot-universe")
-    assert bot["status"] == "PROPOSED"
-    assert "NOT tradable" in bot["status_means"]
+    assert bot["status"] == "AGREED"
+    assert bot["agreed_words_verbatim"] == "GO on bot universe v1"
+    assert bot["agreed_on"] == "2026-10-02"
+    assert len(bot["entries"]) == 50, "agreement covers exactly the list shown"
+
+
+def test_being_agreed_does_not_mean_anything_trades() -> None:
+    """The dangerous misreading. AGREED is permission to BUILD, not to trade.
+
+    The sender is disarmed in code and S3's own gate is still open; agreeing a
+    list changes neither.
+    """
+    bot = _newest("bot-universe")
+    assert "does NOT mean anything trades" in bot["status_means"]
+
+    from qb2.execution import sender
+    assert sender.ARMED is False, "a list being agreed must never arm the sender"
+
+
+def test_a_rebuild_cannot_quietly_cancel_the_agreement(
+        monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The silent disarm: a rebuild writes PROPOSED and the S4 gate shuts again.
+
+    Everything reads whichever universe file sorts last, so a newer PROPOSED file
+    would override an agreed one with no error and no obvious cause.
+    """
+    from qb2.tools import build_universe
+
+    monkeypatch.setattr(build_universe, "UNIVERSE", tmp_path)
+    (tmp_path / "bot-universe-v1-2026-10-01.json").write_text(
+        json.dumps({"status": "AGREED", "agreed_words_verbatim": "GO"}),
+        encoding="utf-8")
+
+    recording = {"built": "2026-11-01", "entries": []}
+    with pytest.raises(build_universe.AgreementWouldBeLost, match="AGREED"):
+        build_universe.write_all(recording)
+
+    # Superseding is allowed, but only when it is asked for out loud.
+    written = build_universe.write_all(recording, supersede_agreement=True)
+    assert any("bot-universe" in path.name for path in written)
 
 
 def test_the_bot_sleeves_are_tagged_and_their_costs_written_down() -> None:

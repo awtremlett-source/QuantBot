@@ -7,7 +7,7 @@ familiar; every entry carries the evidence that put it there.
 | file | what it is | how many |
 |---|---|---|
 | `recording-list-v2-*.json` | everything we **record prices for**. Recording is cheap; not having the data later is permanent. | 221 instruments + 4 gauges + 1 exchange rate |
-| `bot-universe-v1-*.json` | what the **bot** may trade. **Status: PROPOSED — not agreed, not tradable.** | 50, in three tagged sleeves |
+| `bot-universe-v1-*.json` | what the **bot** may trade. **Status: AGREED 2026-10-02.** | 50, in three tagged sleeves |
 | `advisor-universe-v1-*.json` | what the **advisor** may suggest. | 171 |
 
 The bot's list and the advisor's list **cannot overlap**, and a test proves it. If
@@ -17,16 +17,24 @@ holding and the advisor would be left with a position nobody decided to close
 
 ---
 
-## DECISION REQUESTED — the bot's list needs your GO
+## AGREED — 2026-10-02
 
-The plan says the bot's list must be *agreed before use*. It currently says
-`PROPOSED`, and while it does, the S4 gate stays shut: no back-test may run on it.
+> **"GO on bot universe v1"**
 
-**Default, if you say nothing: nothing happens.** The list stays proposed and S4
-cannot start.
+Your words, recorded verbatim and dated in the file itself, as the S4 exit gate
+requires. The bot may now be **built and back-tested** against these 50 names.
 
-**To agree it**, say so in your own words and I will record them, with the date, in
-the file itself. You are agreeing to 50 names in three sleeves:
+**It does not mean anything trades.** The sender is still disarmed in code
+(`ARMED = False`, and nothing in qb2 sets it True), and S3's own exit gate is still
+open on two counts — see the bottom of this page. Agreeing a list is permission to
+build, not permission to trade.
+
+**Changing this list later is a new decision.** The build tool now refuses to
+overwrite an agreed list with a freshly proposed one, because everything reads
+whichever file sorts last: a rebuild would otherwise have closed the S4 gate again
+with no error and no obvious cause.
+
+The 50 names, in three sleeves:
 
 | sleeve | names | what a round trip costs | why it is here |
 |---|---|---|---|

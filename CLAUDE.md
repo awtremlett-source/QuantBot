@@ -7,7 +7,7 @@ days, Simons' method) on 30%, and an ADVISOR (suggests only; he trades; weeks to
 £/day target. Operator is a complete beginner: teach before building; define
 terms on first use; decisions arrive as `DECISION REQUESTED` + default.
 CURRENT: S3b DONE but S3 NOT complete — census 40.7% (gate 95%, the new
-names have no history yet) and earnings dates unbuilt. Bot universe PROPOSED.
+names have no history yet) and earnings dates unbuilt. Bot universe AGREED 2026-10-02.
 v1 KEEPS RUNNING UNTOUCHED as the baseline v2 must beat out-of-sample at 2×
 costs; engine folders read-only. Machine: sometimes-off laptop → loops
 catch-up-safe.

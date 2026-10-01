@@ -7,8 +7,9 @@ exit-gate items are open, both recorded in PLAN_V3 rather than waved through:
      recording list went from 119 names to 226 today, and the 131 new names have no
      history yet. It resolves by the recorder running — see the WARNING below.
   2. **Earnings dates are not ingested.** P13 and the S5 earnings check need them.
-NEXT BOX: finish S3 (earnings dates + let the census fill), NOT S4. S4 is also
-blocked on the operator agreeing the bot's universe.
+NEXT BOX: finish S3 (earnings dates + let the census fill), NOT S4. The bot's
+universe is no longer a blocker — it was agreed 2026-10-02 — but S3's other two
+exit-gate items still are.
 
 ⚠ WARNING, costs data every day it waits: the QB2-Recorder scheduled task will not
 start on battery, is killed when the charger is unplugged, never makes up a missed
@@ -32,6 +33,10 @@ PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
   RECORDED 226 = 98 US (S&P 500 over $800m/day) + 100 FTSE 100 + 23 sterling London
   ETFs (over £6m/day, one line per fund) + 4 gauges + GBPUSD. BOT 50 in three tagged
   sleeves (30 US / 10 ETF / 10 UK share) — **PROPOSED, not agreed, not tradable**.
+  **BOT LIST AGREED 2026-10-02, operator verbatim: "GO on bot universe v1".**
+  Agreed = may be BUILT and BACK-TESTED; the sender stays disarmed and S3's gate is
+  still open. A rebuild now REFUSES to overwrite an agreed list (it would otherwise
+  shut the S4 gate silently).
   ADVISOR 171, disjoint from the bot by construction and by test (P6).
   Every name resolved against T212's OWN instrument list: T212's ticker is a
   HISTORICAL id (Meta is FB_US_EQ, NatWest is RBSl_EQ — and NWG_US_EQ is the New

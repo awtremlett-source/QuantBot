@@ -2,8 +2,8 @@
  "list": "bot",
  "version": "v1",
  "built": "2026-10-01",
- "status": "PROPOSED",
- "status_means": "PROPOSED means NOT AGREED and NOT tradable. PLAN_V3 S3 requires the bot's list to be agreed before use, so the S4 gate stays shut while this says PROPOSED. Changing it is the operator's decision, recorded in their own words.",
+ "status": "AGREED",
+ "status_means": "AGREED means the operator has accepted this list and the bot may be built and back-tested against it. It does NOT mean anything trades: the sender is still disarmed (ARMED = False) and S3's own exit gate is still open. Changing this list is a new decision and needs a new agreement, recorded the same way.",
  "share_of_pot": "30%",
  "horizon": "same day (P4)",
  "sleeve_sizes": {
@@ -767,5 +767,9 @@
    "measured_days": 66,
    "flags": []
   }
- ]
+ ],
+ "agreed_on": "2026-10-02",
+ "agreed_by": "operator",
+ "agreed_words_verbatim": "GO on bot universe v1",
+ "agreed_note": "Recorded verbatim at the time it was given. The list agreed is exactly the 50 names below, in three tagged sleeves (30 us_liquid, 10 uk_etf, 10 uk_share), as built on 2026-10-01 from the measured liquidity floors and verified against Trading 212's own instrument list. The uk_share sleeve is included knowing it is the expensive arm -- 0.70% a round trip at 1x costs, 1.40% at 2x stress, because stamp duty takes 0.5% of every buy -- so that PLAN_V3 P17 is settled by measurement rather than by preference."
 }

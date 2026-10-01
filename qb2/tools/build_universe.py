@@ -244,10 +244,48 @@ def split_lists(recording: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str,
     return bot_doc, advisor_doc
 
 
-def write_all(recording: Mapping[str, Any]) -> list[Path]:
+class AgreementWouldBeLost(RuntimeError):
+    """Refusing to write a proposed list over an agreed one."""
+
+
+def agreed_bot_lists() -> list[Path]:
+    """Any bot list the operator has already agreed to."""
+    found: list[Path] = []
+    for path in sorted(UNIVERSE.glob("bot-universe-*.json")):
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(doc, dict) and doc.get("status") == "AGREED":
+            found.append(path)
+    return found
+
+
+def write_all(recording: Mapping[str, Any], *,
+              supersede_agreement: bool = False) -> list[Path]:
+    """Write the three files. Refuses to disarm an agreed list by accident.
+
+    The danger this closes: ``build_universe`` always writes its bot list as
+    PROPOSED, and the rest of the code reads whichever file sorts last. So a
+    rebuild would quietly replace an AGREED list with a PROPOSED one -- or, on the
+    same date, overwrite it outright -- and the only visible symptom would be the
+    S4 gate closing again for reasons nobody could explain.
+
+    Superseding is a decision, so it has to be asked for, and it needs a fresh
+    agreement in the operator's own words afterwards.
+    """
     UNIVERSE.mkdir(parents=True, exist_ok=True)
     stamp = recording["built"]
     bot_doc, advisor_doc = split_lists(recording)
+
+    already = agreed_bot_lists()
+    if already and not supersede_agreement:
+        names = ", ".join(path.name for path in already)
+        raise AgreementWouldBeLost(
+            f"the operator has AGREED {names}, and this rebuild would write a "
+            "PROPOSED list that supersedes it. Rebuilding the universe is a new "
+            "decision: pass supersede_agreement=True only when the operator has "
+            "asked for a new list, and record their words on the new file")
     written: list[Path] = []
     for name, doc in (("recording-list-v2", recording),
                       ("bot-universe-v1", bot_doc),
@@ -267,7 +305,12 @@ def main() -> None:
     already = [t for t, _, _ in tickers.recording_list()]
     recording = build(liquidity["us"], liquidity["uk_shares"],
                       liquidity["uk_etfs"], already)
-    for path in write_all(recording):
+    try:
+        written = write_all(recording)
+    except AgreementWouldBeLost as refusal:
+        print(f"REFUSED: {refusal}")
+        raise SystemExit(1) from None
+    for path in written:
         print(f"wrote {path.relative_to(REPO_ROOT)}")
 
 
