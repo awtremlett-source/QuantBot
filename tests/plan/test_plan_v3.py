@@ -531,13 +531,16 @@ def test_s4_cannot_open_on_a_universe_nobody_agreed_to() -> None:
     assert "date" in gate.lower()
 
 
-def test_s3_still_says_earnings_dates_are_missing() -> None:
-    """The plan asked for earnings dates in S3. S3b did not build them.
+def test_s3_still_names_what_is_missing_before_it_can_be_called_done() -> None:
+    """S3c built the earnings dates. Dividends are still not ingested.
 
     An unbuilt requirement that quietly disappears from the plan is the most
     expensive kind of omission, because the plan is what we check against later.
+    The gate must keep naming what is left, and must not read as finished while
+    anything it asked for is missing.
     """
     gate = stage_blocks()["S3"]
-    assert "earnings dates are not ingested" in gate
-    assert "OPEN" in gate
-    assert "P13" in gate
+    assert "STILL OPEN" in gate
+    assert "DIVIDENDS" in gate
+    assert "not complete" in gate.lower()
+    assert "advisor's 171" in gate

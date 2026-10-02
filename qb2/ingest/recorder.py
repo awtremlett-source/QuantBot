@@ -46,6 +46,18 @@ RAW_ROOT = REPO_ROOT / "data" / "raw" / "intraday"
 MANIFEST = RAW_ROOT / "manifest.jsonl"
 QUARANTINE = RAW_ROOT / "quarantine"
 
+
+def quarantine_dir() -> Path:
+    """Always derived from the CURRENT root, never from the one at import time.
+
+    ``save_bars`` redirects RAW_ROOT so tests write into a temporary folder. The
+    module-level QUARANTINE constant did not follow, so every test that
+    quarantined a bar wrote its synthetic rows into the REAL quarantine folder --
+    polluting live evidence with fake tickers, and making the quarantine count
+    look worse than it was.
+    """
+    return RAW_ROOT / "quarantine"
+
 # Provider limits, measured in FACTS.md row n -- not guessed.
 MAX_DAYS_PER_REQUEST = {"1m": 8, "5m": 60, "15m": 60, "1h": 730}
 BACKFILL_PERIOD = {"5m": "60d", "1h": "730d"}
@@ -102,10 +114,28 @@ class Outcome:
     lost: list[dict[str, object]] = field(default_factory=list)
     delay_samples: list[dict[str, object]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    attempted: list[str] = field(default_factory=list)
+    saved_names: set[str] = field(default_factory=set)
+    skipped: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def rows_saved(self) -> int:
         return sum(_as_int(c.get("rows")) for c in self.captures)
+
+    def unaccounted(self) -> list[str]:
+        """Names that were attempted and then simply disappeared.
+
+        The guard that was missing. On 2026-10-01 four names (GOOG, AXP, APH,
+        ADI) were walked past and ended the run with no data, no LOST row and no
+        error -- nothing recorded that they had been tried at all. A name must
+        come out of a run saved, lost, quarantined or skipped-with-a-reason; if
+        it comes out of none of them, the run is wrong and must say so.
+        """
+        accounted = set(self.saved_names)
+        accounted |= {str(row.get("ticker")) for row in self.lost}
+        accounted |= {str(row.get("ticker")) for row in self.skipped}
+        accounted |= {str(e).split()[0] for e in self.errors}
+        return [name for name in self.attempted if name not in accounted]
 
 
 # ------------------------------------------------------------- the clock -----
@@ -155,11 +185,17 @@ def drop_forming_bar(frame: pd.DataFrame, interval: str,
     moment = now or datetime.now(timezone.utc)
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=timezone.utc)
-    last = frame.index[-1]
-    last_utc = last.tz_convert("UTC") if last.tzinfo else last.tz_localize("UTC")
-    if last_utc + timedelta(minutes=minutes) > moment:
-        return frame.iloc[:-1]
-    return frame
+    # EVERY unfinished bar goes, not just the newest. Live delay samples caught
+    # this: 23 of 800 readings were negative, meaning the bar we kept was stamped
+    # in the future. Dropping only one trailing bar left the next one behind
+    # whenever two were unfinished, and a saved unfinished bar has a high and a
+    # low that can still change -- the look-ahead this whole function exists to
+    # refuse.
+    index = frame.index
+    stamps = (index.tz_convert("UTC") if index.tz is not None
+              else index.tz_localize("UTC"))
+    finished = stamps + timedelta(minutes=minutes) <= moment
+    return frame[finished]
 
 
 def ohlc_problems(frame: pd.DataFrame) -> pd.Series:
@@ -230,6 +266,92 @@ def read_manifest(manifest: Path | None = None) -> list[dict[str, object]]:
     return rows
 
 
+def last_saved_bars(interval: str,
+                    manifest: Path | None = None) -> dict[str, datetime]:
+    """Every name's resume point, from ONE pass over the manifest.
+
+    ``last_saved_bar`` answers for a single name and re-reads the whole file to
+    do it. Asking it 226 times a run is the same quadratic mistake that made a
+    run take over an hour, so the hourly path asks once and keeps the answers.
+    """
+    newest: dict[str, datetime] = {}
+    for row in read_manifest(manifest):
+        if row.get("interval") != interval or row.get("status") != "saved":
+            continue
+        ticker = row.get("ticker")
+        stamp = row.get("last_bar_utc")
+        if not isinstance(ticker, str) or not isinstance(stamp, str):
+            continue
+        try:
+            when = datetime.fromisoformat(stamp)
+        except ValueError:
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        if ticker not in newest or when > newest[ticker]:
+            newest[ticker] = when
+    return newest
+
+
+def days_needed(last_bar: datetime | None, interval: str,
+                now: datetime | None = None) -> int:
+    """How many days to ask the provider for, per name.
+
+    A name recorded an hour ago needs one day, not thirty. Asking for the full
+    window every hour is what turned the hourly run into a backfill of
+    everything, every time. A name with nothing saved gets the full window,
+    because it genuinely needs it.
+    """
+    cap = MAX_DAYS_PER_REQUEST[interval]
+    if last_bar is None:
+        return cap
+    moment = now or datetime.now(timezone.utc)
+    if last_bar.tzinfo is None:
+        last_bar = last_bar.replace(tzinfo=timezone.utc)
+    gap_days = (moment - last_bar).total_seconds() / 86_400
+    # +1 so a part-day gap still asks for a whole day, and the provider's own
+    # day boundaries cannot leave a sliver behind.
+    return max(1, min(cap, int(gap_days) + 1))
+
+
+def batched_yfinance_fetch(tickers: Sequence[str], interval: str,
+                           days: int) -> dict[str, pd.DataFrame]:
+    """Fetch many names in one request. The hourly run lives or dies on this.
+
+    One request per name means 226 round trips, each with its own latency and
+    its own chance of being throttled. yfinance can take a list, so names that
+    need the same window go together.
+
+    Anything the provider does not return comes back missing rather than empty,
+    so the caller can record it as LOST by name instead of guessing.
+    """
+    import yfinance as yf
+
+    period = f"{min(days, MAX_DAYS_PER_REQUEST[interval])}d"
+    names = list(tickers)
+    if not names:
+        return {}
+    frame = yf.download(names, period=period, interval=interval,
+                        auto_adjust=False, prepost=False, group_by="ticker",
+                        threads=True, progress=False)
+    out: dict[str, pd.DataFrame] = {}
+    for name in names:
+        try:
+            one = frame[name] if len(names) > 1 else frame
+        except KeyError:
+            continue
+        one = one.dropna(how="all")
+        if one.empty:
+            continue
+        one = one.rename(columns=str.lower)
+        wanted = [c for c in (*OHLC, "volume") if c in one.columns]
+        one = one[wanted]
+        if one.index.tz is None:
+            one.index = one.index.tz_localize("UTC")
+        out[name] = one.sort_index()
+    return out
+
+
 def last_saved_bar(ticker: str, interval: str,
                    manifest: Path | None = None) -> datetime | None:
     """Where to carry on from. This is what makes a missed run harmless."""
@@ -281,13 +403,16 @@ def _save_bars(bars: Bars, *, manifest: Path | None,
     problems = ohlc_problems(frame)
     if bool(problems.any()):
         bad = frame[problems]
-        QUARANTINE.mkdir(parents=True, exist_ok=True)
-        target = QUARANTINE / (f"{bars.ticker}-{bars.interval}-ohlc-"
+        quarantine = quarantine_dir()
+        quarantine.mkdir(parents=True, exist_ok=True)
+        target = quarantine / (f"{bars.ticker}-{bars.interval}-ohlc-"
                                f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S}.parquet")
         bad.to_parquet(target)
-        append_manifest({"kind": "quarantine", "reason": "ohlc_sanity",
-                         "ticker": bars.ticker, "interval": bars.interval,
-                         "rows": int(len(bad)), "file": str(target)}, manifest)
+        quarantine_record = {"kind": "quarantine", "reason": "ohlc_sanity",
+                             "ticker": bars.ticker, "interval": bars.interval,
+                             "rows": int(len(bad)), "file": str(target)}
+        append_manifest(quarantine_record, manifest)
+        records.append(quarantine_record)
         frame = frame[~problems]
 
     if bars.interval in PARTITION_BY_MONTH:
@@ -303,20 +428,47 @@ def _save_bars(bars: Bars, *, manifest: Path | None,
             existing = pd.read_parquet(path)
             shared = existing.index.intersection(chunk.index)
             if len(shared) > 0:
-                changed = ~existing.loc[shared, list(OHLC)].round(6).eq(
-                    chunk.loc[shared, list(OHLC)].round(6)).all(axis=1)
+                # Measured on live data 2026-10-02: re-fetching the same bars
+                # returns differences of 0.018%-0.063%. That is the provider
+                # rounding its own numbers, not the bar changing. Treating each
+                # one as a conflict produced 315 quarantine files in two days --
+                # which does not protect anything, it hides the one real conflict
+                # among hundreds of false ones.
+                was = existing.loc[shared, list(OHLC)]
+                now_values = chunk.loc[shared, list(OHLC)]
+                scale = was.abs().where(was.abs() > 0, 1.0)
+                relative = (now_values - was).abs() / scale
+                changed = (relative > REVISION_TOLERANCE).any(axis=1)
+                minor = relative.gt(0).any(axis=1) & ~changed
+                if bool(minor.any()) and not bool(changed.any()):
+                    # Counted, never silently dropped -- but one line, not a file.
+                    revision_record = {
+                        "kind": "revision", "ticker": bars.ticker,
+                        "interval": bars.interval, "day": str(day),
+                        "rows": int(minor.sum()),
+                        "largest_relative": float(relative.to_numpy().max()),
+                        "note": ("the provider revised its own numbers below the "
+                                 "materiality threshold; the saved bar stands")}
+                    append_manifest(revision_record, manifest)
+                    records.append(revision_record)
                 if bool(changed.any()):
-                    QUARANTINE.mkdir(parents=True, exist_ok=True)
-                    conflict = QUARANTINE / (
+                    quarantine = quarantine_dir()
+                    quarantine.mkdir(parents=True, exist_ok=True)
+                    conflict = quarantine / (
                         f"{bars.ticker}-{bars.interval}-{day}-changed-"
                         f"{datetime.now(timezone.utc):%Y%m%dT%H%M%S}.parquet")
-                    chunk.loc[shared][changed].to_parquet(conflict)
-                    append_manifest(
-                        {"kind": "quarantine", "reason": "value_changed",
-                         "ticker": bars.ticker, "interval": bars.interval,
-                         "rows": int(changed.sum()), "file": str(conflict),
-                         "note": "the saved bar stands; a human decides"},
-                        manifest)
+                    # shared[changed] selects the timestamps that differ.
+                    # chunk.loc[shared][changed] was CHAINED indexing: pandas
+                    # warned it would reindex the boolean key, and a reindex here
+                    # could quarantine the wrong rows.
+                    chunk.loc[shared[changed.to_numpy()]].to_parquet(conflict)
+                    changed_record = {
+                        "kind": "quarantine", "reason": "value_changed",
+                        "ticker": bars.ticker, "interval": bars.interval,
+                        "rows": int(changed.sum()), "file": str(conflict),
+                        "note": "the saved bar stands; a human decides"}
+                    append_manifest(changed_record, manifest)
+                    records.append(changed_record)
             keep = chunk[~chunk.index.isin(existing.index)]
             if keep.empty:
                 continue
@@ -447,6 +599,12 @@ Fetcher = Callable[[str, str, int], pd.DataFrame]
 
 # STARTING FIGURES: how hard to try when the provider pushes back. Free data is
 # rate-limited without telling us how, so this is deliberately patient and short.
+# STARTING FIGURE, tested first: how big a difference has to be before a
+# re-fetched bar counts as a DIFFERENT bar rather than the provider rounding
+# differently. Measured revisions on live data were 0.018%-0.063%, so 0.1% sits
+# above the noise and far below anything economically meaningful.
+REVISION_TOLERANCE = 0.001
+
 FETCH_ATTEMPTS = 3
 FETCH_BACKOFF_SECONDS = (2.0, 8.0)
 
@@ -491,6 +649,7 @@ def capture(entries: Sequence[tuple[str, str, str]], interval: str, *,
     outcome = Outcome()
     asked = days if days is not None else MAX_DAYS_PER_REQUEST[interval]
     for ticker, market, currency in entries:
+        outcome.attempted.append(ticker)
         try:
             frame = fetch_with_backoff(fetch, ticker, interval, asked,
                                        sleeper=sleeper)
@@ -519,10 +678,111 @@ def capture(entries: Sequence[tuple[str, str, str]], interval: str, *,
 
         bars = Bars(ticker=ticker, interval=interval, market=market,
                     currency=currency, frame=complete)
-        before = len(read_manifest(manifest))
+        # save_bars hands back everything it wrote, quarantines included. This
+        # used to read the WHOLE manifest before and after every single ticker to
+        # work out what had changed -- 452 full parses of a 5 MB file per run on
+        # 226 names, which is most of the reason a run took over an hour.
         records = save_bars(bars, root=root, manifest=manifest, now=now)
-        outcome.captures.extend(records)
-        after = read_manifest(manifest)
-        outcome.quarantined += sum(1 for row in after[before:]
-                                   if row.get("kind") == "quarantine")
+        outcome.captures.extend(
+            r for r in records if r.get("kind") != "quarantine")
+        outcome.quarantined += sum(
+            1 for r in records if r.get("kind") == "quarantine")
+        outcome.saved_names.add(ticker)
+    return outcome
+
+
+# How many names go in one provider request. STARTING FIGURE, tested first:
+# large enough that 226 names is a handful of requests, small enough that one
+# throttled request does not cost the whole run.
+BATCH_SIZE = 40
+# A name needing more than this many days is a BACKFILL, not an hourly top-up.
+# Backfills are slow and belong in the after-hours step; letting them into the
+# hourly run is what made the hourly run take over an hour.
+HOURLY_MAX_DAYS = 2
+
+BatchFetcher = Callable[[Sequence[str], str, int], "dict[str, pd.DataFrame]"]
+
+
+def capture_incremental(
+        entries: Sequence[tuple[str, str, str]], interval: str, *,
+        fetch: BatchFetcher = batched_yfinance_fetch,
+        root: Path | None = None, manifest: Path | None = None,
+        now: datetime | None = None,
+        max_days: int | None = HOURLY_MAX_DAYS,
+        batch_size: int = BATCH_SIZE) -> Outcome:
+    """Fetch only what each name is missing, in batches. The hourly path.
+
+    Two things make this fast where ``capture`` was slow. The resume points are
+    read once rather than once per name, and names that need the same window are
+    asked for together instead of one request at a time.
+
+    ``max_days`` is the dividing line between a top-up and a backfill. A name
+    that needs more than that is SKIPPED here, with the reason recorded, and
+    picked up by the after-hours catch-up. Skipping silently is what let four
+    names disappear on 2026-10-01, so a skip is a ledger entry like any other.
+    """
+    outcome = Outcome()
+    moment = now or datetime.now(timezone.utc)
+    resume = last_saved_bars(interval, manifest)
+    details = {ticker: (market, currency) for ticker, market, currency in entries}
+
+    buckets: dict[int, list[str]] = {}
+    for ticker, _market, _currency in entries:
+        outcome.attempted.append(ticker)
+        wanted = days_needed(resume.get(ticker), interval, moment)
+        if max_days is not None and wanted > max_days:
+            outcome.skipped.append({
+                "ticker": ticker, "interval": interval,
+                "reason": f"needs {wanted} days, more than the hourly limit of "
+                          f"{max_days} -- left for the after-hours catch-up"})
+            continue
+        buckets.setdefault(wanted, []).append(ticker)
+
+    for wanted, names in sorted(buckets.items()):
+        for start in range(0, len(names), batch_size):
+            chunk = names[start:start + batch_size]
+            try:
+                fetched = fetch(chunk, interval, wanted)
+            except Exception as exc:                      # noqa: BLE001
+                # The whole batch failed. Every name in it is recorded as lost
+                # by name -- never silently dropped, never faked.
+                for ticker in chunk:
+                    outcome.errors.append(
+                        f"{ticker} {interval}: batch fetch "
+                        f"{type(exc).__name__}: {exc}")
+                    outcome.lost.append(record_lost(
+                        ticker, interval,
+                        f"batch fetch failed: {type(exc).__name__}", manifest))
+                continue
+
+            for ticker in chunk:
+                market, currency = details[ticker]
+                frame = fetched.get(ticker)
+                if frame is None or frame.empty:
+                    outcome.lost.append(record_lost(
+                        ticker, interval, "provider returned nothing", manifest))
+                    continue
+                complete = drop_forming_bar(frame, interval, moment)
+                if complete.empty:
+                    outcome.lost.append(record_lost(
+                        ticker, interval, "only a forming bar was available",
+                        manifest))
+                    continue
+
+                # NO delay sample here. Sampling on every saved name produced
+                # 3,106 readings in one session, and the ones taken during a
+                # backfill measured the age of the last bar of a 60-day
+                # historical fetch rather than the live feed -- one read 102.6
+                # minutes. The delay is measured once per market per run, by the
+                # sampler that runs first (qb2/tools/sample_delay.py).
+                records = save_bars(
+                    Bars(ticker=ticker, interval=interval, market=market,
+                         currency=currency, frame=complete),
+                    root=root, manifest=manifest, now=moment)
+                outcome.captures.extend(
+                    r for r in records if r.get("kind") != "quarantine")
+                outcome.quarantined += sum(
+                    1 for r in records if r.get("kind") == "quarantine")
+                outcome.saved_names.add(ticker)
+
     return outcome

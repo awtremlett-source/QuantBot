@@ -39,7 +39,12 @@ ORDER_PATHS = ("orders/market", "orders/limit", "orders/stop", "orders/stop_limi
 SECRET_NAMES = ("T212_API_KEY", "T212_API_SECRET", "TELEGRAM_BOT_TOKEN",
                 "SMTP_PASS")
 
-SCANNED = (QB2, QB2_TESTS)
+# The recorder's run logs hold raw stdout from an unattended job. They are
+# gitignored, so nothing stops a printed key from sitting on the disk unnoticed --
+# which makes them exactly the place a leak would hide. Scanned like source.
+LOGS = REPO_ROOT / "logs"
+
+SCANNED = (QB2, QB2_TESTS, LOGS)
 
 
 def files_under(*roots: Path) -> list[Path]:

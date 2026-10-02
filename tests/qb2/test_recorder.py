@@ -197,7 +197,13 @@ def test_a_broken_bar_is_quarantined_and_the_good_ones_are_kept(
     records = recorder.save_bars(
         recorder.Bars("ISF.L", "1m", "LSE", "GBp", frame),
         root=tmp_path, manifest=manifest)
-    assert records[0]["rows"] == 4, "the broken bar was saved"
+    # save_bars now hands back what it QUARANTINED as well as what it saved, so
+    # the caller can count both without re-reading the manifest. The two are told
+    # apart by "kind", never by position in the list.
+    saved_records = [r for r in records if r.get("kind") != "quarantine"]
+    quarantine_records = [r for r in records if r.get("kind") == "quarantine"]
+    assert [r["rows"] for r in saved_records] == [4], "the broken bar was saved"
+    assert [r["rows"] for r in quarantine_records] == [1], "the bad row was lost"
     rows = [json.loads(line) for line in
             manifest.read_text(encoding="utf-8").splitlines()]
     assert any(r.get("reason") == "ohlc_sanity" for r in rows)

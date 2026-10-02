@@ -46,6 +46,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import time
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
@@ -100,14 +101,42 @@ class WriterLock:
         self.path = path or (CLEAN / "writer.lock")
         self.stale_after = stale_after
 
+    @staticmethod
+    def _holder_is_alive(text: str) -> bool:
+        """Is the process named in the lock still running?
+
+        Age alone is not enough. A run killed mid-way leaves a FRESH lock behind,
+        and the age limit is longer than the gap between hourly runs -- so one
+        killed run could block every run for an hour. On perishable minute data
+        that is exactly the loss we are trying to prevent. If the process named in
+        the lock is gone, the lock is abandoned however new it looks.
+        """
+        match = re.search(r"pid=(\d+)", text)
+        if match is None:
+            return True            # no pid recorded: fall back to the age rule
+        pid = int(match.group(1))
+        try:
+            os.kill(pid, 0)        # signal 0 asks "does this process exist?"
+        except ProcessLookupError:
+            return False           # POSIX: no such process
+        except PermissionError:
+            return True            # someone else's process, but it exists
+        except OSError as exc:
+            # Windows has no ESRCH here: CPython calls OpenProcess, and a pid
+            # that does not exist comes back as ERROR_INVALID_PARAMETER (87).
+            # Access denied (5) means the process IS there and is not ours.
+            return getattr(exc, "winerror", None) != 87
+        return True
+
     def __enter__(self) -> WriterLock:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self.path.exists():
             age = time.time() - self.path.stat().st_mtime
-            if age < self.stale_after:
+            held_by = self.path.read_text(encoding="utf-8").strip()
+            if age < self.stale_after and self._holder_is_alive(held_by):
                 raise StoreLocked(
                     f"another writer holds {self.path} (held {age:,.0f}s ago by "
-                    f"{self.path.read_text(encoding='utf-8').strip()}). Refusing to "
+                    f"{held_by}). Refusing to "
                     "write: two writers would interleave rows in one file")
             # Abandoned: say so loudly rather than silently stealing it.
             self.path.replace(self.path.with_suffix(".lock.abandoned"))

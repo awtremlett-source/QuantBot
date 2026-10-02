@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import statistics
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -161,3 +161,76 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# --------------------------------------------------------------- the meter --
+# A number that is only ever absent looks exactly like a number that is fine.
+# FACTS row o sat "UNMEASURED" for three attempts and nothing ever went red about
+# it, because nothing was watching for the ABSENCE of samples. This watches.
+
+def completed_sessions(market: str, days_back: int = 5,
+                       today: date | None = None) -> list[date]:
+    """Trading sessions that have finished, newest first. Real calendar."""
+    import exchange_calendars as xcals  # type: ignore[import-untyped]
+    import pandas as pd
+
+    code = {"US": "XNYS", "LSE": "XLON"}[market]
+    calendar = xcals.get_calendar(code)
+    end = today or date.today()
+    out: list[date] = []
+    for back in range(1, days_back + 1):
+        day = end - timedelta(days=back)
+        stamp = pd.Timestamp(day)
+        try:
+            if calendar.is_session(stamp):
+                out.append(day)
+        except Exception:                                 # noqa: BLE001
+            continue
+    return out
+
+
+def session_meter(manifest: Path | None = None, *,
+                  markets: Sequence[str] = ("US", "LSE"),
+                  days_back: int = 3,
+                  today: date | None = None) -> list[dict[str, object]]:
+    """RED for any market whose finished session collected no samples at all.
+
+    A session that came and went without a single sample means the sampler did
+    not run, or ran only when the market was shut. Either way the delay is not
+    being measured and the only honest colour is red.
+    """
+    target = manifest or MANIFEST
+    by_day: dict[tuple[str, str], int] = {}
+    if target.exists():
+        with target.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(row, dict) and row.get("kind") == "delay_sample":
+                    key = (str(row.get("market")), str(row.get("at_utc", ""))[:10])
+                    by_day[key] = by_day.get(key, 0) + 1
+
+    meters: list[dict[str, object]] = []
+    for market in markets:
+        empty: list[str] = []
+        for session in completed_sessions(market, days_back, today):
+            stamp = session.isoformat()
+            if by_day.get((market, stamp), 0) == 0:
+                empty.append(stamp)
+        meters.append({
+            "market": market,
+            "status": "RED" if empty else "OK",
+            "sessions_checked": days_back,
+            "sessions_with_no_samples": empty,
+            "detail": (f"no delay sample at all on {', '.join(empty)} -- the "
+                       "sampler did not run while this market was open"
+                       if empty else
+                       f"every finished session in the last {days_back} has "
+                       "samples"),
+        })
+    return meters

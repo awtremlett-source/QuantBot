@@ -23,6 +23,10 @@ this page is only the running order. Earlier backlogs are archived whole at
       5m/1h backfill, forming-bar drop, quarantine-never-overwrite, DST-week tested,
       LOST gaps recorded, freshness meter red-on-broken, QB2-Recorder task registered
       per-user MON-FRI hourly. Demo smoke test run; key is read-only (no orders scope)
+- [x] S3c (2026-10-02) Recorder made observable and fast; the 131-name fault was
+      runs being KILLED part-way (log was literally "^C"); ledger per run; delay
+      sampler first; earnings dates for the bot 50; census GREEN 98.2% on 5m.
+      STILL OPEN for S3: dividends not ingested; advisor earnings not fetched
 - [~] S3b (2026-10-01) Universes built from evidence: 226 recorded, bot 50 PROPOSED
       in three tagged sleeves, advisor 171, provably disjoint · every name resolved
       against T212's own instrument list (4 old names were WRONG, incl. a company
@@ -60,10 +64,10 @@ Built/Wired/Armed checklist.
 - [x] KEY REPLACED (2026-10-01) with all ten read endpoints granted, Execute OFF.
       Closed both gaps: instrument list saved and the recording list verified
       against it; FACTS row g settled from order history (one position per share)
-- [ ] OPERATOR ACTION, loses data every day it waits: the QB2-Recorder task will
-      not start on battery, is killed when the charger comes out, never makes up a
-      missed run, and refuses the next hourly trigger because a run now takes over
-      an hour. ONE command in docs/sessions/2026-10-01 fixes all four
+- [x] RECORDER FIXED (2026-10-02, S3c): operator applied the battery/catch-up
+      settings; hourly run cut from >1h (never finishing) to 1.6–2.6 min; the task
+      now runs windowless via pythonw with "Start in" set — the System32 window and
+      the missing log are both gone, confirmed by probe and a real task run
 - [x] BOT UNIVERSE AGREED (2026-10-02), operator verbatim: "GO on bot universe
       v1" — 50 names in three tagged sleeves. Permission to BUILD and BACK-TEST;
       the sender stays disarmed. S4 still blocked by S3's other two gate items

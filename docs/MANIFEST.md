@@ -25,11 +25,16 @@ this logic leaves NVDA or this laptop.
     ticker) · constituents.py (index membership, parsed from a saved page)
   - qb2/data/ front_door.py (the ONLY writer into data/clean) · census.py (how much
     data is really there, with a red-on-broken meter)
+  - qb2/ingest/earnings.py when each company reports, with knowable_time so a
+    back-test cannot use a date before it was published
   - qb2/execution/ t212_client.py (GET-only) · costs.py · fill_recorder.py ·
     safety.py (killswitch, P14 checks) · sender.py (ARMED = False)
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
-    from CLEAN only) · sample_delay.py (measures FACTS row o) · record_now.py ·
-    fingerprint.py
+    from CLEAN only) · sample_delay.py (measures FACTS row o, plus a meter that
+    goes red when a session passes with no samples) · record_now.py (hourly top-up
+    vs after-hours catch-up, under a single-writer lock, with a per-name ledger) ·
+    run_recorder.bat (one log per run, kept 30 days) · fingerprint.py
+- logs/recorder/ one log per recorder run, gitignored, rotated after 30 days
 - docs/universe/ the versioned universes + README (start here for what we trade)
 - reports/first_light/ the dated charts drawn from the clean store
 

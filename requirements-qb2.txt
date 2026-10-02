@@ -29,6 +29,9 @@ matplotlib==3.10.8
 # compares its microsecond session values against Timestamp.value, which is still
 # in nanoseconds -- so every date read as "out of bounds". Found 2026-10-01.
 exchange_calendars==4.13.2
+# yfinance scrapes the earnings-date table with lxml; without it
+# get_earnings_dates raises ImportError and only the NEXT date is reachable.
+lxml==6.1.3
 
 # --- the interface ---
 PySide6==6.11.1

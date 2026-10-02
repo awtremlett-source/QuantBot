@@ -1,24 +1,30 @@
 # STATE.md — resume in seconds
 
-Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-01.
-S0, S1, S2a, S2b, S3a and S3b ARE DONE. **S3 ITSELF IS NOT COMPLETE** — two of its
-exit-gate items are open, both recorded in PLAN_V3 rather than waved through:
-  1. The data census is **RED at 40.7%**; the gate asks 95%. Not a data fault: the
-     recording list went from 119 names to 226 today, and the 131 new names have no
-     history yet. It resolves by the recorder running — see the WARNING below.
-  2. **Earnings dates are not ingested.** P13 and the S5 earnings check need them.
-NEXT BOX: finish S3 (earnings dates + let the census fill), NOT S4. The bot's
-universe is no longer a blocker — it was agreed 2026-10-02 — but S3's other two
-exit-gate items still are.
+Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-02.
+S0, S1, S2a, S2b, S3a, S3b and S3c ARE DONE. **S3 ITSELF IS STILL NOT COMPLETE**,
+and the plan says exactly why. All five exit-gate items are now GREEN (both lists
+agreed · disjoint by test · census 98.2% on 5m against a 95% bar · sterling line
+asserted by ISIN · charts from clean data), and earnings dates are ingested for the
+bot's 50 (30/30 US, 10/10 UK, 10 ETFs N/A). What is left:
+  1. **DIVIDENDS are not ingested at all.** The stage's own text requires them, and
+     P3 judges total return in pounds — price alone is the wrong number.
+  2. Earnings cover the bot's 50 only, not the advisor's 171.
+NEXT BOX: finish S3 (dividends, then advisor earnings), NOT S4.
 
-⚠ WARNING, costs data every day it waits: the QB2-Recorder scheduled task will not
-start on battery, is killed when the charger is unplugged, never makes up a missed
-run, and refuses its next hourly trigger because a run now takes over an hour
-(that is the "4320" against today's 20:55 run). Minute bars cannot be fetched
-later. ONE command to fix all four: docs/sessions/2026-10-01-S3b.md.
+RECORDER (fixed 2026-10-02, S3c): hourly top-up **1.6–2.6 min** measured on real
+task runs, against a baseline of over an hour that never finished. Hourly tops up
+1m only, in batches of 40, from each name's last bar; the slow backfill and the
+5m/1h top-ups run on the day's LAST trigger (20:00), because New York is open until
+21:00 so "both markets shut" never happens inside the window. One lock, so two
+recorders cannot write one file. Every run writes its own log to logs/recorder/
+(30 days); a log with no "run finished" line is a run that was killed.
+The scheduled task now runs **pythonw.exe** with absolute paths and "Start in" set
+to the repo — no console window. CONFIRMED BY PROBE: with no "Start in", Task
+Scheduler starts tasks in C:\Windows\system32, which is why the old relative
+recorder.log never existed anywhere.
 
-FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-01) ·
-qb2 3445d0d6…2d331 (was 8f291413…b1650 before S3b)
+FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-02) ·
+qb2 af719821…23cb (was 3445d0d6…2d331 before S3c)
 PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
 PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 
