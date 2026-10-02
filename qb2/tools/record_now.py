@@ -120,9 +120,16 @@ def unfinished_runs(directory: Path | None = None) -> list[Path]:
     folder = directory or LOG_DIR
     if not folder.is_dir():
         return []
-    return [path for path in sorted(folder.glob("run-*.log"))
-            if "==== run finished" not in path.read_text(
-                encoding="utf-8", errors="replace")]
+    finished = ("==== run finished", "==== recorder run finished")
+    out: list[Path] = []
+    for path in sorted(folder.glob("run-*.log")):
+        body = path.read_text(encoding="utf-8", errors="replace")
+        # The second marker is the short-lived batch-written format from
+        # 2026-10-02. Those runs really did finish; not accepting it would leave
+        # three permanent false alarms, and a monitor that cries wolf gets ignored.
+        if not any(marker in body for marker in finished):
+            out.append(path)
+    return out
 
 
 def rotate_logs(directory: Path | None = None,
