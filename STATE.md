@@ -34,27 +34,12 @@ recorder.log never existed anywhere.
 FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-03) ·
 qb2 8d007b10…c85c (was 09ae956e…0342 before S3d)
 
-## DECISION REQUESTED — wording for the minute-label rule (needs your GO)
-S3d added a usage rule: every name is labelled MINUTE_OK or FIVE_MIN_ONLY from the
-1-minute census, and asking for minute bars on a FIVE_MIN_ONLY name is refused. It
-changes NO gate — the census still counts every name exactly as PLAN_V3 measures it,
-and a test pins that. But the plan does not mention the rule at all, and a rule that
-lives only in code is a rule the plan cannot check. **I have not edited the plan.**
-Proposed wording, to be added to PLAN_V3 as P18 if you agree:
-
-> **P18 — Minute bars are only used where minute bars exist.** A thinly-traded
-> share has no bar in a minute when nothing traded, and that is data about the
-> market, not a hole to be filled. Every name carries a label from the 1-minute
-> census — MINUTE_OK or FIVE_MIN_ONLY — and asking for minute data on a
-> FIVE_MIN_ONLY name is refused at the data layer. The cautious label is the
-> default; demotion is immediate, promotion needs two consecutive passing
-> censuses. *This changes no gate:* the census still measures every name in the
-> active universe, and the label is reported beside that figure, never inside it.
-> *Enforcer:* the access-layer test, and a test that the census denominator is
-> unchanged by labelling.
-
-Say the word and I will add it verbatim with the date. Default if you say nothing:
-the rule stays in code and in STATE, and the plan stays as written.
+## P18 AGREED — the minute-label rule is in the plan (2026-10-03)
+Operator verbatim: *"GO on P18 — 'Minute bars are only used where minute bars
+exist.'"* Added to PLAN_V3 word for word, with the date and those words quoted in
+the decision itself, and pinned by four gate tests (all proven red when P18 is
+removed). The rule changes no gate, and the plan now says so where a future box
+will read it.
 PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
 PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 

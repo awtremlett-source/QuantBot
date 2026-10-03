@@ -87,7 +87,8 @@ OPERATOR_WORDS: tuple[str, ...] = (
     "mix — every attempt counted.",
 )
 
-DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 18))
+# P18 was agreed by the operator on 2026-10-03 and added verbatim.
+DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 19))
 STAGE_IDS: tuple[str, ...] = (
     "S0", "S1", "S2a", "S2b", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
     "S11", "S12", "S13", "S14", "S15",
@@ -546,3 +547,42 @@ def test_s3_still_names_what_is_missing_before_it_can_be_called_done() -> None:
     # saying so until it is actually measured.
     assert "quote delay" in gate
     assert "ZERO for London" in gate
+
+
+# ------------------------------------------- QT-11a: the minute rule, P18 ---
+
+def test_p18_is_recorded_in_the_operators_own_words() -> None:
+    """A rule that lives only in code is a rule the plan cannot check.
+
+    P18 was proposed in STATE and agreed on 2026-10-03. The words and the date are
+    pinned here for the same reason every other operator decision is: so that a
+    later edit has to be deliberate and visible in a diff.
+    """
+    block = decision_blocks()["P18"]
+    assert "Minute bars are only used where minute bars exist" in block
+    assert "2026-10-03" in block
+    assert "GO on P18" in block, "the operator's own words must be quoted"
+
+
+def test_p18_says_plainly_that_it_changes_no_gate() -> None:
+    """THE thing this rule must never become: a back door around the 95% bar.
+
+    If labelling could remove names from the census, a gate could be made to pass
+    by relabelling rather than by fixing the data. The plan has to say so, because
+    the plan is what a future box checks itself against.
+    """
+    block = " ".join(decision_blocks()["P18"].split())
+    assert "changes no gate" in block
+    assert "every name in the active universe" in block
+    assert "beside that figure, never inside it" in block
+
+
+def test_p18_carries_both_halves_of_the_rule_and_an_enforcer() -> None:
+    """Cautious by default, demotion immediate, promotion needing two passes."""
+    block = " ".join(decision_blocks()["P18"].split()).lower()
+    assert "five_min_only" in block and "minute_ok" in block
+    assert "refused at the data layer" in block
+    assert "cautious label is the default" in block
+    assert "demotion is immediate" in block
+    assert "two consecutive passing censuses" in block
+    assert "enforcer:" in block

@@ -298,6 +298,18 @@ correct or exhausted, never on profit).
 *Enforcer:* the firewall, `trials.jsonl`, and a gate test asserting three arms,
 two cost levels and the delay rule.
 
+**P18 — Minute bars are only used where minute bars exist.** Agreed by the
+operator on 2026-10-03, in their own words: *"GO on P18 — 'Minute bars are only
+used where minute bars exist.'"* A thinly-traded share has no bar in a minute when
+nothing traded, and that is data about the market, not a hole to be filled. Every
+name carries a label from the 1-minute census — MINUTE_OK or FIVE_MIN_ONLY — and
+asking for minute data on a FIVE_MIN_ONLY name is refused at the data layer. The
+cautious label is the default; demotion is immediate, promotion needs two
+consecutive passing censuses. *This changes no gate:* the census still measures
+every name in the active universe, and the label is reported beside that figure,
+never inside it. *Enforcer:* the access-layer test, and a test that the census
+denominator is unchanged by labelling.
+
 ---
 
 ## Carried from V2
