@@ -87,8 +87,8 @@ OPERATOR_WORDS: tuple[str, ...] = (
     "mix — every attempt counted.",
 )
 
-# P18 was agreed by the operator on 2026-10-03 and added verbatim.
-DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 19))
+# P18 and P19 were agreed by the operator on 2026-10-03 and added verbatim.
+DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 20))
 STAGE_IDS: tuple[str, ...] = (
     "S0", "S1", "S2a", "S2b", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
     "S11", "S12", "S13", "S14", "S15",
@@ -586,3 +586,83 @@ def test_p18_carries_both_halves_of_the_rule_and_an_enforcer() -> None:
     assert "demotion is immediate" in block
     assert "two consecutive passing censuses" in block
     assert "enforcer:" in block
+
+
+# ------------------------------- QT-11c: the EMAs and Keltner Channels, P19 ---
+
+def test_p19_is_recorded_in_the_operators_own_words() -> None:
+    """The requirement and the GO are both quoted, with the date.
+
+    Same discipline as P18: a later edit has to be deliberate and visible in a
+    diff, and nobody has to remember what was actually asked for.
+    """
+    block = decision_blocks()["P19"]
+    assert ("The program follows the EMA 9, EMA 21 and EMA 50, as well as using "
+            "Keltner Channels.") in " ".join(block.split())
+    assert "2026-10-03" in block
+    assert "GO on P19" in block
+
+
+def test_p19_keeps_the_indicators_as_candidates_not_instructions() -> None:
+    """The failure this prevents: a popular indicator kept because it is popular.
+
+    Being asked for by name is not evidence that it works. The firewall decides,
+    and only survivors reach the confidence score.
+    """
+    block = " ".join(decision_blocks()["P19"].split())
+    assert "candidates, not instructions" in block
+    assert "only the ones that survive feed the confidence score" in block
+    assert "Built in **S4**" in block
+    # The advisor may show them before they are tested, but not recommend them.
+    assert "drawn on the charts" in block
+    assert "once they have been tested" in block
+
+
+def test_p19_pins_the_settings_that_were_agreed() -> None:
+    """Settings fixed before any result is the whole point of pre-registration."""
+    block = " ".join(decision_blocks()["P19"].split())
+    assert "middle line is **EMA 21**" in block
+    assert "2.0 × Wilder ATR(14)" in block
+    assert "5-minute for the bot" in block and "daily for the advisor" in block
+
+
+def test_p19_fixes_the_trial_count_before_any_result() -> None:
+    """A trial count decided after the results is not a trial count.
+
+    The arithmetic is re-derived from the plan's own table rather than trusting
+    the sentence: if a row is added without updating the total, this fails.
+    """
+    block = decision_blocks()["P19"]
+    flat = " ".join(block.split())
+
+    # Count the numbered rows of the pre-registered table.
+    rules = re.findall(r"^\| (\d+) \| ", block, flags=re.MULTILINE)
+    assert [int(r) for r in rules] == list(range(1, 10)), (
+        f"the pre-registered rule table should run 1..9, found {rules}")
+
+    assert "Nine rules × two bar sizes = 18 trials" in flat
+    assert len(rules) * 2 == 18, "the table and the stated total disagree"
+    assert "before any result is seen" in flat
+
+
+def test_p19_does_not_count_the_same_test_twice() -> None:
+    """Keltner's middle line IS the EMA 21, so crossing it is already rule 2.
+
+    Counting it again would be one test wearing two names, and would make the
+    deflated score look better than the work done deserves.
+    """
+    flat = " ".join(decision_blocks()["P19"].split())
+    assert "deliberately absent — it is rule 2" in flat
+    assert "wearing a second name" in flat
+
+
+def test_p19_says_a_later_variant_is_a_new_trial() -> None:
+    """The loophole this closes: trying 2.5 after 2.0 fails, and not logging it.
+
+    That is how an honest count becomes a dishonest one without anybody lying.
+    """
+    flat = " ".join(decision_blocks()["P19"].split())
+    assert "NEW trial and must be logged" in flat
+    assert "trials.jsonl" in flat
+    assert "1.5 or 2.5" in flat, "the obvious next variant is named in advance"
+    assert "never on profit" in flat or "SCARS #21" in flat

@@ -34,56 +34,27 @@ recorder.log never existed anywhere.
 FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-03) ·
 qb2 8d007b10…c85c (was 09ae956e…0342 before S3d)
 
-## DECISION REQUESTED — P19, the EMAs and Keltner Channels (needs your GO)
-Requested 2026-10-03. **The plan is UNEDITED.** Operator requirement, verbatim:
+## P19 AGREED — the EMAs and Keltner Channels are in the plan (2026-10-03)
+Operator verbatim: *"GO on P19 — 'The program follows the EMA 9, EMA 21 and EMA 50,
+as well as using Keltner Channels.'"* Added to PLAN_V3 word for word, with the
+requirement itself quoted inside the decision. Settings accepted as proposed:
+Keltner middle = **EMA 21** (so the channel adds no parameter of its own), bands =
+**± 2.0 × Wilder ATR(14)** (reusing the ATR already in the codebase), **5-minute for
+the bot, daily for the advisor**.
 
-> "The program follows the EMA 9, EMA 21 and EMA 50, as well as using Keltner
-> Channels."
+**THE TRIAL COUNT IS NOW FIXED AT 18** — nine rules × two bar sizes, written into
+the plan before any result exists: price × each of the three EMAs (3), the three
+EMA-pairs crossing (3), the stacked-EMA alignment (1), Keltner breakout (1),
+Keltner reversion (1). "Close crosses the Keltner middle" is deliberately NOT on
+the list, because the middle line IS the EMA 21 and counting it again would be one
+test wearing two names.
 
-**Checked first: none of this exists yet.** No EMA 9, 21 or 50 is computed
-anywhere, and the word "Keltner" appears nowhere in the repo or in PLAN_V3. The
-nearest things that exist are SMA 20/50/200 and MACD(12,26,9) in
-`manual/scout/indicators.py` — MACD's "9" is an EMA of the MACD line, not of price
-— and a Wilder ATR(14) in the same file, which is the ingredient Keltner needs.
+Adding anything later — a second multiplier, a third bar size, a short side — is a
+NEW trial, logged in `trials.jsonl` before it is run. A gate test re-derives the
+count from the plan's own table, so a tenth row cannot appear while the total still
+says 18 (proven: planting one turns the gate red).
 
-Proposed wording, to be added to PLAN_V3 as P19 if you agree:
-
-> **P19 — The EMAs and Keltner Channels are candidates, not instructions.** The
-> operator asked for these by name: *"The program follows the EMA 9, EMA 21 and
-> EMA 50, as well as using Keltner Channels."* They enter the system the way every
-> other idea does. For the **bot**, each is a candidate signal pre-registered and
-> put through the firewall one at a time, and only the ones that survive feed the
-> confidence score — a signal that fails is not quietly kept because it is
-> popular. For the **advisor**, all four are drawn on the charts from the start,
-> because the operator reads them, but they may only appear in a written
-> suggestion once they have been tested. Built in **S4**. *Enforcer:* the
-> firewall's pre-registration check, a test that every indicator in the
-> confidence score has a firewall result, and a trial count that includes every
-> parameter variant tried.
-
-### The Keltner settings I would propose, and why
-
-| part | proposed | why |
-|---|---|---|
-| middle line | **EMA 21** | Re-uses one of the three EMAs you already asked for, so the channel has **no new parameter of its own**. Every extra knob is another trial to deflate the score by, and the usual default (EMA 20) would add one for no reason. |
-| band width | **± 2.0 × ATR(14), Wilder** | ATR(14) with Wilder smoothing **already exists** in `manual/scout/indicators.py`. Reusing it means one definition of ATR in the codebase rather than two that can drift apart. 2.0 is the common default and is a round number chosen **before** any result, which is what pre-registration means. |
-| bar size | **5-minute for the bot, daily for the advisor** | The bot trades same-day. P18 means minute bars are only used where they exist, and right now every name is FIVE_MIN_ONLY, so 5-minute is what the bot can honestly use today. The advisor holds weeks to months, where daily is the right grain. |
-
-**Two cautions, stated now rather than after the test.**
-
-1. **Trial counting.** Three EMAs plus a channel is not four ideas. Each crossing
-   rule, each band multiplier and each bar size is a separate variant, and
-   trying 2.0 and then 2.5 is two trials, not one. They all go in `trials.jsonl`
-   and all count against the Deflated Sharpe. If we try enough combinations one
-   will look brilliant by luck — that is arithmetic, not pessimism.
-2. **Costs.** EMA crossings on 5-minute bars fire often, and the bot pays
-   **0.40% a round trip on US shares and 0.70% on UK shares** (measured, S3b). A
-   signal that is right slightly more often than not can still lose money purely
-   on turnover. The firewall tests at 1x and 2x costs for exactly this reason,
-   and I expect frequent-crossing variants to struggle.
-
-**Default if you say nothing:** nothing is built. The requirement is recorded
-here verbatim either way, so it cannot be lost.
+Nothing is built yet. S4 builds it.
 
 ## P18 AGREED — the minute-label rule is in the plan (2026-10-03)
 Operator verbatim: *"GO on P18 — 'Minute bars are only used where minute bars

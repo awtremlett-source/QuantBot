@@ -310,6 +310,62 @@ every name in the active universe, and the label is reported beside that figure,
 never inside it. *Enforcer:* the access-layer test, and a test that the census
 denominator is unchanged by labelling.
 
+**P19 — The EMAs and Keltner Channels are candidates, not instructions.** Agreed
+by the operator on 2026-10-03, in their own words: *"GO on P19 — 'The program
+follows the EMA 9, EMA 21 and EMA 50, as well as using Keltner Channels.'"* The
+requirement itself, verbatim: *"The program follows the EMA 9, EMA 21 and EMA 50,
+as well as using Keltner Channels."* They enter the system the way every other
+idea does. For the **bot**, each is a candidate signal, pre-registered below and
+put through the firewall one at a time; **only the ones that survive feed the
+confidence score** — a signal that fails is not quietly kept because it is
+popular. For the **advisor**, all four are drawn on the charts from the start,
+because the operator reads them, but they may only appear in a written suggestion
+once they have been tested. Built in **S4**.
+
+*Settings, fixed on 2026-10-03 before any result exists.* Keltner's middle line is
+**EMA 21**, so the channel adds no parameter of its own; its bands are **± 2.0 ×
+Wilder ATR(14)**, reusing the ATR already defined in the codebase so there is one
+definition rather than two that drift. Bars are **5-minute for the bot** and
+**daily for the advisor**.
+
+*Pre-registered trial list.* These are the variants S4 will test, written down
+**before any result is seen**, because a trial count decided afterwards is not a
+trial count. **Nine rules × two bar sizes = 18 trials.** Each rule's exit is the
+mirror of its entry, fixed, not a free parameter.
+
+| # | rule | entry |
+|---|---|---|
+| 1 | price × EMA 9 | close crosses the EMA 9 |
+| 2 | price × EMA 21 | close crosses the EMA 21 |
+| 3 | price × EMA 50 | close crosses the EMA 50 |
+| 4 | EMA 9 × EMA 21 | the fast EMA crosses the medium |
+| 5 | EMA 9 × EMA 50 | the fast EMA crosses the slow |
+| 6 | EMA 21 × EMA 50 | the medium EMA crosses the slow |
+| 7 | stacked EMAs | EMA 9 > EMA 21 > EMA 50, all three aligned |
+| 8 | Keltner breakout | close crosses the upper band |
+| 9 | Keltner reversion | close touches the lower band and closes back inside |
+
+Each is run on **5-minute** and on **daily** bars: 18 trials in total, long-only.
+**"Close crosses the Keltner middle" is deliberately absent — it is rule 2.** The
+middle line IS the EMA 21, so counting it again would be the same test wearing a
+second name and would flatter the deflated score.
+
+*Adding anything to this list later is a NEW trial and must be logged in
+`trials.jsonl` before it is run* — including a second band multiplier (1.5 or 2.5
+would be four more trials across the two Keltner rules and two bar sizes), a third
+bar size, or a short side. Deflated Sharpe is computed over the whole count, not
+per idea, because trying enough variants guarantees one looks brilliant by luck.
+
+*Expected to be hard, said in advance:* EMA crossings on 5-minute bars fire often,
+and the bot pays 0.40% a round trip on US shares and 0.70% on UK ones (measured,
+S3b), so a rule that is right slightly more often than not can still lose money on
+turnover alone. If none of the 18 passes, they are not used and we say so (SCARS
+#21 — a loop stops on correct or exhausted, never on profit).
+
+*Enforcer:* the firewall's pre-registration check, a test that every indicator
+feeding the confidence score has a firewall result, and a trial count in
+`trials.jsonl` that includes every variant tried.
+
 ---
 
 ## Carried from V2
