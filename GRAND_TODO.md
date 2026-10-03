@@ -23,6 +23,10 @@ this page is only the running order. Earlier backlogs are archived whole at
       5m/1h backfill, forming-bar drop, quarantine-never-overwrite, DST-week tested,
       LOST gaps recorded, freshness meter red-on-broken, QB2-Recorder task registered
       per-user MON-FRI hourly. Demo smoke test run; key is read-only (no orders scope)
+- [x] S3d (2026-10-03) Dividends for 221 names (0 suspect, pence converted at the
+      boundary) · daily bars + GBP/USD · total return in POUNDS (P3) refusing Adj
+      Close · advisor earnings 171 · minute-label rule enforced at the data layer.
+      S3 now waits only on the quote delay (1 US session of 3, London 0)
 - [x] S3c (2026-10-02) Recorder made observable and fast; the 131-name fault was
       runs being KILLED part-way (log was literally "^C"); ledger per run; delay
       sampler first; earnings dates for the bot 50; census GREEN 98.2% on 5m.

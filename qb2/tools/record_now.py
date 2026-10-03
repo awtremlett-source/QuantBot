@@ -217,6 +217,32 @@ def _report(label: str, outcome: recorder.Outcome) -> list[str]:
     return complaints
 
 
+def _update_minute_labels() -> list[str]:
+    """Recompute MINUTE_OK / FIVE_MIN_ONLY from a fresh 1-minute census.
+
+    This changes no gate. The census still counts every name in the active
+    universe exactly as PLAN_V3 measures it; the label only decides whether a
+    strategy may ASK for that name's minute bars.
+    """
+    from qb2.data import access, census
+
+    try:
+        taken = census.take("1m")
+    except Exception as exc:                              # noqa: BLE001
+        return [f"the minute census could not be taken: {type(exc).__name__}: {exc}"]
+
+    if not access.census_unchanged_by_labels(taken):
+        return ["the minute census and the labels disagree about which names "
+                "exist -- refusing to relabel"]
+
+    labels = access.update_labels(taken, access.load_labels())
+    access.save_labels(labels)
+    ok = sum(1 for v in labels.values() if v.label == access.MINUTE_OK)
+    say(f"  minute labels: {ok} MINUTE_OK, {len(labels) - ok} FIVE_MIN_ONLY "
+        f"(census {taken.fraction_passing:.1%} of {len(taken.names)} names)")
+    return []
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run once, under a lock so two recorders can never write the same file.
 
@@ -300,6 +326,12 @@ def _run(args: argparse.Namespace, entries: list[tuple[str, str, str]],
         for interval in ("5m", "1h"):
             slow = recorder.capture_incremental(entries, interval, max_days=None)
             complaints += _report(f"{interval} catch-up", slow)
+
+        # The minute labels are worked out here, once a day, from the census that
+        # has just run on fresh data. Doing it hourly would let a label flip on one
+        # quiet afternoon; doing it never would leave every name on the cautious
+        # default for ever.
+        complaints += _update_minute_labels()
 
     rotated = rotate_logs()
     if rotated:

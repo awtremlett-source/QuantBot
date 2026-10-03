@@ -25,8 +25,14 @@ this logic leaves NVDA or this laptop.
     ticker) · constituents.py (index membership, parsed from a saved page)
   - qb2/data/ front_door.py (the ONLY writer into data/clean) · census.py (how much
     data is really there, with a red-on-broken meter)
-  - qb2/ingest/earnings.py when each company reports, with knowable_time so a
-    back-test cannot use a date before it was published
+  - qb2/ingest/earnings.py when each company reports · dividends.py what each
+    paid, converted at the boundary and checked against the price it came from ·
+    daily.py daily bars + GBP/USD. All three carry knowable_time, so a back-test
+    cannot use a fact before it was published
+  - qb2/research/total_return.py P3's number: return in POUNDS = price + dividends
+    + the currency effect. Refuses Adj Close (that would count dividends twice)
+  - qb2/data/access.py THE way a strategy reads bars; enforces the minute label
+    (MINUTE_OK / FIVE_MIN_ONLY) so a series of real gaps never reaches a model
   - qb2/execution/ t212_client.py (GET-only) · costs.py · fill_recorder.py ·
     safety.py (killswitch, P14 checks) · sender.py (ARMED = False)
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts

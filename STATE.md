@@ -1,15 +1,23 @@
 # STATE.md — resume in seconds
 
-Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-02.
-S0, S1, S2a, S2b, S3a, S3b and S3c ARE DONE. **S3 ITSELF IS STILL NOT COMPLETE**,
-and the plan says exactly why. All five exit-gate items are now GREEN (both lists
-agreed · disjoint by test · census 98.2% on 5m against a 95% bar · sterling line
-asserted by ISIN · charts from clean data), and earnings dates are ingested for the
-bot's 50 (30/30 US, 10/10 UK, 10 ETFs N/A). What is left:
-  1. **DIVIDENDS are not ingested at all.** The stage's own text requires them, and
-     P3 judges total return in pounds — price alone is the wrong number.
-  2. Earnings cover the bot's 50 only, not the advisor's 171.
-NEXT BOX: finish S3 (dividends, then advisor earnings), NOT S4.
+Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-03.
+S0, S1, S2a, S2b, S3a, S3b, S3c and S3d ARE DONE. **S3 ITSELF IS STILL NOT
+COMPLETE**, and the plan says exactly why. All five exit-gate items are GREEN (both
+lists agreed · disjoint by test · census 98.2% on 5m against a 95% bar · sterling
+line asserted by ISIN · charts from clean data) and the stage's whole ingest list is
+now in: prices (intraday + daily), dividends, GBP/USD, earnings for the bot's 50 AND
+the advisor's 171. **ONE thing is left: the stage promises to "measure the quote
+delay that row o could not", and row o still cannot be quoted — 1 session of the 3
+required for the US, and ZERO for London.** It resolves by the recorder running;
+nothing to build.
+NEXT BOX: let the delay accumulate (2 more sessions), then S3 closes. NOT S4.
+
+DATA NOW IN CLEAN (2026-10-03): intraday 1m/5m/1h for 226 names · DAILY bars for
+221 names + GBP/USD (3 years) · DIVIDENDS for 221 names, 0 suspect · EARNINGS for
+the bot's 50 and the advisor's 171. Total return in pounds (P3) is one function,
+qb2/research/total_return.py: raw Close + the dividend table + the rate on each
+payment's OWN ex-date. It REFUSES Adj Close, because adding dividends to a series
+that already contains them counts every payout twice.
 
 RECORDER (fixed 2026-10-02, S3c): hourly top-up **1.6–2.6 min** measured on real
 task runs, against a baseline of over an hour that never finished. Hourly tops up
@@ -23,8 +31,30 @@ to the repo — no console window. CONFIRMED BY PROBE: with no "Start in", Task
 Scheduler starts tasks in C:\Windows\system32, which is why the old relative
 recorder.log never existed anywhere.
 
-FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-02) ·
-qb2 af719821…23cb (was 3445d0d6…2d331 before S3c)
+FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-03) ·
+qb2 8d007b10…c85c (was 09ae956e…0342 before S3d)
+
+## DECISION REQUESTED — wording for the minute-label rule (needs your GO)
+S3d added a usage rule: every name is labelled MINUTE_OK or FIVE_MIN_ONLY from the
+1-minute census, and asking for minute bars on a FIVE_MIN_ONLY name is refused. It
+changes NO gate — the census still counts every name exactly as PLAN_V3 measures it,
+and a test pins that. But the plan does not mention the rule at all, and a rule that
+lives only in code is a rule the plan cannot check. **I have not edited the plan.**
+Proposed wording, to be added to PLAN_V3 as P18 if you agree:
+
+> **P18 — Minute bars are only used where minute bars exist.** A thinly-traded
+> share has no bar in a minute when nothing traded, and that is data about the
+> market, not a hole to be filled. Every name carries a label from the 1-minute
+> census — MINUTE_OK or FIVE_MIN_ONLY — and asking for minute data on a
+> FIVE_MIN_ONLY name is refused at the data layer. The cautious label is the
+> default; demotion is immediate, promotion needs two consecutive passing
+> censuses. *This changes no gate:* the census still measures every name in the
+> active universe, and the label is reported beside that figure, never inside it.
+> *Enforcer:* the access-layer test, and a test that the census denominator is
+> unchanged by labelling.
+
+Say the word and I will add it verbatim with the date. Default if you say nothing:
+the rule stays in code and in STATE, and the plan stays as written.
 PLAN: docs/plan/PLAN_V3.md (gated by tests/plan/test_plan_v3.py).
 PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 

@@ -540,7 +540,9 @@ def test_s3_still_names_what_is_missing_before_it_can_be_called_done() -> None:
     anything it asked for is missing.
     """
     gate = stage_blocks()["S3"]
-    assert "STILL OPEN" in gate
-    assert "DIVIDENDS" in gate
+    assert "OUTSTANDING" in gate
     assert "not complete" in gate.lower()
-    assert "advisor's 171" in gate
+    # The thing still missing is the measured quote delay, and the gate must keep
+    # saying so until it is actually measured.
+    assert "quote delay" in gate
+    assert "ZERO for London" in gate
