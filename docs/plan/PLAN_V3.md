@@ -366,6 +366,52 @@ turnover alone. If none of the 18 passes, they are not used and we say so (SCARS
 feeding the confidence score has a firewall result, and a trial count in
 `trials.jsonl` that includes every variant tried.
 
+**P20 — The price is cross-checked against the broker, by holding an anchor in
+every name the bot may trade.** Agreed by the operator on 2026-10-04, in their own
+words: *"GO on P20 — 'Compare yfinance with Trading 212 prices: hold one share of
+each bot name in the practice account so Trading 212 prices all 50, and
+cross-check before every trade.'"* This reverses the limitation P14 was built
+around. FACTS row h is still true — Trading 212 prices only what we **hold** — so
+the answer is to hold a little of everything the bot may trade, and the broker
+then prices all of it. Built in **S4**. How this is handled with real money is
+decided at **S14**, not before.
+
+*The anchor is fenced.* The bot **never sells an anchor**, they are **excluded
+from the bot's results and from its pot**, and flatten (P4) leaves them alone. An
+anchor is measuring equipment, not a position: counting it as performance would
+mean the bot's record included 50 holdings it never chose, and letting flatten
+sell it would blind the very check it exists to feed.
+
+*Units first, because this is where it would go wrong.* Trading 212 quotes London
+in pence or pounds or dollars depending on the line (FACTS row r); the clean store
+is in pounds. **Both sides are converted to the instrument's own quote currency
+before anything is compared.** An unconverted comparison makes every pence-quoted
+London name disagree by 100x, which would halt the market every morning.
+
+*The mismatch rule — all STARTING FIGURES, tested first.* Let `gap` be the
+absolute difference between the two prices as a fraction of the broker's price:
+
+| gap | what happens | why that number |
+|---|---|---|
+| over **0.25%** | recorded as a warning; the trade proceeds | yfinance runs about 1.6 minutes behind (row o, one session). A liquid name can drift this far in that time, so it is worth seeing but not worth stopping for. |
+| over **max(0.5%, 1 × the name's recent 5-minute ATR ÷ price)** | **that name's trade is blocked** | 0.5% is more than a large-cap usually moves in 1.6 minutes, so a bigger gap is likelier an error than a move. The ATR term exists because on a volatile name 0.5% *is* noise — a fixed threshold would block good trades and teach us to ignore the alarm. |
+| over **5%** on any one name, **or** the block threshold breached by **3 or more names in the same market in one sweep** | **STOP_NEW_TRADES for that market** | One name disagreeing is a name problem — a wrong ticker, a corporate action, a stale anchor. Several at once is a *feed* problem, and a feed problem is not something to trade through. |
+| **no comparison possible** — anchor missing, broker unreachable, or the broker's own price older than its age limit | **that name's trade is blocked**, naming which and why | The check existing but not running must never read the same as the check passing. |
+
+*The obstacle, measured on 2026-10-04 rather than discovered later.* **One whole
+share of each of the 50 names costs £14,032** — more than the entire £10,000 demo
+account, and far more than the bot's 30% sleeve of it. So the anchor cannot be one
+whole share. Trading 212 does hold **fractional** quantities (row g: a position of
+12.5711224 shares), so the anchor should be the smallest quantity the broker
+accepts — roughly a pound in each name, about £50 in total, which prices all 50
+just as well. **The minimum order the broker accepts is NOT on record** (no FACTS
+row), so it must be established before S4 builds this.
+
+*Enforcer:* a test that the anchor list covers every bot name, a test that flatten
+and the results both exclude anchors, a units test that a pence-quoted name does
+not read as a 100x mismatch, and a test that a missing comparison blocks rather
+than passes.
+
 ---
 
 ## Carried from V2

@@ -87,8 +87,8 @@ OPERATOR_WORDS: tuple[str, ...] = (
     "mix — every attempt counted.",
 )
 
-# P18 and P19 were agreed by the operator on 2026-10-03 and added verbatim.
-DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 20))
+# P18/P19 agreed 2026-10-03, P20 agreed 2026-10-04 -- all added verbatim.
+DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 21))
 STAGE_IDS: tuple[str, ...] = (
     "S0", "S1", "S2a", "S2b", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
     "S11", "S12", "S13", "S14", "S15",
@@ -666,3 +666,67 @@ def test_p19_says_a_later_variant_is_a_new_trial() -> None:
     assert "trials.jsonl" in flat
     assert "1.5 or 2.5" in flat, "the obvious next variant is named in advance"
     assert "never on profit" in flat or "SCARS #21" in flat
+
+
+# -------------------------------- QT-12a: the broker cross-check, P20 ---
+
+def test_p20_is_recorded_in_the_operators_own_words() -> None:
+    """The requirement and the GO, with the date, as every decision gets."""
+    block = decision_blocks()["P20"]
+    flat = " ".join(block.split())
+    assert ("Compare yfinance with Trading 212 prices: hold one share of each bot "
+            "name in the practice account so Trading 212 prices all 50, and "
+            "cross-check before every trade.") in flat
+    assert "2026-10-04" in block
+    assert "GO on P20" in block
+
+
+def test_p20_fences_the_anchor_shares() -> None:
+    """An anchor is measuring equipment, not a position.
+
+    Two ways this goes wrong: the bot's record silently includes 50 holdings it
+    never chose, or flatten sells the anchors and blinds the check they feed.
+    """
+    flat = " ".join(decision_blocks()["P20"].split())
+    assert "never sells an anchor" in flat
+    assert "excluded from the bot's results and from its pot" in flat
+    assert "flatten (P4) leaves them alone" in flat
+
+
+def test_p20_converts_units_before_comparing() -> None:
+    """The 100x trap again: pence against pounds would halt the market daily."""
+    flat = " ".join(decision_blocks()["P20"].split())
+    assert "converted to the instrument's own quote currency before anything is "\
+           "compared" in flat
+    assert "100x" in flat
+
+
+def test_p20_states_what_each_threshold_blocks_and_why() -> None:
+    """A threshold without a reason is a number nobody can argue with."""
+    flat = " ".join(decision_blocks()["P20"].split())
+    for number in ("0.25%", "0.5%", "5%"):
+        assert number in flat, f"the {number} threshold is missing"
+    assert "that name's trade is blocked" in flat
+    assert "STOP_NEW_TRADES for that market" in flat
+    assert "ATR" in flat, "the volatility term must be stated"
+    assert "3 or more names" in flat
+
+
+def test_p20_treats_a_missing_check_as_a_failed_one() -> None:
+    """THE quiet failure: the check cannot run, and that reads as a pass."""
+    flat = " ".join(decision_blocks()["P20"].split())
+    assert "no comparison possible" in flat
+    assert "must never read the same as the check passing" in flat
+
+
+def test_p20_records_the_measured_obstacle_rather_than_discovering_it_later() -> None:
+    """One whole share of each costs more than the whole demo account.
+
+    Writing the number into the plan is what stops S4 starting on a plan that
+    cannot be carried out, and the unknown minimum is marked as unknown.
+    """
+    flat = " ".join(decision_blocks()["P20"].split())
+    assert "£14,032" in flat
+    assert "fractional" in flat
+    assert "NOT on record" in flat, "the unknown minimum must be flagged as unknown"
+    assert "S14" in flat, "real money is decided later, not here"

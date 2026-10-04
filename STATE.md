@@ -45,6 +45,27 @@ recorder.log never existed anywhere.
 FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-03) ·
 qb2 8d007b10…c85c (was 09ae956e…0342 before S3d)
 
+## P20 AGREED — cross-check prices against the broker (2026-10-04)
+Operator verbatim: *"GO on P20 — 'Compare yfinance with Trading 212 prices: hold
+one share of each bot name in the practice account so Trading 212 prices all 50,
+and cross-check before every trade.'"* In PLAN_V3 word for word. This reverses what
+P14 was built around: FACTS row h still says T212 prices only what we HOLD, so the
+answer is to hold a little of everything. Built in S4; real money decided at S14.
+
+Anchors are FENCED: never sold by the bot, excluded from its results and its pot,
+left alone by flatten. Mismatch rule (all starting figures): warn over 0.25%, block
+that name over max(0.5%, 1x its 5-minute ATR/price), STOP_NEW_TRADES for the market
+over 5% on one name or 3+ names breaching at once; no comparison possible = blocked,
+never treated as a pass. Units converted before comparing, or every pence-quoted
+London name reads as a 100x mismatch.
+
+**OBSTACLE, MEASURED: one WHOLE share of each of the 50 costs GBP 14,032** — more
+than the entire GBP 10,000 demo account, and the bot's sleeve is 30% of that. T212
+does hold fractional quantities (row g: 12.5711224 shares), so the anchor should be
+the smallest quantity it accepts, about GBP 1 each, roughly GBP 50 in total. **The
+broker's minimum order is NOT on record** and must be established before S4 builds
+this.
+
 ## P19 AGREED — the EMAs and Keltner Channels are in the plan (2026-10-03)
 Operator verbatim: *"GO on P19 — 'The program follows the EMA 9, EMA 21 and EMA 50,
 as well as using Keltner Channels.'"* Added to PLAN_V3 word for word, with the
