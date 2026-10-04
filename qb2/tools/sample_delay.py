@@ -47,10 +47,15 @@ def take_samples(probes: Sequence[tuple[str, str]] = PROBES,
     import yfinance as yf
 
     from qb2.ingest.recorder import delay_sample, market_is_open
+    from qb2.tools import clock as clock_module
 
     target = manifest or MANIFEST
     now = datetime.now(timezone.utc)
     written: list[dict[str, object]] = []
+    # Asked once per run rather than once per ticker: the two probes are seconds
+    # apart, so one answer describes both, and three servers do not need pinging
+    # twice to learn the same thing.
+    clock_check = clock_module.check()
 
     for ticker, market in probes:
         if not market_is_open(market, now):
@@ -65,7 +70,7 @@ def take_samples(probes: Sequence[tuple[str, str]] = PROBES,
         if closed.empty:
             continue
         last = closed.index[-1].to_pydatetime()
-        sample = delay_sample(market, last, now)
+        sample = delay_sample(market, last, now, clock_check=clock_check)
         if sample is None:
             continue
         sample = {**sample, "ticker": ticker, "probe": "sample_delay"}
@@ -76,8 +81,14 @@ def take_samples(probes: Sequence[tuple[str, str]] = PROBES,
     return written
 
 
-def collected(manifest: Path | None = None) -> dict[str, list[float]]:
-    """Every delay sample recorded so far, by market."""
+def collected(manifest: Path | None = None,
+              verified_only: bool = False) -> dict[str, list[float]]:
+    """Delay samples by market.
+
+    ``verified_only`` keeps just the readings taken with a checked clock. An
+    unverified reading is not wrong -- it is unknown, and the difference matters
+    when deciding whether row o may be quoted.
+    """
     target = manifest or MANIFEST
     out: dict[str, list[float]] = {}
     if not target.exists():
@@ -92,6 +103,8 @@ def collected(manifest: Path | None = None) -> dict[str, list[float]]:
             except json.JSONDecodeError:
                 continue
             if isinstance(row, dict) and row.get("kind") == "delay_sample":
+                if verified_only and not row.get("clock_checked"):
+                    continue
                 market = str(row.get("market"))
                 age = row.get("age_seconds")
                 if isinstance(age, (int, float)):
@@ -99,7 +112,8 @@ def collected(manifest: Path | None = None) -> dict[str, list[float]]:
     return out
 
 
-def sessions_covered(manifest: Path | None = None) -> dict[str, int]:
+def sessions_covered(manifest: Path | None = None,
+                     verified_only: bool = False) -> dict[str, int]:
     """How many distinct days each market has samples from."""
     target = manifest or MANIFEST
     days: dict[str, set[str]] = {}
@@ -115,6 +129,8 @@ def sessions_covered(manifest: Path | None = None) -> dict[str, int]:
             except json.JSONDecodeError:
                 continue
             if isinstance(row, dict) and row.get("kind") == "delay_sample":
+                if verified_only and not row.get("clock_checked"):
+                    continue
                 stamp = str(row.get("at_utc", ""))[:10]
                 if stamp:
                     days.setdefault(str(row.get("market")), set()).add(stamp)
@@ -122,13 +138,28 @@ def sessions_covered(manifest: Path | None = None) -> dict[str, int]:
 
 
 def verdict(manifest: Path | None = None) -> str:
-    """Plain words, and the word UNMEASURED when that is the truth."""
-    samples = collected(manifest)
-    sessions = sessions_covered(manifest)
+    """Plain words, and the word UNMEASURED when that is the truth.
+
+    Only readings taken with a CHECKED clock count towards the threshold. A
+    reading from an unverified clock is not wrong, it is unknown -- and a day of
+    unreachable time servers must not quietly satisfy the bar at which row o is
+    allowed to be quoted.
+    """
+    everything = collected(manifest)
+    samples = collected(manifest, verified_only=True)
+    sessions = sessions_covered(manifest, verified_only=True)
+    unverified = {m: len(everything.get(m, [])) - len(samples.get(m, []))
+                  for m in everything}
     lines = ["QUOTE DELAY (FACTS row o)"]
     if not samples:
-        lines.append(f"  UNMEASURED -- 0 samples. Needs {MIN_SAMPLES_PER_MARKET} "
-                     f"per market across {MIN_SESSIONS} sessions.")
+        total = sum(len(v) for v in everything.values())
+        lines.append(
+            f"  UNMEASURED -- 0 readings taken with a checked clock. Needs "
+            f"{MIN_SAMPLES_PER_MARKET} per market across {MIN_SESSIONS} sessions.")
+        if total:
+            lines.append(
+                f"      ({total} unverified reading(s) on record and NOT counted: "
+                "the clock they were taken on was never checked)")
         return "\n".join(lines)
 
     for market in sorted(samples):
@@ -137,13 +168,20 @@ def verdict(manifest: Path | None = None) -> str:
                   and sessions.get(market, 0) >= MIN_SESSIONS)
         state = "MEASURED" if enough else "NOT YET ENOUGH"
         lines.append(
-            f"  {market}: {state} -- {len(ages)} samples over "
+            f"  {market}: {state} -- {len(ages)} clock-checked samples over "
             f"{sessions.get(market, 0)} session(s); median "
             f"{statistics.median(ages)/60:.1f} min, worst "
             f"{max(ages)/60:.1f} min")
+        if unverified.get(market):
+            lines.append(f"      plus {unverified[market]} unverified reading(s), "
+                         "not counted")
         if not enough:
             lines.append(f"      needs {MIN_SAMPLES_PER_MARKET} samples over "
                          f"{MIN_SESSIONS} sessions before it may be quoted")
+    for market, count in sorted(unverified.items()):
+        if market not in samples and count:
+            lines.append(f"  {market}: UNMEASURED -- {count} unverified "
+                         "reading(s) only, none with a checked clock")
     return "\n".join(lines)
 
 

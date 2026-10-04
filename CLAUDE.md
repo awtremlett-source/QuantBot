@@ -47,9 +47,10 @@ catch-up-safe.
 - 3 mandatory pre-commit checks: correctness · spelling · numbers (FRAMEWORK)
 
 ## Token rules (§12)
-This file ≤3.6k chars; GRAND_TODO ≤10k (archive DONE). grep-then-read-range;
-never cat data files (head/tail/count). Update STATE.md at session end.
-Surgical edits only — never full rewrites.
+This file ≤4k chars; GRAND_TODO ≤10k (archive DONE). grep-then-read-range;
+never cat data files (head/tail/count). Surgical edits only — never full rewrites.
+End of every task: update STATE.md, commit, push, then end the report with the
+line "CLEAR ME NOW (/clear) — state is saved."
 
 ## Pointers
 Resume → STATE.md · PLAN v3 → docs/plan/PLAN_V3.md · Backlog → GRAND_TODO.md ·

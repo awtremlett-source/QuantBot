@@ -12,6 +12,17 @@ required for the US, and ZERO for London.** It resolves by the recorder running;
 nothing to build.
 NEXT BOX: let the delay accumulate (2 more sessions), then S3 closes. NOT S4.
 
+CLOCK (2026-10-04, S3e): the delay sampler now asks an internet time server
+(SNTP, UDP 123, NO admin -- it asks the time, it never sets it) on every run and
+records the offset; the reported age is corrected by it, and BOTH figures are
+kept (age_seconds_raw = what the laptop thought, age_seconds = what it was).
+Measured offset on this machine: +0.118s to +0.136s across three servers.
+An unreachable server does NOT lose the reading and does NOT silently trust it:
+the sample is kept, marked unverified, and EXCLUDED from the count at which row o
+may be quoted. Consequence, stated plainly: the 3,106 readings taken before
+2026-10-04 have no clock check, so row o now reads UNMEASURED with 0 counted --
+which is more honest than the figure it replaced.
+
 DATA NOW IN CLEAN (2026-10-03): intraday 1m/5m/1h for 226 names · DAILY bars for
 221 names + GBP/USD (3 years) · DIVIDENDS for 221 names, 0 suspect · EARNINGS for
 the bot's 50 and the advisor's 171. Total return in pounds (P3) is one function,

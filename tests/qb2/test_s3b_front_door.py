@@ -458,7 +458,8 @@ def test_the_delay_says_unmeasured_when_it_has_no_samples(tmp_path: Path) -> Non
     empty = tmp_path / "manifest.jsonl"
     assert sample_delay.collected(empty) == {}
     text = sample_delay.verdict(empty)
-    assert "UNMEASURED" in text and "0 samples" in text
+    assert "UNMEASURED" in text
+    assert "0 readings taken with a checked clock" in text
 
 
 def test_a_handful_of_samples_is_not_allowed_to_call_itself_measured(
@@ -475,10 +476,11 @@ def test_a_handful_of_samples_is_not_allowed_to_call_itself_measured(
         for n in range(5):
             fh.write(json.dumps({"kind": "delay_sample", "market": "US",
                                  "age_seconds": 900.0,
+                                 "clock_checked": True,
                                  "at_utc": "2026-10-01T15:00:00+00:00"}) + "\n")
     text = sample_delay.verdict(manifest)
     assert "NOT YET ENOUGH" in text
-    assert "5 samples over 1 session" in text
+    assert "5 clock-checked samples over 1 session" in text
     assert "MEASURED --" not in text
 
 
@@ -492,6 +494,7 @@ def test_enough_samples_across_enough_sessions_reads_as_measured(
             for n in range(8):
                 fh.write(json.dumps({
                     "kind": "delay_sample", "market": "US", "age_seconds": 900.0,
+                    "clock_checked": True,
                     "at_utc": f"{day}T15:0{n}:00+00:00"}) + "\n")
     text = sample_delay.verdict(manifest)
     assert "MEASURED" in text and "NOT YET ENOUGH" not in text

@@ -504,22 +504,43 @@ def record_lost(ticker: str, interval: str, reason: str,
 # ------------------------------------------------------- the delay sample ----
 
 def delay_sample(market: str, last_bar_utc: datetime,
-                 now: datetime | None = None) -> dict[str, object] | None:
+                 now: datetime | None = None,
+                 clock_check: object = None) -> dict[str, object] | None:
     """How old is the newest closed bar? Only sampled while the market is open.
 
     Outside hours this returns None rather than a number, because a bar that is
     old because the market is shut says nothing about the feed's delay. That is
     exactly the trap FACTS.md row o fell into.
+
+    The age is ``our clock now`` minus ``the bar's timestamp``, so it is only as
+    good as our clock. A laptop that has slept or drifted reports a delay wrong by
+    exactly its own error, and nothing about the number looks odd. So the measured
+    clock offset is applied, and BOTH figures are kept: ``age_seconds_raw`` is
+    what the laptop thought, ``age_seconds`` is what it was. With no offset known,
+    the two are equal and the sample is marked unverified -- never corrected by a
+    guess.
     """
     moment = now or datetime.now(timezone.utc)
     if not market_is_open(market, moment):
         return None
     if last_bar_utc.tzinfo is None:
         last_bar_utc = last_bar_utc.replace(tzinfo=timezone.utc)
-    age = (moment - last_bar_utc).total_seconds()
+    raw = (moment - last_bar_utc).total_seconds()
+
+    offset = 0.0
+    extra: dict[str, object] = {"clock_checked": False, "clock_offset_seconds": 0.0,
+                                "clock_error": "no clock check was made"}
+    if clock_check is not None:
+        extra = dict(clock_check.as_record())      # type: ignore[attr-defined]
+        if bool(extra.get("clock_checked")):
+            measured = extra.get("clock_offset_seconds")
+            offset = float(measured) if isinstance(measured, (int, float)) else 0.0
+
     return {"kind": "delay_sample", "market": market,
-            "age_seconds": round(age, 1),
-            "at_utc": moment.isoformat(timespec="seconds")}
+            "age_seconds": round(raw + offset, 1),
+            "age_seconds_raw": round(raw, 1),
+            "at_utc": moment.isoformat(timespec="seconds"),
+            **extra}
 
 
 # ------------------------------------------------------- the freshness meter --
