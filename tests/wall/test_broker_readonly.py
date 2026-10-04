@@ -6,8 +6,11 @@ Three dangers, each with a test rather than a promise:
   tests. Not in a constant, not in a comment, not commented out "for later". A
   string that does not exist cannot be typed into a request by mistake.
 * **an order.** The order endpoints are documented in docs/t212/FACTS.md and
-  deliberately not implemented. qb2's own code must contain no path to them, and
-  the one function that touches the network refuses any method but GET.
+  deliberately not implemented -- with ONE exception since QT-12: the P20 anchor
+  buyer, qb2/execution/anchors.py, may place a practice MARKET BUY (operator's
+  words, 2026-10-04: "P20 anchors bought by the program, practice only, fenced").
+  That file alone may name the market-order path and the verb POST; no other qb2
+  file may, it may name no other order path, and the bot cannot import it.
 * **a leaked credential.** Nothing in the repo may carry the contents of .env,
   and no file may set one of the secret names to a real-looking value.
 
@@ -19,6 +22,7 @@ tests/wall/test_forbidden_paths.py.
 from __future__ import annotations
 
 import ast
+import os
 import re
 from pathlib import Path
 
@@ -35,9 +39,17 @@ DEMO_HOST = "demo.trading212.com"
 # Order endpoints, documented in FACTS.md and deliberately unimplemented.
 ORDER_PATHS = ("orders/market", "orders/limit", "orders/stop", "orders/stop_limit")
 
+# QT-12: the one fenced exception. Exactly one file, exactly one order path.
+ORDER_DOORWAY = "qb2/execution/anchors.py"
+DOORWAY_FRAGMENT = "orders/market"
+DOORWAY_VERB = "POST"
+
+# The order key's names (F2). Only the doorway may read them.
+ORDER_KEY_NAMES = ("T212_ORDER_KEY", "T212_ORDER_SECRET")
+
 # Secret NAMES (never values) that must never be set to a real-looking value.
 SECRET_NAMES = ("T212_API_KEY", "T212_API_SECRET", "TELEGRAM_BOT_TOKEN",
-                "SMTP_PASS")
+                "SMTP_PASS") + ORDER_KEY_NAMES
 
 # The recorder's run logs hold raw stdout from an unattended job. They are
 # gitignored, so nothing stops a printed key from sitting on the disk unnoticed --
@@ -88,29 +100,180 @@ def test_scanner_goes_red_on_a_planted_live_url() -> None:
 
 # ------------------------------------------------------------- no ordering ----
 
-def test_qb2_code_contains_no_path_to_an_order_endpoint() -> None:
-    """The test files may name them -- they prove refusal. The code may not."""
+def order_path_offenders(files: list[Path], root: Path = REPO_ROOT) -> list[str]:
+    """Every order-path fragment in code, except the doorway's ONE path."""
     offenders: list[str] = []
-    for path in files_under(QB2):
+    for path in files:
+        name = path.relative_to(root).as_posix()
         body = path.read_text(encoding="utf-8", errors="replace")
         for fragment in ORDER_PATHS:
-            if fragment in body:
-                offenders.append(f"{_relative(path)}: {fragment}")
+            if fragment in body and not (name == ORDER_DOORWAY
+                                         and fragment == DOORWAY_FRAGMENT):
+                offenders.append(f"{name}: {fragment}")
+    return offenders
+
+
+def changing_verb_offenders(files: list[Path], root: Path = REPO_ROOT) -> list[str]:
+    """String constants naming a verb that changes something; the doorway may
+    say POST and nothing else."""
+    changing = {"POST", "PUT", "PATCH", "DELETE"}
+    offenders: list[str] = []
+    for path in files:
+        if path.suffix != ".py":
+            continue
+        name = path.relative_to(root).as_posix()
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                    and node.value.strip().upper() in changing):
+                if name == ORDER_DOORWAY and node.value == DOORWAY_VERB:
+                    continue
+                offenders.append(f"{name}: {node.value!r}")
+    return offenders
+
+
+def test_qb2_code_contains_no_path_to_an_order_endpoint() -> None:
+    """The test files may name them -- they prove refusal. The code may not,
+    except the anchor doorway, and only its market-order path."""
+    offenders = order_path_offenders(files_under(QB2))
     assert offenders == [], f"qb2 code can reach an order endpoint: {offenders}"
 
 
 def test_the_only_http_method_in_qb2_is_get() -> None:
-    """Scan the string constants: no verb that changes anything may appear."""
-    changing = {"POST", "PUT", "PATCH", "DELETE"}
+    """Scan the string constants: no verb that changes anything may appear,
+    except POST inside the anchor doorway."""
+    offenders = changing_verb_offenders(files_under(QB2))
+    assert offenders == [], f"a request-changing HTTP verb exists in qb2: {offenders}"
+
+
+def test_the_doorway_exemption_is_one_file_and_it_exists() -> None:
+    """An exemption naming a file that is gone would quietly cover its successor."""
+    assert (REPO_ROOT / ORDER_DOORWAY).is_file()
+    body = (REPO_ROOT / ORDER_DOORWAY).read_text(encoding="utf-8")
+    assert DOORWAY_FRAGMENT in body
+    assert DEMO_HOST in body, "the doorway must be pinned to the practice host"
+
+
+def test_scanners_go_red_on_a_planted_second_doorway(tmp_path: Path) -> None:
+    """Birth certificate: a second order path, anywhere else in qb2, is caught."""
+    planted = tmp_path / "qb2" / "signals" / "sneaky.py"
+    planted.parent.mkdir(parents=True)
+    planted.write_text('PATH = "/equity/orders/market"\nVERB = "POST"\n',
+                       encoding="utf-8")
+    assert order_path_offenders([planted], tmp_path) == [
+        "qb2/signals/sneaky.py: orders/market"]
+    assert changing_verb_offenders([planted], tmp_path) == [
+        "qb2/signals/sneaky.py: 'POST'"]
+
+
+def test_scanners_go_red_when_the_doorway_grows_another_order_type(
+        tmp_path: Path) -> None:
+    """The doorway's exemption is one path and one verb, not a blank cheque."""
+    planted = tmp_path / ORDER_DOORWAY
+    planted.parent.mkdir(parents=True)
+    planted.write_text('A = "/equity/orders/market"\nB = "/equity/orders/limit"\n'
+                       'C = "POST"\nD = "DELETE"\n', encoding="utf-8")
+    assert order_path_offenders([planted], tmp_path) == [
+        f"{ORDER_DOORWAY}: orders/limit"]
+    assert changing_verb_offenders([planted], tmp_path) == [
+        f"{ORDER_DOORWAY}: 'DELETE'"]
+
+
+# --------------------------- QT-12: the order key and the doorway are fenced ---
+
+CODE_SUFFIXES = frozenset({".py", ".bat", ".cmd", ".ps1", ".toml", ".cfg",
+                           ".ini", ".json", ".yml", ".yaml"})
+NOT_CODE = frozenset({".git", ".venv", ".venv-qb2", ".venv-ui", "archive",
+                      "data", "logs", "tests", "docs", "reports", "__pycache__",
+                      ".mypy_cache", ".ruff_cache", ".pytest_cache"})
+
+
+def order_key_offenders(root: Path = REPO_ROOT) -> list[str]:
+    """Every code file naming the order key, except the doorway (F2).
+
+    Walks with the excluded folders pruned BEFORE descending: the venvs and the
+    data store hold tens of thousands of files that are not code.
+    """
     offenders: list[str] = []
-    for path in sorted(QB2.rglob("*.py")):
+    for folder, subfolders, filenames in os.walk(root):
+        subfolders[:] = sorted(d for d in subfolders if d not in NOT_CODE)
+        for filename in sorted(filenames):
+            path = Path(folder) / filename
+            if path.suffix not in CODE_SUFFIXES and filename != ".env.example":
+                continue
+            relative = path.relative_to(root).as_posix()
+            body = path.read_text(encoding="utf-8", errors="replace")
+            if (any(name in body for name in ORDER_KEY_NAMES)
+                    and relative != ORDER_DOORWAY):
+                offenders.append(relative)
+    return offenders
+
+
+def test_only_the_doorway_names_the_order_key() -> None:
+    """The recorder and everything else keep the read-only key (F2)."""
+    assert order_key_offenders() == []
+    body = (REPO_ROOT / ORDER_DOORWAY).read_text(encoding="utf-8")
+    assert all(name in body for name in ORDER_KEY_NAMES)
+
+
+def test_order_key_scan_goes_red_on_a_planted_reader(tmp_path: Path) -> None:
+    planted = tmp_path / "qb2" / "ingest" / "recorder_two.py"
+    planted.parent.mkdir(parents=True)
+    planted.write_text('KEY = "T212_ORDER_KEY"\n', encoding="utf-8")
+    assert order_key_offenders(tmp_path) == ["qb2/ingest/recorder_two.py"]
+
+
+def doorway_importers(root: Path = REPO_ROOT) -> list[str]:
+    """Any qb2 module that imports the doorway, by statement or by string."""
+    offenders: list[str] = []
+    for path in sorted((root / "qb2").rglob("*.py")):
         if "__pycache__" in path.parts:
             continue
+        name = path.relative_to(root).as_posix()
+        if name == ORDER_DOORWAY:
+            continue
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-            if (isinstance(node, ast.Constant) and isinstance(node.value, str)
-                    and node.value.strip().upper() in changing):
-                offenders.append(f"{_relative(path)}: {node.value!r}")
-    assert offenders == [], f"a request-changing HTTP verb exists in qb2: {offenders}"
+            hit = False
+            if isinstance(node, ast.ImportFrom):
+                hit = (node.module == "qb2.execution.anchors"
+                       or any(alias.name == "anchors" for alias in node.names))
+            elif isinstance(node, ast.Import):
+                hit = any(alias.name == "qb2.execution.anchors"
+                          for alias in node.names)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                hit = "qb2.execution.anchors" in node.value
+            if hit:
+                offenders.append(f"{name}:{getattr(node, 'lineno', '?')}")
+    return offenders
+
+
+def test_nothing_in_qb2_imports_the_doorway() -> None:
+    """F10: the bot cannot reach the one module that can place an order."""
+    assert doorway_importers() == []
+
+
+def test_doorway_import_scan_goes_red_on_a_planted_import(tmp_path: Path) -> None:
+    (tmp_path / "qb2" / "model").mkdir(parents=True)
+    (tmp_path / "qb2" / "model" / "combine.py").write_text(
+        "from qb2.execution import anchors\n", encoding="utf-8")
+    (tmp_path / "qb2" / "sizing").mkdir(parents=True)
+    (tmp_path / "qb2" / "sizing" / "lazy.py").write_text(
+        'import importlib\nm = importlib.import_module("qb2.execution.anchors")\n',
+        encoding="utf-8")
+    assert doorway_importers(tmp_path) == ["qb2/model/combine.py:1",
+                                           "qb2/sizing/lazy.py:2"]
+
+
+def test_the_doorway_never_touches_armed_or_the_bots_sender() -> None:
+    """F10: buying an anchor must not be able to read, set or depend on ARMED."""
+    tree = ast.parse((REPO_ROOT / ORDER_DOORWAY).read_text(encoding="utf-8"))
+    names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    attrs = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
+    imported = {alias.name for n in ast.walk(tree)
+                if isinstance(n, (ast.Import, ast.ImportFrom)) for alias in n.names}
+    modules = {n.module for n in ast.walk(tree)
+               if isinstance(n, ast.ImportFrom) and n.module}
+    assert "ARMED" not in names | attrs | imported
+    assert "sender" not in imported and "qb2.execution.sender" not in modules
 
 
 def test_the_read_only_refusal_is_proven_by_a_test() -> None:

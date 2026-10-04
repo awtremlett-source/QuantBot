@@ -104,21 +104,47 @@ class SellInstruction:
     reason: str
 
 
-def flatten_bot(holdings: Sequence[Holding], reason: str) -> list[SellInstruction]:
+def bot_view(broker_quantities: Mapping[str, float],
+             anchor_quantities: Mapping[str, float]) -> dict[str, float]:
+    """What the bot may treat as its own: the broker's position minus the anchor.
+
+    PLAN_V3 P20: an anchor is measuring equipment, not a position. Trading 212
+    keeps one position per share (FACTS row g), so a bot holding and an anchor in
+    the same name are ONE number at the broker, and the anchor part has to be
+    subtracted by us. Anchor quantities come from the anchor ledger
+    (qb2/execution/anchor_ledger.py), never from the order module itself.
+    """
+    return {ticker: max(quantity - anchor_quantities.get(ticker, 0.0), 0.0)
+            for ticker, quantity in broker_quantities.items()}
+
+
+def flatten_bot(holdings: Sequence[Holding], reason: str, *,
+                broker_quantities: Mapping[str, float] | None = None,
+                anchor_quantities: Mapping[str, float] | None = None,
+                ) -> list[SellInstruction]:
     """Sell the bot's quantity, and only the bot's.
 
     If one ticker somehow has both a bot and an advisor holding -- which P6's
     no-overlap rule exists to prevent -- only the bot's share is sold. The
     advisor's is left exactly as it was.
+
+    Given the broker's positions and the anchor ledger's quantities, a sell is
+    also capped at position minus anchor, so a bot record that wrongly absorbed
+    an anchor still cannot sell it (P20: flatten leaves anchors alone).
     """
+    sellable = (bot_view(broker_quantities, anchor_quantities or {})
+                if broker_quantities is not None else None)
     instructions: list[SellInstruction] = []
     for holding in holdings:
         if holding.owner != BOT:
             continue
-        if holding.quantity <= 0:
+        quantity = holding.quantity
+        if sellable is not None:
+            quantity = min(quantity, sellable.get(holding.ticker, 0.0))
+        if quantity <= 0:
             continue
         instructions.append(SellInstruction(
-            ticker=holding.ticker, quantity=holding.quantity, reason=reason))
+            ticker=holding.ticker, quantity=quantity, reason=reason))
     return instructions
 
 

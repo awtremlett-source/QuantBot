@@ -412,6 +412,30 @@ and the results both exclude anchors, a units test that a pence-quoted name does
 not read as a 100x mismatch, and a test that a missing comparison blocks rather
 than passes.
 
+*Addendum, 2026-10-04 — the anchors are bought by the program (QT-12).* The
+operator's words, verbatim: *"write the anchor-buyer box (QT-12) — P20 anchors
+bought by the program, practice only, fenced; S3 close becomes QT-13"*, and from
+the session before: *"Can't the algorithm do this? this is what we a building
+for"*. So:
+
+- **An anchor is the smallest practical fractional amount — a target of about £1
+  — not a whole share.** Measured: whole shares of all 50 cost £14,032, more than
+  the £10,000 account.
+- **Anchors are bought and topped up by the program, on the practice server
+  only,** through one fenced module, `qb2/execution/anchors.py`, which is not the
+  bot's sender: it can only buy, it uses its own order key, it buys only while that
+  name's own market is in its regular session, and it never resends an order whose
+  outcome is unknown. Its caps are the £1 target, £3 per order, £100 lifetime
+  (every anchor buy and top-up together) and 50 orders a day, and a cap is never
+  raised without the operator's GO. It is the only order path that exists before
+  S10, and the bot cannot import it.
+- **The anchor reserve sits outside BOTH pots** — neither the bot's 30% nor the
+  advisor's 70% — so it changes neither pot's size nor either part's results.
+- **Real-money anchors are decided at S14.** Until then the module refuses the
+  live server outright, before any network call is made.
+- What this does not change: the cross-check rule above is still built in S4, and
+  buying an anchor arms nothing — the bot's sender stays disarmed.
+
 ---
 
 ## Carried from V2

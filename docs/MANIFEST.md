@@ -34,7 +34,11 @@ this logic leaves NVDA or this laptop.
   - qb2/data/access.py THE way a strategy reads bars; enforces the minute label
     (MINUTE_OK / FIVE_MIN_ONLY) so a series of real gaps never reaches a model
   - qb2/execution/ t212_client.py (GET-only) · costs.py · fill_recorder.py ·
-    safety.py (killswitch, P14 checks) · sender.py (ARMED = False)
+    safety.py (killswitch, P14 checks, flatten = position − anchor) · sender.py
+    (ARMED = False) · anchors.py (QT-12: P20 anchor buyer — the ONE order path,
+    practice-only, buy-only, own key, capped; nothing in qb2 may import it) ·
+    anchor_ledger.py (its append-only ledger, data/anchors/ledger.jsonl; the bot
+    reads anchor quantities from here, never from anchors.py)
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o, plus a meter that
     goes red when a session passes with no samples) · record_now.py (hourly top-up

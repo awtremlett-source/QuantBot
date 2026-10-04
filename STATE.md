@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-03.
+Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-04.
 S0, S1, S2a, S2b, S3a, S3b, S3c and S3d ARE DONE. **S3 ITSELF IS STILL NOT
 COMPLETE**, and the plan says exactly why. All five exit-gate items are GREEN (both
 lists agreed · disjoint by test · census 98.2% on 5m against a 95% bar · sterling
@@ -11,6 +11,35 @@ delay that row o could not", and row o still cannot be quoted — 1 session of t
 required for the US, and ZERO for London.** It resolves by the recorder running;
 nothing to build.
 NEXT BOX: let the delay accumulate (2 more sessions), then S3 closes. NOT S4.
+RENUMBERED 2026-10-04: S3 close = QT-13 (QT-12 is the P20 anchor buyer).
+CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
+the bot trades (same company / same index fund, two lines each; both still get an
+anchor, because the broker prices each line separately).
+
+## QT-12 PART A DONE — the P20 anchor buyer is BUILT and DRY-RUN, NOT live (2026-10-04)
+Operator verbatim: *"write the anchor-buyer box (QT-12) — P20 anchors bought by the
+program, practice only, fenced; S3 close becomes QT-13"* (+ earlier: *"Can't the
+algorithm do this? this is what we a building for"*). Both in PLAN_V3 P20's dated
+addendum; P20's agreed text is pinned byte-identical by hash.
+BUILT: qb2/execution/anchors.py (the ONE order path: practice host hard-coded,
+buy-only, own key T212_ORDER_KEY/SECRET, caps £1 target · £3/order · £100 lifetime
+· 50/day, regular session only by BOTH the broker's calendar and the exchange
+clock, intent-before-send, unknown outcome = UNRESOLVED + run halts + never
+resent until order history settles it) · anchor_ledger.py (data/anchors/
+ledger.jsonl; flatten now sells at most position − anchor) · one new GET on the
+read-only client (order history, for reconciling). Fences F1–F12 each watched RED
+(29 deliberate breakages, all red; session log has the table).
+THE WALL WAS NARROWED, NOT REMOVED: exactly one qb2 file may name the market-order
+path and POST; a planted second doorway, a limit path in the doorway, a planted
+order-key reader and a planted import of the doorway each turn it red.
+DRY RUN (Sun, read-only key): 45 to buy when markets open, est £45.69 vs £100 cap;
+5 skipped as already held (MU, SNDK, TSLA, GEV, SGLN). UNKNOWN (FACTS u, v): the
+broker's minimum order (assumed £1) and quantity precision (assumed 4 dp); which
+names accept fractions is unknown until a fill. FACTS j2 now VERIFIED: an order sent
+while the market is shut IS queued to the next open — the fence is necessary.
+NEXT FOR QT-12: operator makes a NEW practice key (Orders – Execute + Account data
+only), adds T212_ORDER_KEY/SECRET to .env, says "GO QT-12 LIVE" → Part B (prove key,
+live run in the overlap, reconcile from the broker, wire the weekday top-up task).
 
 CLOCK (2026-10-04, S3e): the delay sampler now asks an internet time server
 (SNTP, UDP 123, NO admin -- it asks the time, it never sets it) on every run and
@@ -42,8 +71,8 @@ to the repo — no console window. CONFIRMED BY PROBE: with no "Start in", Task
 Scheduler starts tasks in C:\Windows\system32, which is why the old relative
 recorder.log never existed anywhere.
 
-FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-03) ·
-qb2 8d007b10…c85c (was 09ae956e…0342 before S3d)
+FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-04) ·
+qb2 2ba4d210…ab12 after QT-12 (was 69ae0f43…a0da after S3e; 8d007b10…c85c after S3d)
 
 ## P20 AGREED — cross-check prices against the broker (2026-10-04)
 Operator verbatim: *"GO on P20 — 'Compare yfinance with Trading 212 prices: hold

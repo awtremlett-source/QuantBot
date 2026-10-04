@@ -20,6 +20,7 @@ about V2 and stays exactly as it was.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -730,3 +731,90 @@ def test_p20_records_the_measured_obstacle_rather_than_discovering_it_later() ->
     assert "fractional" in flat
     assert "NOT on record" in flat, "the unknown minimum must be flagged as unknown"
     assert "S14" in flat, "real money is decided later, not here"
+
+
+# ------------------------------ QT-12: the anchors are bought by the program ---
+
+# P20 as agreed and committed in ea4d008, from "**P20 —" to the end of its
+# Enforcer paragraph. The addendum is APPENDED; the decision itself never moves.
+P20_ORIGINAL_SHA256 = (
+    "d39f1bc7477dd834750250705603e5197ac3b82e6475dc3e395a6c7833e35d2b")
+QT12_WORDS = (
+    "write the anchor-buyer box (QT-12) — P20 anchors bought by the program, "
+    "practice only, fenced; S3 close becomes QT-13")
+QT12_EARLIER_WORDS = (
+    "Can't the algorithm do this? this is what we a building for")
+STATE = REPO_ROOT / "STATE.md"
+
+
+def p20_addendum() -> str:
+    block = decision_blocks()["P20"]
+    marker = "*Addendum, 2026-10-04"
+    assert marker in block, "P20 has no dated addendum for the anchor buyer"
+    return " ".join(block[block.index(marker):].split())
+
+
+def test_p20_original_text_is_byte_identical_after_the_addendum() -> None:
+    """An addendum that quietly edits what was agreed is not an addendum."""
+    text = plan_text()
+    start = text.index("**P20 —")
+    end = text.index("than passes.", start) + len("than passes.")
+    digest = hashlib.sha256(text[start:end].encode("utf-8")).hexdigest()
+    assert digest == P20_ORIGINAL_SHA256, (
+        "P20's agreed text changed -- add to it in the addendum, never edit it")
+
+
+def test_p20_addendum_records_the_operators_words_verbatim_and_dated() -> None:
+    """Typos are his and are kept: 'we a building' is evidence, not a mistake."""
+    addendum = p20_addendum()
+    assert QT12_WORDS in addendum
+    assert QT12_EARLIER_WORDS in addendum
+
+
+def test_p20_addendum_makes_the_anchor_about_a_pound_not_a_whole_share() -> None:
+    """The measured obstacle is the reason, so the figures travel with it."""
+    addendum = p20_addendum()
+    assert "not a whole share" in addendum
+    assert "£1" in addendum
+    assert "£14,032" in addendum and "£10,000" in addendum
+
+
+def test_p20_addendum_keeps_anchors_practice_only_and_outside_both_pots() -> None:
+    """Outside BOTH pots: an anchor shrinks neither the bot's 30% nor the 70%."""
+    addendum = p20_addendum()
+    assert "bought and topped up by the program" in addendum
+    assert "practice server only" in addendum
+    assert "outside BOTH pots" in addendum
+    assert "30%" in addendum and "70%" in addendum
+
+
+def test_p20_addendum_refuses_the_live_server_until_s14() -> None:
+    addendum = p20_addendum()
+    assert "decided at S14" in addendum
+    assert "refuses the live server outright" in addendum
+
+
+def test_p20_addendum_pins_the_caps_so_raising_one_needs_a_go() -> None:
+    """A cap that lives only in code can be raised by an edit nobody reads."""
+    addendum = p20_addendum()
+    for figure in ("£1 target", "£3 per order", "£100 lifetime",
+                   "50 orders a day"):
+        assert figure in addendum, f"cap missing from the plan: {figure}"
+    assert "never raised without the operator's GO" in addendum
+
+
+def test_p20_addendum_is_not_the_bots_sender_and_changes_no_stage() -> None:
+    """The one order path before S10 must say it is not the bot's, in the plan."""
+    addendum = p20_addendum()
+    assert "qb2/execution/anchors.py" in addendum
+    assert "the bot cannot import it" in addendum
+    assert "still built in S4" in addendum
+    assert "arms nothing" in addendum
+
+
+def test_state_carries_the_s4_flag_and_the_renumbered_s3_close() -> None:
+    """Carried until S4 consumes it: two pairs that are one bet each."""
+    flat = " ".join(STATE.read_text(encoding="utf-8").split())
+    assert "S3 close = QT-13" in flat
+    assert ("GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot "
+            "trades") in flat

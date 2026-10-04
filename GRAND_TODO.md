@@ -38,6 +38,9 @@ this page is only the running order. Earlier backlogs are archived whole at
       commit point, pence→pounds once, splits never re-applied · census + meter with
       birth certificate · first-light charts. STILL OPEN: earnings dates not
       ingested (S3 gate line) · quote delay still UNMEASURED (0 samples)
+- [~] QT-12 P20 ANCHOR BUYER (2026-10-04): qb2/execution/anchors.py BUILT + dry-run
+      (45 names to buy, est £45.69; 5 already held), fences F1–F12 each seen red;
+      the ONE order path, practice-only. LIVE = Part B. S3 close renumbered QT-13
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
       survivorship mark-down
 - [ ] S5 Safety layer FIRST: stops, brakes, pot limits, age + earnings checks,
@@ -75,6 +78,9 @@ Built/Wired/Armed checklist.
 - [x] BOT UNIVERSE AGREED (2026-10-02), operator verbatim: "GO on bot universe
       v1" — 50 names in three tagged sleeves. Permission to BUILD and BACK-TEST;
       the sender stays disarmed. S4 still blocked by S3's other two gate items
+- [ ] ORDER KEY for the P20 anchors (QT-12 Part B): a NEW practice key with ONLY
+      Orders – Execute + Account data → T212_ORDER_KEY / T212_ORDER_SECRET in .env
+      (the read-only key stays as it is) → say "GO QT-12 LIVE". docs/t212/SETUP.md
 - [ ] FACTS row 2c must be settled before S14: can Limit/Stop/Stop-Limit orders be
       placed on a REAL-MONEY account? One tiny live test, or a written answer from
       T212 support. Sources disagree and going live on a guess is not acceptable

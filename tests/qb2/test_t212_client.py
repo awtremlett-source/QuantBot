@@ -91,12 +91,16 @@ def test_the_client_has_no_method_that_could_place_an_order() -> None:
     forbidden = ("buy", "sell", "order", "place", "cancel", "amend", "modify",
                  "close", "trade")
     public = [name for name in dir(T212DemoClient) if not name.startswith("_")]
+    # Two READS carry the word "orders": what is waiting, and (QT-12, for
+    # reconciling an anchor order whose reply was lost) what already happened.
+    reads = {"pending_orders", "history_orders"}
     offenders = [name for name in public
                  if any(word in name.lower() for word in forbidden)
-                 and name != "pending_orders"]
+                 and name not in reads]
     assert offenders == [], f"the read-only client grew a trading method: {offenders}"
     assert set(public) == {"account_summary", "positions", "pending_orders",
-                           "instruments", "exchanges", "save_instruments_raw"}
+                           "history_orders", "instruments", "exchanges",
+                           "save_instruments_raw"}
 
 
 def test_a_planted_non_get_is_refused_at_the_network_layer() -> None:
@@ -268,9 +272,11 @@ def test_a_rate_limit_with_no_usable_header_still_waits() -> None:
 
 def test_every_documented_endpoint_has_a_limit_from_the_facts_file() -> None:
     assert set(t212.ENDPOINTS) == {"account_summary", "positions",
-                                   "pending_orders", "instruments", "exchanges"}
+                                   "pending_orders", "instruments", "exchanges",
+                                   "history_orders"}
+    # history_orders: 20 req / 1m (FACTS, checked 2026-10-04) -> one per 3s.
     expected = {"account_summary": 5.0, "positions": 1.0, "pending_orders": 5.0,
-                "instruments": 50.0, "exchanges": 30.0}
+                "instruments": 50.0, "exchanges": 30.0, "history_orders": 3.0}
     for name, endpoint in t212.ENDPOINTS.items():
         assert endpoint.seconds_between_calls == expected[name]
 
@@ -404,3 +410,28 @@ def test_no_credential_reaches_an_error_message_or_a_log(
     assert "instruments" in everything
     assert not any(value in everything for value in secret_values)
     assert "Basic " not in everything, "an auth header was printed"
+
+
+# ------------------------------------- QT-12: order history, read for reconciling ---
+
+def test_history_orders_is_a_get_with_a_ticker_filter_and_reads_items() -> None:
+    """GET /equity/history/orders?ticker=..&limit=50, items unwrapped
+    (https://docs.trading212.com/api/historical-events/orders_1, 2026-10-04)."""
+    item = {"order": {"id": 7, "ticker": "MU_US_EQ", "side": "BUY",
+                      "status": "FILLED", "filledQuantity": 0.0013},
+            "fill": {"quantity": 0.0013, "price": 1076.0}}
+    transport = recorded({"items": [item], "nextPagePath": None})
+    client = T212DemoClient(credentials=FAKE, transport=transport,
+                            throttle=frozen_throttle())
+    assert client.history_orders(ticker="MU_US_EQ") == [item]
+    method, url, _ = transport.calls[0]          # type: ignore[attr-defined]
+    assert method == "GET"
+    assert url == (f"{t212.DEMO_BASE_URL}/equity/history/orders"
+                   "?ticker=MU_US_EQ&limit=50")
+
+
+def test_history_orders_refuses_a_reply_without_items() -> None:
+    client = T212DemoClient(credentials=FAKE, transport=recorded([1, 2]),
+                            throttle=frozen_throttle())
+    with pytest.raises(BrokerError, match="items"):
+        client.history_orders(ticker="MU_US_EQ")

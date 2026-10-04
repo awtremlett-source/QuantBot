@@ -31,6 +31,7 @@ import base64
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -74,7 +75,8 @@ class Endpoint:
 
 
 # Every endpoint this project reads, with the documented limit from FACTS.md.
-# All five are 1 request per period, so the period IS the minimum spacing.
+# The first five are 1 request per period, so the period IS the minimum spacing;
+# order history is 20 per minute, so one every 3 seconds stays inside it.
 ENDPOINTS: Mapping[str, Endpoint] = {
     "account_summary": Endpoint("/equity/account/summary", 5.0,
                                 "cash and account value (1 req / 5s)"),
@@ -86,6 +88,8 @@ ENDPOINTS: Mapping[str, Endpoint] = {
                             "the tradable universe (1 req / 50s)"),
     "exchanges": Endpoint("/equity/metadata/exchanges", 30.0,
                           "trading hours (1 req / 30s)"),
+    "history_orders": Endpoint("/equity/history/orders", 3.0,
+                               "past orders, for reconciling (20 req / 1m)"),
 }
 
 
@@ -278,6 +282,23 @@ class T212DemoClient:
     def exchanges(self) -> list[dict[str, Any]]:
         return self._read_list("exchanges")
 
+    def history_orders(self, ticker: str | None = None,
+                       limit: int = 50) -> list[dict[str, Any]]:
+        """The first page of past orders, newest first, optionally for one ticker.
+
+        Reconciliation reads this to settle an order whose outcome we never
+        heard (FACTS row e: a resend could duplicate it). One page of 50 is
+        enough for that: the order being looked for is minutes old.
+        """
+        query = urllib.parse.urlencode(
+            {k: v for k, v in (("ticker", ticker), ("limit", min(limit, 50)))
+             if v is not None})
+        payload = self._read("history_orders", query)
+        items = payload.get("items") if isinstance(payload, dict) else None
+        if not isinstance(items, list):
+            raise BrokerError("history_orders: expected an object with items")
+        return [row for row in items if isinstance(row, dict)]
+
     # ------------------------------------------------------------ the wire ---
 
     def _headers(self) -> dict[str, str]:
@@ -285,9 +306,9 @@ class T212DemoClient:
         return {"Authorization": credentials.basic_auth_header(),
                 "Accept": "application/json"}
 
-    def _read(self, name: str) -> object:
+    def _read(self, name: str, query: str = "") -> object:
         endpoint = ENDPOINTS[name]
-        url = f"{self._base_url}{endpoint.path}"
+        url = f"{self._base_url}{endpoint.path}" + (f"?{query}" if query else "")
         self._throttle.before(name, endpoint)
         response = self._transport("GET", url, self._headers())
         if self._throttle.after(name, response) > 0:
