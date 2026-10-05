@@ -17,7 +17,7 @@ CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
 the bot trades (same company / same index fund, two lines each; both still get an
 anchor, because the broker prices each line separately).
 
-## QT-12 FINISH — NOT CLOSED: daily fence still full on the same day (2026-10-05 14:57 UTC)
+## QT-12 FINISH — NOT CLOSED: daily fence still full on the same day (2026-10-05 14:57 + 15:13 UTC)
 Operator verbatim: *"GO QT-12 FINISH — run `python -m qb2.execution.anchors --live
 --hold-above 1.10` for the 13 London names (practice only). Report: bought /
 refused (final) / held above £1.10, cap spent, and confirm all 50 names now have a
@@ -28,8 +28,14 @@ Reconcile settled the FIX's 5 (INTC MRVL BE NFLX WMT) FILLED. Ledger: 32 FILLED,
 5 PRE_EXISTING, 18 REFUSED (all lifted once). Committed GBP 32.93 of 100.
 BROKER PRICES 37 of 50 (read-only positions, currentPrice > 0). Missing = the 13:
 ISF VALL SMGB VUKE SHEL HSBA RR BP GLEN BARC RIO AAL ULVR (still lifted).
+RE-RUN on the same GO at 15:13 UTC (16:13 London), STILL 2026-10-05 UTC: identical --
+bought 0 · refused 0 · held >1.10: 0 · 13 SKIP daily limit · 37 held · committed
+GBP 32.93 · BROKER PRICES 37 of 50. No close-out written (not 50/50). The fence
+counts by UTC date (anchors.py `orders_on(now UTC date)`), so a same-day re-run
+cannot buy.
 QT-12 CLOSES when the same command runs on a NEW UTC day in London hours (08:10–
 16:15 London; London-only names need no NY overlap) and 50/50 are priced.
+EARLIEST: Tue 2026-10-06 from 08:10 London.
 
 ## QT-12 FIX — sized to each name's rule; 5 of 18 bought, 13 London left (2026-10-05)
 Operator verbatim: *"GO QT-12 FIX — fail-first tests, red then green: 1. Size each
