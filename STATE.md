@@ -11,11 +11,25 @@ delay that row o could not", and row o still cannot be quoted — 1 session of t
 required for the US, and ZERO for London.** It resolves by the recorder running;
 nothing to build.
 NEXT BOX: let the delay accumulate (2 more sessions), then S3 closes. NOT S4.
-ALSO NEXT: the 13 London anchors in the next overlap (QT-12 FIX below).
+ALSO NEXT: the 13 London anchors on a new UTC day, London hours (QT-12 FINISH below).
 RENUMBERED 2026-10-04: S3 close = QT-13 (QT-12 is the P20 anchor buyer).
 CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
 the bot trades (same company / same index fund, two lines each; both still get an
 anchor, because the broker prices each line separately).
+
+## QT-12 FINISH — NOT CLOSED: daily fence still full on the same day (2026-10-05 14:57 UTC)
+Operator verbatim: *"GO QT-12 FINISH — run `python -m qb2.execution.anchors --live
+--hold-above 1.10` for the 13 London names (practice only). Report: bought /
+refused (final) / held above £1.10, cap spent, and confirm all 50 names now have a
+broker price. Then a short QT-12 close-out in STATE.md."*
+RAN at 15:57 London, SAME UTC day as QT-12 FIX: bought 0 · refused 0 · held above
+GBP 1.10: 0 -- all 13 SKIP "daily limit: 50 orders today already" (F5, kept).
+Reconcile settled the FIX's 5 (INTC MRVL BE NFLX WMT) FILLED. Ledger: 32 FILLED,
+5 PRE_EXISTING, 18 REFUSED (all lifted once). Committed GBP 32.93 of 100.
+BROKER PRICES 37 of 50 (read-only positions, currentPrice > 0). Missing = the 13:
+ISF VALL SMGB VUKE SHEL HSBA RR BP GLEN BARC RIO AAL ULVR (still lifted).
+QT-12 CLOSES when the same command runs on a NEW UTC day in London hours (08:10–
+16:15 London; London-only names need no NY overlap) and 50/50 are priced.
 
 ## QT-12 FIX — sized to each name's rule; 5 of 18 bought, 13 London left (2026-10-05)
 Operator verbatim: *"GO QT-12 FIX — fail-first tests, red then green: 1. Size each
