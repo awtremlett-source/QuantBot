@@ -78,7 +78,7 @@ Built/Wired/Armed checklist.
 - [x] BOT UNIVERSE AGREED (2026-10-02), operator verbatim: "GO on bot universe
       v1" — 50 names in three tagged sleeves. Permission to BUILD and BACK-TEST;
       the sender stays disarmed. S4 still blocked by S3's other two gate items
-- [ ] ORDER KEY for the P20 anchors (QT-12 Part B): a NEW practice key with ONLY
+- [x] (2026-10-05 LIVE: 26 filled, 18 refused) ORDER KEY for the P20 anchors (QT-12 Part B): a NEW practice key with ONLY
       Orders – Execute + Account data → T212_ORDER_KEY / T212_ORDER_SECRET in .env
       (the read-only key stays as it is) → say "GO QT-12 LIVE". docs/t212/SETUP.md
 - [ ] FACTS row 2c must be settled before S14: can Limit/Stop/Stop-Limit orders be

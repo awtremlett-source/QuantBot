@@ -16,6 +16,46 @@ CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
 the bot trades (same company / same index fund, two lines each; both still get an
 anchor, because the broker prices each line separately).
 
+## QT-12 PART B — LIVE on the practice account (2026-10-05, 13:41–13:56 UTC)
+Operator verbatim: *"GO QT-12 LIVE — with these changes first (fail-first tests,
+red then green), then Part B steps 5–9 in a window when London and New York are
+both open"* + items 1–7 (refusals skip a name and are never retried · prove both
+keys see one account · report the 10 holdings and fence MU, SNDK, TSLA, GEV, SGLN
+as PRE-EXISTING · SMGB one line · SETUP order key first · confirm today's hourly
+runs · BA.L one line). "Steps 5–9" are not written anywhere in the repo; done as
+STATE's Part B list: prove key, live run in the overlap, reconcile from the broker.
+NOT DONE: "wire the weekday top-up task" -- an unattended order-placing task needs
+its own explicit GO.
+RESULT: 45 to buy → **26 FILLED (GBP 26.76), 1 ACCEPTED still pending (CSH2),
+18 REFUSED**, 0 unresolved. Committed against the GBP 100 cap: 27.82. Account
+now 36 positions, every filled quantity equal to the broker's. Refused (never
+retried; a person decides): min-quantity INTC MRVL BE WMT RR BP · precision 3
+NFLX ISF SMGB VUKE SHEL HSBA RIO AAL ULVR · precision 2 VALL GLEN BARC. Each
+refusal created nothing. FACTS u and v now MEASURED (per-instrument minimum
+quantity ≈ GBP 1 at the broker's price; precision 2, 3 or 4 dp by name).
+A BUG FOUND LIVE, FIXED, PUSHED (dd631ef): the broker refuses in "problem
+details" form (type/title/detail); the first classifier missed it, so run 1
+halted on INTC (failing safe) after 5 fills. Run 2 settled INTC as REFUSED from
+the stored reply and the order history.
+PROVED (item 2): both keys report the same account id, GBP, practice host.
+HOLDINGS (item 3): all 10 placed by hand -- 9 on the WEBSITE 2026-09-16
+18:24–18:28Z; MU also a stop-SELL 10 and a BUY by value from the iPhone app
+(27 and 29 Sep). NO order ever came from the API before today. The 5 bot names
+are in the ledger as PRE_EXISTING (fenced, outside the caps).
+OTHER ORDER-CAPABLE CODE: archive/nvda-ema-t212/t212_demo.py (pre-QuantBot) can
+place market/limit/stop orders, but only with T212_API_KEY -- the read-only key,
+Execute OFF in the operator's own words (FACTS p, not proved by an order). No
+task runs it. Judged NOT a stop; the operator should decide whether to keep it.
+SMGB (item 4): its two prices were from different days -- clean close Thu 1 Oct
+86.62 vs the raw bar of Fri 2 Oct 89.37; a semiconductor fund rose ~3% that
+Friday while the broad funds rose ~1%. (The clean daily store stops at 1 Oct for
+these ETFs, a day behind AZN's 2 Oct.)
+TODAY'S RECORDER (item 6): the laptop slept 02:13–14:26, so 07:00–13:00 never
+ran. The first run (14:29) saved 225 names, 82,484 bars, 2.4 min, CLEAN; 1 skip.
+BA.L (item 7): first captured 2 Oct as a new name; Yahoo's 1m feed for it ends
+Mon 28 Sep and every request since returns nothing (5m is current to 2 Oct).
+CORRECTION: b45bb02's message says "14/14" tests; the file held 11 then (13 now).
+
 ## RECORDER WEEKEND FIX — A, B, C applied before Monday 07:00 (2026-10-05)
 Operator verbatim: *"GO on A, B and C (fail-first tests, red then green), applied
 and pushed before the 07:00 run. ... A: hourly limit counted in weekdays ... B: an
@@ -101,7 +141,7 @@ Scheduler starts tasks in C:\Windows\system32, which is why the old relative
 recorder.log never existed anywhere.
 
 FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-04) ·
-qb2 b7698297…8682 after the weekend fix (2ba4d210…ab12 after QT-12; was 69ae0f43…a0da after S3e; 8d007b10…c85c after S3d)
+qb2 a689addf…0acf after QT-12 Part B (b7698297…8682 after the weekend fix; 2ba4d210…ab12 after QT-12; was 69ae0f43…a0da after S3e; 8d007b10…c85c after S3d)
 
 ## P20 AGREED — cross-check prices against the broker (2026-10-04)
 Operator verbatim: *"GO on P20 — 'Compare yfinance with Trading 212 prices: hold
