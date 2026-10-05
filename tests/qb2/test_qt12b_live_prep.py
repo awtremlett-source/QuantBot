@@ -158,3 +158,53 @@ def test_a_pre_existing_record_needs_a_positive_quantity(tmp_path: Path) -> None
 
     with pytest.raises(ValueError):
         pre_existing_record("MU_US_EQ", 0.0, AT, "x")
+
+
+# ==================== found live, 2026-10-05 13:42Z: the broker's real format ===
+#
+# The first live run halted on INTC with this reply. It IS a definite refusal --
+# Trading 212 answers in "problem details" form (type/title/status/detail), not
+# the code/message shape the classifier first looked for -- so the run stopped
+# instead of skipping one name. Failing safe, but not what the operator asked for.
+
+INTC_REPLY = (b'{"type":"/api-errors/min-quantity-exceeded","title":"Error while '
+              b'placing the order","status":400,"detail":"must trade at least '
+              b'0.01121443","traceId":"feac44ad92f3012fac34eea71003fada"}')
+
+
+def test_the_brokers_problem_details_reply_is_a_definite_refusal(
+        tmp_path: Path) -> None:
+    def on_post(n: int, body: bytes) -> Response:
+        if json.loads(body)["ticker"] == "MU_US_EQ":
+            return Response(400, {}, INTC_REPLY)
+        return Response(200, {}, json.dumps({"id": 900 + n, "status": "NEW"}).encode())
+
+    report, _, wire, book = live(tmp_path, wire=OrderWire(on_post=on_post))
+    assert report.halted == "", report.halted
+    assert [r[0] for r in report.refused] == ["MU_US_EQ"]
+    assert "min-quantity-exceeded" in report.refused[0][1]
+    assert len(wire.posted()) == 3
+
+
+def test_a_stored_definite_refusal_settles_as_refused_not_retried(
+        tmp_path: Path) -> None:
+    """An earlier run recorded the refusal as UNRESOLVED (the old classifier).
+
+    Left alone, reconcile would call it NOT_PLACED after ten minutes and the
+    next run would send it again -- an automatic retry of a refused name.
+    """
+    from qb2.execution.anchor_ledger import INTENT, OUTCOME
+
+    book = AnchorLedger(tmp_path / "anchors" / "ledger.jsonl")
+    at = MON_OVERLAP - timedelta(minutes=1)
+    book.append({"kind": INTENT, "intent_id": "i-mu", "at_utc": at.isoformat(),
+                 "ticker": "MU_US_EQ", "quantity": "0.0111", "est_gbp": 1.0})
+    book.append({"kind": OUTCOME, "intent_id": "i-mu", "at_utc": at.isoformat(),
+                 "status": UNRESOLVED, "http_status": 400,
+                 "detail": "HTTP 400: " + INTC_REPLY.decode()})
+
+    report, _, wire, _ = live(tmp_path, ledger=book)
+    mu = next(s for s in book.states().values() if s.ticker == "MU_US_EQ")
+    assert mu.state == REFUSED, mu
+    assert "MU_US_EQ" not in {p["ticker"] for p in wire.posted()}
+    assert report.halted == "", report.halted

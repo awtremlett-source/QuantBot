@@ -879,9 +879,21 @@ def _broker_error(body: bytes) -> bool:
         payload = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         return False
+    # Trading 212 answers in "problem details" form -- type, title, status,
+    # detail -- first seen live on 2026-10-05 (INTC, min-quantity-exceeded).
     return (isinstance(payload, dict) and "id" not in payload
             and any(isinstance(payload.get(k), str) and bool(payload.get(k))
-                    for k in ("code", "message", "errorMessage", "clarification")))
+                    for k in ("type", "title", "detail", "code", "message",
+                              "errorMessage", "clarification")))
+
+
+REFUSAL_PREFIX = "HTTP 400: "
+
+
+def stored_refusal(detail: str) -> bool:
+    """An outcome recorded as unclear whose stored reply was a definite refusal."""
+    return (detail.startswith(REFUSAL_PREFIX)
+            and _broker_error(detail[len(REFUSAL_PREFIX):].encode("utf-8")))
 
 
 class AnchorOrderClient:
@@ -955,7 +967,7 @@ class AnchorOrderClient:
                                 f"HTTP {response.status}: the key was refused")
         if response.status == 400 and _broker_error(response.body):
             # A definite refusal: the broker's own JSON error, no order created.
-            return OrderOutcome(REFUSED, None, 400, "", f"HTTP 400: {snippet}")
+            return OrderOutcome(REFUSED, None, 400, "", REFUSAL_PREFIX + snippet)
         if response.status != 200:
             return OrderOutcome(UNRESOLVED, None, response.status, "",
                                 f"HTTP {response.status}: {snippet}")
@@ -1030,6 +1042,17 @@ def reconcile(ledger: AnchorLedger, reader: Reader, now: datetime) -> list[str]:
                 "filled_gbp": abs(float(net)) if isinstance(net, (int, float)) else 0.0,
                 "detail": f"broker order history: {order.get('status')}"})
             notes.append(f"{state.ticker}: settled {status} from order history")
+            continue
+        if (state.state == UNRESOLVED and state.order_id is None
+                and stored_refusal(state.detail)):
+            # A 400 creates nothing, and this one is the broker's own refusal:
+            # settle it as REFUSED now, so it is never retried automatically.
+            ledger.append({
+                "kind": RECONCILED, "intent_id": state.intent_id,
+                "at_utc": now.isoformat(), "status": REFUSED,
+                "detail": state.detail})
+            notes.append(f"{state.ticker}: settled REFUSED (the broker's own "
+                         "refusal, no trace in pending or history) -- not retried")
             continue
         intended = _parse_moment(state.at_utc)
         if (state.order_id is None and intended is not None
