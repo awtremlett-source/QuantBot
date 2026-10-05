@@ -1,4 +1,4 @@
-# SCARS REGISTER — twenty-three laws from the desk
+# SCARS REGISTER — twenty-four laws from the desk
 
 > #1–21 verbatim from §13 of the founding directive (QUANTBOT KICKSTART, 2026-06-15); #22+ earned in-session, same force.
 > Read once, obey forever. Each row is a real failure and the law it produced.

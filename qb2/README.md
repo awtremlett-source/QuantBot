@@ -1,8 +1,9 @@
 # qb2 — QuantBot v2
 
-**This is a skeleton.** Every folder here is importable and empty of logic. No
-signals, no model, no orders. The plan that fills it is
-[docs/plan/PLAN_V2.md](../docs/plan/PLAN_V2.md).
+**Built:** data (front door, census), ingest (recorder, daily, dividends, earnings),
+research (total return), execution (costs, T212 client, anchor buyer — practice
+orders only). **Empty:** signals, model, sizing, ui. The plan is
+[docs/plan/PLAN_V3.md](../docs/plan/PLAN_V3.md).
 
 ## Why a separate package
 

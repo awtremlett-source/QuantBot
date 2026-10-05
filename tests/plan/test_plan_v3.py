@@ -107,7 +107,12 @@ PINNED_FIGURES: tuple[tuple[str, tuple[str, ...]], ...] = (
 BUDGETS: tuple[tuple[str, int], ...] = (
     ("CLAUDE.md", 4_000),        # "must stay ≤4k chars" (LEAN-CODE GO 2026-10-05); QT-04 had 3,600
     ("GRAND_TODO.md", 10_000),
+    ("STATE.md", 6_000),          # read every resume; history → docs/archive (GO 2026-10-05)
+    ("docs/MANIFEST.md", 8_000),
 )
+
+# Read at every resume, so a reversed rule here is acted on, not just misfiled.
+ALWAYS_READ: tuple[str, ...] = ("CLAUDE.md", "STATE.md")
 
 TOUCHED: tuple[str, ...] = (
     "docs/plan/PLAN_V3.md",
@@ -397,6 +402,14 @@ def test_the_old_multi_day_wording_survives_only_where_it_is_superseded() -> Non
                 f"{stale!r} appears at character {position} as a LIVE rule -- "
                 f"it was reversed on 2026-09-27; context: "
                 f"...{text[max(0, position - 80):position + 40]}...")
+
+
+@pytest.mark.parametrize("name", ALWAYS_READ)
+def test_the_always_read_files_never_state_the_old_horizon(name: str) -> None:
+    """No 'superseded' escape here: these files carry live rules only."""
+    flat = " ".join((REPO_ROOT / name).read_text(encoding="utf-8").lower().split())
+    assert [s for s in ("holds days", "days not weeks", "daily horizon")
+            if s in flat] == []
 
 
 def _positions(haystack: str, needle: str) -> list[int]:

@@ -69,7 +69,7 @@ cost to the moment you can least afford it.
   EITHER WAY (a recorded rejection is a success of the process).
 - **Birth certificate:** the pre-committed rules are written down before the
   first result is seen; the trial log shows every try.
-- **Pointers:** research/strategy.py · STATE.md "FIRST VALIDATED STRATEGY" ·
+- **Pointers:** research/strategy.py · docs/archive/STATE_2026-10-05.md "FIRST VALIDATED STRATEGY" ·
   SCARS #14, #15, #21.
 
 ## Phase 4 — PAPER (the forward test)
@@ -95,7 +95,7 @@ cost to the moment you can least afford it.
   mid-flight.
 - **Gate (done means):** adopt-or-reject decision recorded with the evidence,
   both outcomes honored.
-- **Pointers:** strategies/ · execution/config.py · STATE.md challenger +
+- **Pointers:** strategies/ · execution/config.py · docs/archive/STATE_2026-10-05.md challenger +
   switcher entries · SCARS #13, #21.
 
 ## Phase 6 — BREADTH (the Simons destination)
@@ -108,7 +108,7 @@ cost to the moment you can least afford it.
   enter only as research candidates (watchlist), never as positions.
 - **Gate (done means):** sweep-level multiple testing accounted — either deflate
   at sweep level or spend a final untouched cross-ticker holdout ONCE.
-- **Pointers:** GRAND_TODO Phase 6 · EDUCATION Entry #2 · STATE.md Simons
+- **Pointers:** GRAND_TODO Phase 6 · EDUCATION Entry #2 · docs/archive/STATE_2026-10-05.md Simons
   alignment + thematic decisions.
 
 ## Phase 7 — GRADUATION & DEPLOYMENT
@@ -135,7 +135,8 @@ no silent exceptions (#12) · one promotion authority (#13) · per-regime judgin
 (#14) · costs inside, real ≈ 0.7–1.2 net (#15) · next-open fills (#16) · paper =
 upper bound (#17) · stratified replays (#18) · ratchet exits are plumbing (#19) ·
 clock sync (#20) · loops stop on CORRECT/EXHAUSTED, never PROFIT (#21) · CLEAN =
-copy, never re-adjust (#22) · as-of AFTER your own writes (#23) · quarantine,
+copy, never re-adjust (#22) · as-of AFTER your own writes (#23) · fixtures on the code's clock, UTC
+(#24) · quarantine,
 never delete; PROPOSE→GO→APPLY (§12).
 
 ## The 3-checks protocol (mandatory before every commit)

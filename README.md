@@ -1,14 +1,13 @@
 # QuantBot
 
-A patient, honesty-first **paper-trading** system for long-only US equities, run on
+A patient, honesty-first **paper-trading** system for long-only US and UK shares and funds, run on
 a **Trading 212 demo (practice) account**. It researches strategies, tests them
 brutally for overfitting, paper-trades only the survivors, and teaches its operator
 every rule it runs on. It trades **pretend money** — no live trading until a strict
 graduation rubric passes.
 
-> **North star:** £100/day net — but *honesty first*. On a £10,000 account that is
-> 1%/day, which is fantasy. The first month's goal is **a machine that runs true**,
-> not profit. The money compounds after the truth does.
+> **Judged in percent** after costs against a do-nothing index fund (PLAN_V3 P3).
+> The old £100/day north star was retired on 2026-09-26. Honesty first.
 
 ## The one rule that keeps it honest
 Automated loops chase **correctness and honest testing**, never a profit number.
@@ -17,14 +16,14 @@ A loop may stop when *"everything is correct"* or *"the search is finished"* —
 read, not a thermostat we chase.** (See `docs/SCARS.md` #21.)
 
 ## Status
-**Phase 1 — Foundations.** Building the data layer and the validation firewall
-*before* any strategy. Not yet ingesting data or trading. See `STATE.md`.
+**v2 building** (stage S3 of `docs/plan/PLAN_V3.md`); v1 frozen as the baseline.
+See `STATE.md`.
 
 ## Map
 - `CLAUDE.md` — operating memory / quick reference
 - `STATE.md` — current phase and next actions (resume here)
 - `GRAND_TODO.md` — the full phased backlog
-- `docs/SCARS.md` — 21 hard-won laws this system obeys
+- `docs/SCARS.md` — 24 hard-won laws this system obeys
 - `docs/FOUNDING_DIRECTIVE.md` — the founding spec (the project's constitution)
 - `docs/EDUCATION.md` — the self-taught-quant curriculum, grown as we build
 - `docs/sessions/` — dated work logs

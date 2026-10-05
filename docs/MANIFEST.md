@@ -1,6 +1,6 @@
 # MANIFEST — QuantBot system inventory (single page)
 
-Updated: 2026-07-15. What exists, what is proven, and what must be true before
+Updated: 2026-10-05 (lines on qb2, the daily run and the scar count refreshed). What exists, what is proven, and what must be true before
 this logic leaves NVDA or this laptop.
 
 ## ENVIRONMENT
@@ -19,7 +19,7 @@ this logic leaves NVDA or this laptop.
 - tests/ mirrors tree; tests/museum/ = incident regression fixtures
 - docs/ SCARS.md, EDUCATION.md, FOUNDING_DIRECTIVE.md, sessions/
 - manual/ the operator's own app (walled off; two read-only doorways to v1)
-- qb2/ v2: data research signals model sizing execution ui tools (-> qb2/README.md)
+- qb2/ v2: data ingest research execution tools built; signals model sizing ui empty (-> qb2/README.md)
   - qb2/ingest/ recorder.py (RAW capture) · tickers.py (T212<->yfinance spelling)
     verify_universe.py (resolve names against T212's OWN list; never constructs a
     ticker) · constituents.py (index membership, parsed from a saved page)
@@ -55,7 +55,8 @@ this logic leaves NVDA or this laptop.
   quarantine-never-delete throughout. DB: data/quantbot.db (SQLite WAL, gitignored).
 
 ## VALIDATED STRATEGY
-- NVDA SMA-200 always-on, long-only (execution/config.py — FROZEN: any change =
+- NVDA SMA-200 always-on, long-only = the champion; LIVE since 2026-07-16 is the
+  severity-gated regime switcher (execution/config.py — FROZEN: any change =
   new strategy = full firewall re-run).
 - Stitched OOS 2018→2026: sharpe +1.19, maxDD −48.8% (vs buy-and-hold −66.4%).
 - Monte Carlo: full-series p=0.003; matched-window p=0.007 (99.4th pct).
@@ -69,7 +70,8 @@ this logic leaves NVDA or this laptop.
 
 ## PAPER
 - Live since 2026-07-14. First fill: 48.030740 sh @ 208.3041 (07-14 open + slippage).
-- Daily rhythm: scheduled task runs the loop each morning; operator reads the
+- Daily rhythm (STOPPED: Windows refuses the task since 28 Jul; revive/retire open):
+  scheduled task runs the loop each morning; operator reads the
   Telegram message (digest + MONITORS) and acts only on RED. Manual run:
   `python -m execution.paper_loop --db data/quantbot.db`
 - Monthly rhythm: QuantBot-Monthly (day 1, 07:45) writes data/health/ report;
@@ -77,7 +79,7 @@ this logic leaves NVDA or this laptop.
   ongoing birth certificate).
 
 ## LAWS
-- docs/SCARS.md — 23, binding on every session and every loop.
+- docs/SCARS.md — 24, binding on every session and every loop.
 
 ## END GOAL
 - QuantBot ships as an installable application = headless engine + control-panel
@@ -98,10 +100,10 @@ this logic leaves NVDA or this laptop.
 
 ## GRADUATION RUBRIC — before this logic moves to ticker #2 or another device (ALL required)
 1. ≥1 month clean daily paper runs, incl. at least one real catch-up after dark days.
-   [~ half met: real 8-bar catch-up banked 2026-07-28; month-clock runs to ~2026-08-14]
+   [~ half met: real 8-bar catch-up banked 2026-07-28; month-clock stopped: daily task dead since 28 Jul]
 2. Deflated Sharpe formally applied to the logged trials.
    [MET-as-mechanism 2026-07-28 — verdicts at N=481, bar 0.95: champion DSR=0.898
-   FAIL / challenger 0.800 FAIL / switcher (live) 0.933 FAIL; governance in STATE.md]
+   FAIL / challenger 0.800 FAIL / switcher (live) 0.933 FAIL; governance in docs/archive/STATE_2026-10-05.md]
 3. Challenger experiment complete: ≥1 alternative strategy through the full firewall.
 4. Regime-switcher experiment DECIDED: adopted only if it beats SMA-200 OOS,
    else rejected-and-recorded.
