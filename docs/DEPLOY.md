@@ -15,7 +15,10 @@ plan, not a to-do.
 1. **OLD machine — final run.** One last morning run:
    `powershell -ExecutionPolicy Bypass -File install.ps1 -Verify` must be green
    and the digest fresh; the run's backup must land on the VERIFIED REMOTE
-   destination (QUANTBOT_BACKUP_DIR — off-laptop, rubric 7).
+   destination (QUANTBOT_BACKUP_DIR — off-laptop, rubric 7). Then back up the
+   anchor ledger to the same place (every live anchor run also does this):
+   `.venv-qb2\Scripts\python -m qb2.execution.ledger_backup` must print
+   "ledger backup verified" with NO "LOCAL-ONLY" warning.
 2. **OLD machine — decommission the writer.**
    `powershell -ExecutionPolicy Bypass -File install.ps1 -Uninstall`
    removes both scheduled tasks. From this moment NO machine writes; the
@@ -27,7 +30,12 @@ plan, not a to-do.
 4. **NEW machine — restore the journal.** Replace `data\quantbot.db` (and
    `data\trials.jsonl`) with the NEWEST verified backup pair from the remote
    destination, then rerun `install.ps1 -Verify`: database integrity must be
-   ok and the latest CLEAN bar age plausible for the gap.
+   ok and the latest CLEAN bar age plausible for the gap. Restore the anchor
+   ledger too: copy the NEWEST `anchors\ledger-*.jsonl` from the same
+   destination to `data\anchors\ledger.jsonl` (qb2 env per
+   docs/plan/ENV_QB2.md). Until it holds every API order in the broker's order
+   history, `--live` refuses, names the missing orders and changes nothing
+   (anchors.py F13); repairing it is an operator GO, from broker order history.
 5. **NEW machine — proof run.** One manual
    `python -m execution.paper_loop --db data\quantbot.db` (venv active): the
    digest must show a clean catch-up over the migration gap and the MONITORS

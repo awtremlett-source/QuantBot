@@ -33,7 +33,7 @@ F10 not a back door -- never reads or writes ARMED; flatten subtracts anchor
     quantities read from the ledger (qb2/execution/anchor_ledger.py).
 F11 the dry run is the default and its client class has no order method at all.
 F12 secrets -- names only, in every message, log and ledger line.
-F13 the ledger is the memory: --live refuses one missing, empty or unreadable.
+F13 the ledger is the memory: --live refuses it missing, empty, unreadable or stale.
 
 CLI:  python -m qb2.execution.anchors            (dry run, read-only key)
       python -m qb2.execution.anchors --live     (practice orders, order key)
@@ -61,12 +61,12 @@ from typing import IO, Any, Protocol
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
-from qb2.execution import costs, safety
+from qb2.execution import costs, ledger_backup, safety
 from qb2.execution.anchor_ledger import (ACCEPTED, BLOCKING, FILLED, INTENT,
                                          NOT_FILLED, NOT_PLACED, OUTCOME,
                                          RECONCILED, REFUSED, UNRESOLVED,
                                          AnchorLedger, IntentState, LedgerCorrupt,
-                                         retry_record)
+                                         _float, retry_record)
 from qb2.execution.t212_client import (KEY_VARIABLE, BrokerError, Credentials,
                                        CredentialsMissing, Endpoint, Response,
                                        T212DemoClient, Throttle, read_env_file)
@@ -865,7 +865,7 @@ class BrokerReader:
     def exchanges(self) -> list[dict[str, Any]]:
         return self._client.exchanges()
 
-    def history_orders(self, ticker: str) -> list[dict[str, Any]]:
+    def history_orders(self, ticker: str | None = None) -> list[dict[str, Any]]:
         return self._client.history_orders(ticker=ticker)
 
     def account_summary(self) -> dict[str, Any]:
@@ -877,7 +877,7 @@ class Reader(Protocol):
     def positions(self) -> list[dict[str, Any]]: ...
     def pending_orders(self) -> list[dict[str, Any]]: ...
     def exchanges(self) -> list[dict[str, Any]]: ...
-    def history_orders(self, ticker: str) -> list[dict[str, Any]]: ...
+    def history_orders(self, ticker: str | None = None) -> list[dict[str, Any]]: ...
 
 
 OrderTransport = Callable[[str, str, Mapping[str, str], bytes | None], Response]
@@ -1091,8 +1091,7 @@ def reconcile(ledger: AnchorLedger, reader: Reader, now: datetime) -> list[str]:
         if found:
             order = found[0]["order"]
             fill = found[0].get("fill") if isinstance(found[0].get("fill"), dict) else {}
-            filled = order.get("filledQuantity")
-            filled_qty = float(filled) if isinstance(filled, (int, float)) else 0.0
+            filled_qty = _float(order.get("filledQuantity"))
             impact = fill.get("walletImpact") if isinstance(fill, dict) else None
             net = (impact.get("netValue") if isinstance(impact, dict) else None)
             status = FILLED if filled_qty > 0 else NOT_FILLED
@@ -1100,7 +1099,7 @@ def reconcile(ledger: AnchorLedger, reader: Reader, now: datetime) -> list[str]:
                 "kind": RECONCILED, "intent_id": state.intent_id,
                 "at_utc": now.isoformat(), "status": status,
                 "order_id": order.get("id"), "filled_quantity": filled_qty,
-                "filled_gbp": abs(float(net)) if isinstance(net, (int, float)) else 0.0,
+                "filled_gbp": abs(_float(net)),
                 "detail": f"broker order history: {order.get('status')}"})
             notes.append(f"{state.ticker}: settled {status} from order history")
             continue
@@ -1213,9 +1212,8 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
     report = LiveReport(plan=None)
     say = report.lines.append
 
-    if why := book.unusable():                                             # F13
-        return report.halt(f"anchor ledger {why} -- --live refuses; rebuilding it "
-                           "needs the operator's GO, from broker order history")
+    if why := ledger_backup.refusal(book):                                 # F13
+        return report.halt(why)
     if safety.killswitch_armed(root):
         return report.halt("killswitch: STOP_NEW_TRADES is present -- no anchor bought")
     summary = orderer.account_summary()
@@ -1237,7 +1235,9 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
     say("order key: practice server, account currency GBP; same account as the "
         "read-only key (ids match)")
 
-    try:
+    try:                                       # F13 stale: BEFORE reconcile writes
+        if why := ledger_backup.unrecorded(book, reader.history_orders(), _matches):
+            return report.halt(why)
         for note in reconcile(book, reader, clock()):
             say(f"reconcile: {note}")
         still_open = book.blocking()
@@ -1421,7 +1421,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                           hold_above_gbp=args.hold_above)
         if report.plan is not None:
             print(render(report.plan))
-        print("\n".join(report.lines))
+        print("\n".join(report.lines + [ledger_backup.backup()]))
         return 1 if report.halted else 0
     except (AnchorRefused, LedgerCorrupt) as exc:
         print(f"REFUSED: {exc}")

@@ -143,8 +143,10 @@ class FakeReader:
         self.calls.append("exchanges")
         return self._exchanges
 
-    def history_orders(self, ticker: str) -> list[dict[str, Any]]:
+    def history_orders(self, ticker: str | None = None) -> list[dict[str, Any]]:
         self.calls.append(f"history:{ticker}")
+        if ticker is None:                    # the newest page, every ticker
+            return [item for rows in self._history.values() for item in rows]
         return self._history.get(ticker, [])
 
     def account_summary(self) -> dict[str, Any]:

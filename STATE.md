@@ -2,37 +2,39 @@
 
 Updated: 2026-10-05. History before today → docs/archive/STATE_2026-10-05.md
 (verbatim: settled decisions incl. v1 knobs, Done log, stage write-ups).
-Last boxes: doc review (docs/sessions/2026-10-05-doc-review.md) · LEDGER GUARD (below).
+Last boxes: doc review (docs/sessions/2026-10-05-doc-review.md) · LEDGER GUARD+BACKUP.
 
 Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete**: only the quote delay is left
 to measure (FACTS row o: 1 US session of 3, London 0). It resolves by the recorder
 running; nothing to build. S3 close = QT-13. NOT S4.
 
 ## NEXT, in order
-1. LEDGER GUARD (F13): DONE 2026-10-05 — section below.
+1. LEDGER GUARD + BACKUP (F13): DONE 2026-10-05 — section below.
 2. QT-12 FINISH: `python -m qb2.execution.anchors --live --hold-above 1.10` on a NEW
    UTC day in London hours (08:10–16:15 London), earliest Tue 2026-10-06.
    **GATE: it may ONLY start if the ledger guard is merged on main and green** —
-   first run `.venv-qb2/Scripts/python -m pytest tests/qb2/test_ledger_guard.py -q`;
+   first run `.venv-qb2/Scripts/python -m pytest tests/qb2/test_ledger_guard.py
+   tests/qb2/test_ledger_backup.py -q`;
    red, missing, or not on main = do not run.
    Closes when 50/50 names have a broker price → write the close-out here.
 3. QT-13 = S3 close, once the delay has 3 US and 3 London sessions.
 
-## LEDGER GUARD (F13) — DONE 2026-10-05
-Operator verbatim: *"GO LEDGER-GUARD — fail-first tests, red then green: 1. If the
-anchor ledger is missing, empty or unreadable, --live refuses to place any order
-(dry run still allowed) and says why. Never recreate or reset it silently;
-rebuilding it needs operator GO, from broker order history. 2. Prove it: tests for
-missing, empty and corrupt ledger → zero orders sent. 3. Tomorrow's QT-12 run may
-only start if this guard is merged and green; state that in STATE.md."*
-BUILT: run_live checks AnchorLedger.unusable() FIRST — before the killswitch, the
-broker and reconcile — and halts with the reason; the file is left byte-identical.
-tests/qb2/test_ledger_guard.py: 8 tests (missing · empty · blank · corrupt JSON ·
-non-record → 0 POSTs, 0 broker calls; dry run still plans; a real ledger passes).
-Red on old code: a missing ledger SENT 3 orders. Live tests now start from a
-seeded ledger. Pinned files did not grow (anchors.py 1,433 → 1,432).
-NOT in this GO, still open: the ledger sits in gitignored data/ and DEPLOY's
-backup+restore skip it.
+## LEDGER GUARD + BACKUP (F13) — DONE 2026-10-05
+Operator verbatim: *"GO LEDGER-GUARD ... If the anchor ledger is missing, empty or
+unreadable, --live refuses to place any order (dry run still allowed) and says why.
+Never recreate or reset it silently; rebuilding it needs operator GO, from broker
+order history ... Tomorrow's QT-12 run may only start if this guard is merged and
+green"* and *"GO LEDGER-BACKUP ... Add the anchor ledger to DEPLOY's backup and
+restore steps. After any restore, --live refuses until the ledger is reconciled
+against broker order history (every broker anchor order present in the ledger). A
+mismatch stops, reports, and changes nothing."*
+BUILT: run_live refuses a missing/empty/unreadable ledger before any broker call,
+and a STALE one (a broker API order no ledger intent matches; checked on EVERY run,
+so any restore is covered) before reconcile writes. qb2/execution/ledger_backup.py:
+verified dated copy after every live run (also `python -m qb2.execution.ledger_backup`);
+DEPLOY steps 1 and 4 carry it. Red first: missing ledger SENT 3 orders; stale SENT 3.
+Real account 2026-10-05: 32 API orders, all in the ledger; hand orders are WEB/IOS.
+First backup verified but LOCAL-ONLY (QUANTBOT_BACKUP_DIR unset).
 
 ## Standing GOs (operator words, verbatim)
 - Live anchors, 2026-10-05, operator chose "One GO until the £100 cap" — one GO covers top-up runs
@@ -60,7 +62,8 @@ Read-only key proved unable to order (HTTP 403, nothing created).
 - v1 QuantBot-Daily has not run since 28 Jul: Windows refuses start (0x800710E0,
   again 05/10 14:29); its bot is 31+ days behind. Revive-or-retire deferred.
 - QB2-Recorder wakes the PC only on mains power (Balanced plan: DC wake timers off).
-- Backups LOCAL-ONLY until QUANTBOT_BACKUP_DIR points off-laptop (rubric cond. 7).
+- Backups LOCAL-ONLY (journal AND anchor ledger) until QUANTBOT_BACKUP_DIR points
+  off-laptop (rubric cond. 7).
 - .env.example keeps the old T212 "to verify" note (inside the engine fingerprint).
 - Daily auto clock-sync task not set up (admin). gh CLI absent → plain git.
 - Manual app's journal not migrated (trades.shares INTEGER vs REAL; MERGE_PLAN 3b).
@@ -70,4 +73,4 @@ Read-only key proved unable to order (HTTP 403, nothing created).
 - CLAUDE.md budget 4,000 (QT-04 had 3,600): default kept, no operator reply yet.
 
 ## Fingerprints
-v1 4add56ec…743b6 (must never move; re-verified 2026-10-05) · qb2 b96a3420…6546 after LEDGER GUARD (3ce2c634…d125 before).
+v1 4add56ec…743b6 (must never move; re-verified 2026-10-05) · qb2 d4dc0942…f269 after LEDGER BACKUP (b96a3420…6546 after GUARD).
