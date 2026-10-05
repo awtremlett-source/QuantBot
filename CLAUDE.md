@@ -6,34 +6,29 @@ days, Simons' method) on 30%, and an ADVISOR (suggests only; he trades; weeks to
 12 months) on 70%. Judged in PERCENT after costs vs a do-nothing index fund — no
 £/day target. Operator is a complete beginner: teach before building; define
 terms on first use; decisions arrive as `DECISION REQUESTED` + default.
-CURRENT: S3d DONE; S3 NOT complete — only the measured quote delay is left
-(1 US session of 3, London 0) → S3 close = QT-13. P18–P20 agreed. QT-12 FIX 2026-10-05: 32 anchors
-bought, 13 London names lifted to retry in the next overlap (STATE).
+CURRENT → STATE.md (S3: quote delay → QT-13; QT-12: 13 London anchors).
 v1 KEEPS RUNNING UNTOUCHED as the baseline v2 must beat out-of-sample at 2×
-costs; engine folders read-only. Machine: sometimes-off laptop → loops
+costs. Machine: sometimes-off laptop → loops
 catch-up-safe.
 
 ## Commands (venv: .venv — activate first)
 - Tests: python -m pytest -q · Lint/types: ruff check . && mypy --strict .
 - Run: python -m ingest/reconcile --tickers T --db PATH · python -m execution.paper_loop --db data/quantbot.db [--dry-run]
 
-## Architecture map (full per-folder map → docs/MANIFEST.md)
-- v1 FROZEN, still running: ingest/ (only writer) · data_store/ · research/ ·
-  strategies/ · risk/ · execution/ · monitors/ · tools/
+## Architecture map (full map → docs/MANIFEST.md)
+- v1 FROZEN, still running: ingest/ (only writer) data_store/ research/
+  strategies/ risk/ execution/ monitors/ tools/
 - v2: qb2/ — data research signals model sizing execution ui tools → qb2/README.md
 - manual/ operator's own app · tests/ mirrors the tree · tests/museum/ = incidents
 
-## Locked decisions (rationale → STATE.md · v2 detail → docs/plan/PLAN_V2.md)
+## Locked decisions (rationale + v1 knobs → STATE.md · v2 → docs/plan/PLAN_V2.md)
 - Price=yfinance daily OHLCV, delayed; sources decoupled, point-in-time.
-  yfinance OHLC is ALREADY split-adjusted: CLEAN = validated copy, never re-divide (#22).
-- Validation: walk-forward + untouched holdout; backtests simulate live delay;
-  costs inside; Deflated Sharpe penalised by #trials.
+  Its OHLC is ALREADY split-adjusted: CLEAN = validated copy, never re-divide (#22).
+- Validation: walk-forward + untouched holdout; backtests simulate live delay.
 - v1 execution/config is FROZEN: any change = new strategy = full firewall re-run.
-- Two envs for v1 (.venv engine · .venv-ui window), AMENDED for v2: qb2/ gets one
-  fresh env (.venv-qb2). Never install one env's pins into another.
-- v1's regime/cadence/NVDA knobs: STATE.md "Settled decisions" (v1 runs untouched).
+- Envs: .venv (v1 engine) · .venv-ui (window) · .venv-qb2 (qb2); never cross-install pins.
 
-## Laws (one line each — full stories in docs/SCARS.md)
+## Laws (stories → docs/SCARS.md)
 - Front-door ingest: one writer; checks at the boundary (#2,#3)
 - Fail-first tests: a test that fails on OLD code ships with every fix (#2)
 - No silent exceptions: handle+log or re-raise, always (#12)
@@ -47,14 +42,26 @@ catch-up-safe.
 - Birth-certificate: monitors prove red-on-broken before trusted (#9)
 - 3 mandatory pre-commit checks: correctness · spelling · numbers (FRAMEWORK)
 
+## Lean code (anti-sprawl)
+- Code is a liability: smallest change meeting the requirement; verify vs the requirement, not the plan.
+- One job per module. New modules ≤250 lines, split on crossing; existing >250: no net
+  growth, splitting = PROPOSE→GO; v1 never touched. Test: tests/qb2/test_lean_lines.py
+- Contracts first: typed signatures/dataclasses/Protocols before logic; mypy --strict holds them.
+- No new dependency without operator GO; prefer stdlib + requirements.txt.
+- grep before writing a helper; extend the existing one, never a variant.
+- Pure logic, injected I/O (broker, clock, network): tests run offline.
+- One-in-one-out: each change names the dead/duplicate code it removes. Delete CODE
+  freely (git keeps it); never DATA (quarantine).
+- Before coding, 3 lines: Impact (files +/~/−) · Consolidation · Contracts.
+  Per-file +/− one-liners → commit message, not the operator report.
+
 ## Token rules (§12)
 This file ≤4k chars; GRAND_TODO ≤10k (archive DONE). grep-then-read-range;
 never cat data files (head/tail/count). Surgical edits only — never full rewrites.
-End of every task: update STATE.md, commit, push, then end the report with the
-line "CLEAR ME NOW (/clear) — state is saved."
+End of every task: update STATE.md, commit, push, then end the report with
+"CLEAR ME NOW (/clear) — state is saved."
 
 ## Pointers
 Resume → STATE.md · PLAN v3 → docs/plan/PLAN_V3.md · Backlog → GRAND_TODO.md ·
-Manifest → docs/MANIFEST.md ·
 History → docs/sessions/ · Deploy → docs/DEPLOY.md ·
 Constitution → docs/FOUNDING_DIRECTIVE.md · Curriculum → docs/EDUCATION.md

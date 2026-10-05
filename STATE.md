@@ -17,6 +17,17 @@ CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
 the bot trades (same company / same index fund, two lines each; both still get an
 anchor, because the broker prices each line separately).
 
+## LEAN-CODE RULES — in CLAUDE.md, enforced by a test (2026-10-05)
+Operator verbatim (headline): *"GO CLAUDE.md LEAN-CODE RULES — surgical edit only,
+no full rewrite; CLAUDE.md must stay ≤4k chars ... Enforcer (fail-first): a test
+that fails if any qb2 .py file exceeds 250 lines, with an allowlist of today's
+oversize files pinned at their current line counts (may shrink, never grow)."*
+DONE: "## Lean code (anti-sprawl)" (8 rules) added; stale/duplicate lines trimmed;
+CLAUDE.md 3,570 → 3,994 chars. tests/qb2/test_lean_lines.py: red on an empty
+allowlist (11 files), green with 11 pinned (largest anchors.py 1,433).
+FLAG: the v1 gate (tests/plan/test_plan_v3.py) held CLAUDE.md to 3,600 (QT-04);
+raised to 4,000 to match the operator's "≤4k". Revert = trim ~400 chars.
+
 ## QT-12 FINISH — NOT CLOSED: daily fence still full on the same day (2026-10-05 14:57 + 15:13 UTC)
 Operator verbatim: *"GO QT-12 FINISH — run `python -m qb2.execution.anchors --live
 --hold-above 1.10` for the 13 London names (practice only). Report: bought /

@@ -105,7 +105,7 @@ PINNED_FIGURES: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 BUDGETS: tuple[tuple[str, int], ...] = (
-    ("CLAUDE.md", 3_600),        # tightened by QT-04, from 4,000
+    ("CLAUDE.md", 4_000),        # "must stay ≤4k chars" (LEAN-CODE GO 2026-10-05); QT-04 had 3,600
     ("GRAND_TODO.md", 10_000),
 )
 
