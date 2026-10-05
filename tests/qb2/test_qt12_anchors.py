@@ -146,6 +146,11 @@ class FakeReader:
         self.calls.append(f"history:{ticker}")
         return self._history.get(ticker, [])
 
+    def account_summary(self) -> dict[str, Any]:
+        # The same account the OrderWire's order key reports (id 1, GBP).
+        self.calls.append("summary")
+        return {"id": 1, "currency": "GBP"}
+
 
 def position(ticker: str, quantity: float, price: float = 100.0) -> dict[str, Any]:
     """Shaped like GET /equity/positions: the ticker lives in ``instrument``."""
@@ -860,8 +865,10 @@ def test_f10_without_broker_figures_flatten_behaves_as_before() -> None:
 
 def test_f11_the_dry_run_client_has_no_order_method_at_all() -> None:
     public = [n for n in dir(BrokerReader) if not n.startswith("_")]
+    # account_summary added 2026-10-05 (QT-12 Part B item 2): a GET, so both
+    # keys can be proved to see one account before the first buy.
     assert set(public) == {"positions", "pending_orders", "exchanges",
-                           "history_orders"}
+                           "history_orders", "account_summary"}
     source = inspect.getsource(BrokerReader)
     assert "POST" not in source and "transport" not in source
 

@@ -1,14 +1,62 @@
-# Getting your practice API key into the system
+# Trading 212 practice keys — two keys, two different jobs
 
-Ten minutes, once. Nothing in this guide can place a trade: the only code that
-talks to Trading 212 right now can read, and there is no function in it that
-could buy or sell anything.
+| | KEY A — the ORDER key | KEY B — the READ-ONLY key |
+|---|---|---|
+| `.env` names | `T212_ORDER_KEY`, `T212_ORDER_SECRET` | `T212_API_KEY`, `T212_API_SECRET` |
+| permissions | **Orders – Execute** + **Account data**, nothing else | everything READ; **Orders – Execute OFF** |
+| used by | the anchor buyer only | the recorder and everything else |
 
-You need the **practice** (demo) account key, not the real one. Trading 212's own
-help centre notes that "API Key versions may differ between real and demo
-accounts", so generate it while you are in the practice account.
+**Never put one key's values on the other key's lines.** The program refuses to
+run if both keys are the same, and before the first buy it checks that both see
+the same practice account in pounds.
 
-## 1 — Make the key, in the phone app
+You need **practice** (demo) account keys, not real ones. Trading 212's own help
+centre notes that "API Key versions may differ between real and demo accounts",
+so generate them while you are in the practice account.
+
+## KEY A — the ORDER key: `T212_ORDER_KEY` and `T212_ORDER_SECRET`
+
+Used by ONE file only, the P20 anchor buyer (`qb2/execution/anchors.py`). Made
+2026-10-05 for "GO QT-12 LIVE". Its two lines in `.env` start `T212_ORDER_`.
+
+Why a *second* key: the key you already have is read-only (Execute OFF), and it
+should stay that way, because the recorder and every other part of the program use
+it. The anchor buyer is the only part allowed to place an order, so it gets its own
+key, which no other file in the project is allowed to read (a test enforces that).
+
+1. In the phone app, switch to your **practice** account (not real money).
+2. **☰ → Settings → API (Beta) → Generate API key** — a NEW key; do not edit or
+   delete the existing one.
+3. Tick exactly these two permissions and leave every other one off:
+   - **Orders – Execute** — this is the permission that allows placing an order
+     (Trading 212's API calls it `orders:execute`);
+   - **Account data** — so the program can check, before buying anything, that the
+     key belongs to a practice account in pounds.
+4. Choose "Restrict access to trusted IPs (recommended)" if you can.
+5. Add **two new lines** to `.env` (keep your existing `T212_API_KEY` and
+   `T212_API_SECRET` lines exactly as they are):
+
+```
+T212_ORDER_KEY=the-new-key
+T212_ORDER_SECRET=the-new-secret
+```
+
+Never paste either value into a chat. The program refuses to run if the order key
+is the same as the read-only key.
+
+**What it will do with it:** buy about £1 of each bot name the practice account
+does not already hold — never more than £3 per order, £100 in total for its whole
+life, 50 orders a day — only while that name's own market is open, and never sell.
+It talks only to the practice server and refuses the real-money server outright.
+
+---
+
+## KEY B — the READ-ONLY key: `T212_API_KEY` and `T212_API_SECRET`
+
+Ten minutes, once. Nothing done with this key can place a trade: Execute is OFF
+at Trading 212's end, and the read-only client cannot send anything but a GET.
+
+### B1 — Make the key, in the phone app
 
 The key is generated in the mobile app, not on the website.
 
@@ -25,9 +73,9 @@ You will be shown two values: an **API Key** and an **API Secret Key**.
 
 > **The secret is shown once.** Trading 212's words: it "works like a password
 > and will be shown only once after generation." If you lose it you cannot look
-> it up — you have to generate a new pair. So do step 2 before you close the app.
+> it up — you have to generate a new pair. So do step B2 before you close the app.
 
-## 2 — Put them in `.env`
+### B2 — Put them in `.env` (the `T212_API_` lines)
 
 In the folder `C:\Users\mtrem\TRADING` there is a file called `.env`. Open it in
 Notepad. You will find these two lines already there, empty:
@@ -51,7 +99,7 @@ machine. Nothing in this project prints them, logs them, or puts them in an erro
 message — there is a test that checks the repo for them and fails if any value
 from `.env` ever appears in a file we wrote.
 
-## 3 — Check it worked
+### B3 — Check it worked
 
 From the repo folder, run:
 
@@ -66,7 +114,7 @@ From the repo folder, run:
 
 If it says something else, the message will tell you what — it will never guess.
 
-## What this does and does not do
+## What the READ-ONLY key does and does not do
 
 **It reads:** your account cash and value, your open positions, any pending
 orders, the list of tradable instruments, and exchange trading hours.
@@ -148,39 +196,3 @@ quantity of 12.5711224** — the net of all three.
 So Trading 212 aggregates. A second buy of something you already hold adds to the
 existing position; there is no second row and no position id to track. "How much do
 I hold?" is always one number, found by the ticker alone.
-
-## A second key, for the P20 anchors — only when you are ready to say "GO QT-12 LIVE"
-
-**Nothing in this section is needed yet.** The anchor buyer (QT-12) has been built
-and dry-run with the read-only key. It buys nothing until you make this second key
-and say the words.
-
-Why a *second* key: the key you already have is read-only (Execute OFF), and it
-should stay that way, because the recorder and every other part of the program use
-it. The anchor buyer is the only part allowed to place an order, so it gets its own
-key, which no other file in the project is allowed to read (a test enforces that).
-
-1. In the phone app, switch to your **practice** account (not real money).
-2. **☰ → Settings → API (Beta) → Generate API key** — a NEW key; do not edit or
-   delete the existing one.
-3. Tick exactly these two permissions and leave every other one off:
-   - **Orders – Execute** — this is the permission that allows placing an order
-     (Trading 212's API calls it `orders:execute`);
-   - **Account data** — so the program can check, before buying anything, that the
-     key belongs to a practice account in pounds.
-4. Choose "Restrict access to trusted IPs (recommended)" if you can.
-5. Add **two new lines** to `.env` (keep your existing `T212_API_KEY` and
-   `T212_API_SECRET` lines exactly as they are):
-
-```
-T212_ORDER_KEY=the-new-key
-T212_ORDER_SECRET=the-new-secret
-```
-
-Never paste either value into a chat. The program refuses to run if the order key
-is the same as the read-only key.
-
-**What it will do with it:** buy about £1 of each bot name the practice account
-does not already hold — never more than £3 per order, £100 in total for its whole
-life, 50 orders a day — only while that name's own market is open, and never sell.
-It talks only to the practice server and refuses the real-money server outright.

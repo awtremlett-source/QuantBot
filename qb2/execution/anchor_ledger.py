@@ -18,6 +18,12 @@ One JSON object per line in ``data/anchors/ledger.jsonl``, append-only, three ki
 * ``RECONCILED`` -- what the broker's own order history later showed: FILLED,
   NOT_FILLED (rejected or cancelled with nothing filled) or NOT_PLACED (no trace of
   it anywhere, long enough afterwards to be sure).
+* ``PRE_EXISTING`` -- a holding that was already in the account, bought by hand,
+  NOT by the program. Fenced like an anchor (never in the bot's pot, never sold by
+  flatten) but it spends nothing from the anchor caps and is not an order.
+
+An OUTCOME may also be REFUSED: the broker definitely rejected the order and
+created nothing. That name is never retried automatically -- a person decides.
 
 A line that is not valid JSON is never skipped: a ledger we cannot read is a
 ledger whose blocking intents we cannot see, so reading it raises.
@@ -38,18 +44,22 @@ LEDGER_PATH = REPO_ROOT / "data" / "anchors" / "ledger.jsonl"
 INTENT = "INTENT"
 OUTCOME = "OUTCOME"
 RECONCILED = "RECONCILED"
-KINDS = frozenset({INTENT, OUTCOME, RECONCILED})
+PRE_EXISTING = "PRE_EXISTING"
+KINDS = frozenset({INTENT, OUTCOME, RECONCILED, PRE_EXISTING})
 
 ACCEPTED = "ACCEPTED"
 UNRESOLVED = "UNRESOLVED"
 FILLED = "FILLED"
 NOT_FILLED = "NOT_FILLED"
 NOT_PLACED = "NOT_PLACED"
+REFUSED = "REFUSED"
 
 # An intent in one of these states may still become (or already be) a real order.
 BLOCKING = frozenset({ACCEPTED, UNRESOLVED})
 # These are settled as "no money left the account".
-SETTLED_EMPTY = frozenset({NOT_FILLED, NOT_PLACED})
+SETTLED_EMPTY = frozenset({NOT_FILLED, NOT_PLACED, REFUSED})
+# Not orders the program made, so not counted against the caps or the day.
+NOT_AN_ORDER = frozenset({PRE_EXISTING})
 
 
 class LedgerCorrupt(RuntimeError):
@@ -85,6 +95,8 @@ class IntentState:
         """
         if self.state == FILLED:
             return self.filled_quantity
+        if self.state == PRE_EXISTING:
+            return self.quantity
         if self.state in BLOCKING:
             return self.quantity
         return 0.0
@@ -154,6 +166,15 @@ class AnchorLedger:
         for row in self.records():
             intent_id = str(row["intent_id"])
             kind = row["kind"]
+            if kind == PRE_EXISTING:
+                folded[intent_id] = IntentState(
+                    intent_id=intent_id,
+                    ticker=str(row.get("ticker", "")),
+                    at_utc=str(row.get("at_utc", "")),
+                    quantity=_float(row.get("quantity")),
+                    est_gbp=0.0, state=PRE_EXISTING,
+                    detail=str(row.get("detail", "")))
+                continue
             if kind == INTENT:
                 folded[intent_id] = IntentState(
                     intent_id=intent_id,
@@ -198,11 +219,17 @@ class AnchorLedger:
         estimate and what actually filled -- the cap errs towards stopping.
         """
         return sum(max(s.est_gbp, s.filled_gbp) for s in self.states().values()
-                   if s.state not in SETTLED_EMPTY)
+                   if s.state not in SETTLED_EMPTY | NOT_AN_ORDER)
 
     def orders_on(self, day: date) -> int:
         """Intents dated that UTC day, whatever became of them."""
-        return sum(1 for s in self.states().values() if s.day == day)
+        return sum(1 for s in self.states().values()
+                   if s.day == day and s.state not in NOT_AN_ORDER)
+
+    def refused(self) -> dict[str, str]:
+        """Names the broker definitely refused, with why. Never retried."""
+        return {s.ticker: s.detail for s in self.states().values()
+                if s.state == REFUSED}
 
     def anchor_quantities(self) -> dict[str, float]:
         quantities: dict[str, float] = {}
@@ -211,3 +238,13 @@ class AnchorLedger:
             if amount > 0:
                 quantities[state.ticker] = quantities.get(state.ticker, 0.0) + amount
         return quantities
+
+
+def pre_existing_record(ticker: str, quantity: float, at: datetime,
+                        how_placed: str) -> dict[str, object]:
+    """The ledger line for a holding the program did NOT buy, fenced as an anchor."""
+    if not quantity > 0:
+        raise ValueError("a pre-existing holding needs a positive quantity")
+    return {"kind": PRE_EXISTING, "intent_id": f"pre-existing-{ticker}",
+            "at_utc": at.isoformat(), "ticker": ticker, "quantity": quantity,
+            "detail": how_placed}

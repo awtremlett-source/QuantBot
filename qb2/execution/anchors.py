@@ -62,8 +62,8 @@ from zoneinfo import ZoneInfo
 from qb2.execution import costs, safety
 from qb2.execution.anchor_ledger import (ACCEPTED, BLOCKING, FILLED, INTENT,
                                          NOT_FILLED, NOT_PLACED, OUTCOME,
-                                         RECONCILED, UNRESOLVED, AnchorLedger,
-                                         IntentState)
+                                         RECONCILED, REFUSED, UNRESOLVED,
+                                         AnchorLedger, IntentState)
 from qb2.execution.t212_client import (KEY_VARIABLE, BrokerError, Credentials,
                                        CredentialsMissing, Endpoint, Response,
                                        T212DemoClient, Throttle, read_env_file)
@@ -646,6 +646,7 @@ def build_plan(*, identities: Sequence[Identity | Unresolved],
     BUY against fresh broker reads before it sends anything."""
     states = ledger.states()
     blocking = {s.ticker for s in states.values() if s.state in BLOCKING}
+    refused = ledger.refused()
     anchors_held = ledger.anchor_quantities()
     committed = ledger.committed_gbp()
     today = ledger.orders_on(now.astimezone(timezone.utc).date())
@@ -700,6 +701,11 @@ def build_plan(*, identities: Sequence[Identity | Unresolved],
         if ticker in blocking:
             plan.rows.append(row(SKIP, "unresolved order: an earlier anchor order "
                                        "has no confirmed outcome -- never resend"))
+            continue
+        if ticker in refused:
+            plan.rows.append(row(SKIP, "refused by the broker earlier "
+                                       f"({refused[ticker][:80]}) -- never retried "
+                                       "automatically; a person decides"))
             continue
         if held is None or pending_tickers is None:
             plan.rows.append(row(SKIP, "no broker read: cannot confirm it is not "
@@ -801,8 +807,12 @@ class BrokerReader:
     def history_orders(self, ticker: str) -> list[dict[str, Any]]:
         return self._client.history_orders(ticker=ticker)
 
+    def account_summary(self) -> dict[str, Any]:
+        return self._client.account_summary()
+
 
 class Reader(Protocol):
+    def account_summary(self) -> dict[str, Any]: ...
     def positions(self) -> list[dict[str, Any]]: ...
     def pending_orders(self) -> list[dict[str, Any]]: ...
     def exchanges(self) -> list[dict[str, Any]]: ...
@@ -851,11 +861,27 @@ def order_transport(method: str, url: str, headers: Mapping[str, str],
 
 @dataclass(frozen=True, slots=True)
 class OrderOutcome:
-    status: str                  # ACCEPTED or UNRESOLVED
+    status: str                  # ACCEPTED, REFUSED, NOT_PLACED or UNRESOLVED
     order_id: int | None
     http_status: int | None
     broker_status: str
     detail: str
+
+
+# 401 bad key, 403 missing permission, 429 too fast: refused before any order
+# exists, but the refusal is of the KEY or the pace, so the run stops.
+KEY_REFUSALS = frozenset({401, 403, 429})
+
+
+def _broker_error(body: bytes) -> bool:
+    """True only for the broker's JSON error object. Anything else is unclear."""
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    return (isinstance(payload, dict) and "id" not in payload
+            and any(isinstance(payload.get(k), str) and bool(payload.get(k))
+                    for k in ("code", "message", "errorMessage", "clarification")))
 
 
 class AnchorOrderClient:
@@ -922,6 +948,14 @@ class AnchorOrderClient:
             return OrderOutcome(UNRESOLVED, None, None, "",
                                 f"no usable reply: {type(exc).__name__}")
         snippet = response.body[:200].decode("utf-8", errors="replace")
+        if response.status in KEY_REFUSALS:
+            # The KEY was refused, not the name: nothing was created, and every
+            # other name would be refused the same way. Stop; blame no name.
+            return OrderOutcome(NOT_PLACED, None, response.status, "",
+                                f"HTTP {response.status}: the key was refused")
+        if response.status == 400 and _broker_error(response.body):
+            # A definite refusal: the broker's own JSON error, no order created.
+            return OrderOutcome(REFUSED, None, 400, "", f"HTTP 400: {snippet}")
         if response.status != 200:
             return OrderOutcome(UNRESOLVED, None, response.status, "",
                                 f"HTTP {response.status}: {snippet}")
@@ -1071,6 +1105,7 @@ class LiveReport:
     plan: Plan | None
     lines: list[str] = field(default_factory=list)
     accepted: list[str] = field(default_factory=list)
+    refused: list[tuple[str, str]] = field(default_factory=list)
     halted: str = ""
 
 
@@ -1095,7 +1130,23 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
         raise AnchorRefused(
             f"the order key's account reports currency {summary.get('currency')!r}, "
             "not GBP -- refusing")
-    say("order key: practice server, account currency GBP")
+    # Both keys must see ONE account: same id, practice, GBP. The order client is
+    # fixed to the practice host (F1) and the reader refuses any other (S2a).
+    try:
+        seen = reader.account_summary()
+    except (BrokerError, CredentialsMissing) as exc:
+        report.halted = f"could not read the account with the read-only key: {exc}"
+        say(report.halted)
+        return report
+    order_id, read_id = summary.get("id"), seen.get("id")
+    if (order_id is None or read_id is None or order_id != read_id
+            or seen.get("currency") != "GBP"):
+        report.halted = ("the order key and the read-only key do not see the same "
+                         "account (id and GBP must both match) -- nothing bought")
+        say(report.halted)
+        return report
+    say("order key: practice server, account currency GBP; same account as the "
+        "read-only key (ids match)")
 
     try:
         for note in reconcile(book, reader, clock()):
@@ -1175,6 +1226,15 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
                      "http_status": outcome.http_status,
                      "broker_status": outcome.broker_status,
                      "detail": outcome.detail})
+        if outcome.status == REFUSED:
+            report.refused.append((ticker, outcome.detail))
+            say(f"{ticker}: REFUSED by the broker, nothing created -- "
+                f"{outcome.detail[:120]}; not retried")
+            continue
+        if outcome.status == NOT_PLACED:
+            report.halted = (f"{ticker}: {outcome.detail} -- nothing was created; "
+                             "run stopped")
+            break
         if outcome.status != ACCEPTED:
             report.halted = (f"{ticker}: outcome unknown ({outcome.detail}) -- "
                              "run halted; reconciled on the next run, never resent")
@@ -1184,6 +1244,9 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
 
     if report.halted:
         say(f"HALTED: {report.halted}")
+    say(f"refused this run: {len(report.refused)}")
+    for refused_ticker, why in report.refused:
+        say(f"  {refused_ticker}: {why}")
     if report.accepted:
         sleep(SETTLE_SECONDS)
         held = held_quantities(reader.positions())
