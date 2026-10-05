@@ -667,7 +667,9 @@ def test_the_catch_up_is_not_judged_by_the_hourly_alarm() -> None:
     An alarm that fires on correct behaviour teaches people to ignore alarms.
     """
     assert record_now.RUN_ALARM_MINUTES == 45.0
-    assert record_now.CATCHUP_ALARM_MINUTES >= 240.0
+    # Was ">= 240" (it was 480). Lowered under the 180-minute task kill on
+    # 2026-10-05 -- see test_s3f_recorder_weekend.py -- still above the 110.
+    assert record_now.CATCHUP_ALARM_MINUTES > 110.0
     assert record_now.CATCHUP_ALARM_MINUTES > record_now.RUN_ALARM_MINUTES
 
 

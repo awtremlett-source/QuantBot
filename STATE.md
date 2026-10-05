@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds
 
-Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-04.
+Phase: v2 BUILDING (the Simons direction).  Updated: 2026-10-05.
 S0, S1, S2a, S2b, S3a, S3b, S3c and S3d ARE DONE. **S3 ITSELF IS STILL NOT
 COMPLETE**, and the plan says exactly why. All five exit-gate items are GREEN (both
 lists agreed · disjoint by test · census 98.2% on 5m against a 95% bar · sterling
@@ -15,6 +15,35 @@ RENUMBERED 2026-10-04: S3 close = QT-13 (QT-12 is the P20 anchor buyer).
 CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
 the bot trades (same company / same index fund, two lines each; both still get an
 anchor, because the broker prices each line separately).
+
+## RECORDER WEEKEND FIX — A, B, C applied before Monday 07:00 (2026-10-05)
+Operator verbatim: *"GO on A, B and C (fail-first tests, red then green), applied
+and pushed before the 07:00 run. ... A: hourly limit counted in weekdays ... B: an
+hourly run that skips more than half the names because of the limit reports NOT
+clean. C: catch-up alarm below the 180-min kill (e.g. 150), shown firing on a
+planted slow run. The delay sampler must be unchanged."*
+FOUND: Fri 2 Oct 20:03 took 110 min because it was the first catch-up after the
+131-name fix -- 131 names had no 1h history, 31 no 5m (full 730d/60d windows).
+One-off; all names now have history except GEV. BUT counting the hourly limit in
+calendar days meant EVERY Monday hourly run skipped all 225 names and still
+exited clean (Fri close to Mon = 3 days > limit 2).
+APPLIED: (A) hourly limit = 2 WEEKDAYS behind (request still in calendar days);
+(B) an hourly run with no catch-up behind it that skips more than half the names
+is NOT CLEAN; (C) TASK_KILL_MINUTES 180, CATCHUP_ALARM_MINUTES 480 -> 150.
+Dry-check on today's real resume points: 07:00 fetches 225, skips BA.L only (5
+weekdays behind; the same run's catch-up takes it). qb2/tools/sample_delay.py
+UNCHANGED (sha256 2ae3d013...c8aa3, empty diff).
+TEST LEAK FIXED: the 19 "AAPL 1m lost" manifest lines (2-5 Oct, the 19th from
+this session's own baseline run) came from test_recorder.py's provider-limit
+test, which had no manifest of its own. tests/qb2/conftest.py now refuses ANY
+write under data/, logs/, reports/ during a qb2 test (audit hook + to_parquet).
+The 19 lines stay (quarantine, never delete); they are kind=lost and move no
+resume point.
+FOR QT-13 (not done): (1) each append to the 13 MB manifest costs 0.37 s, almost
+all in closing the file (0.002 s on a small file) -- likely an antivirus rescan,
+not verified; ~45 of Friday's 110 min, and it grows with the file. (2) GEV 1h:
+yfinance sends GEV's listing date (2024-03-27) as the start, which Yahoo refuses
+as older than 730 days -- needs an explicit start inside the window.
 
 ## QT-12 PART A DONE — the P20 anchor buyer is BUILT and DRY-RUN, NOT live (2026-10-04)
 Operator verbatim: *"write the anchor-buyer box (QT-12) — P20 anchors bought by the
@@ -72,7 +101,7 @@ Scheduler starts tasks in C:\Windows\system32, which is why the old relative
 recorder.log never existed anywhere.
 
 FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-04) ·
-qb2 2ba4d210…ab12 after QT-12 (was 69ae0f43…a0da after S3e; 8d007b10…c85c after S3d)
+qb2 b7698297…8682 after the weekend fix (2ba4d210…ab12 after QT-12; was 69ae0f43…a0da after S3e; 8d007b10…c85c after S3d)
 
 ## P20 AGREED — cross-check prices against the broker (2026-10-04)
 Operator verbatim: *"GO on P20 — 'Compare yfinance with Trading 212 prices: hold

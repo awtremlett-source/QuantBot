@@ -15,9 +15,12 @@ So: skipped when nobody asked for them, run when somebody did.
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 QB2_ONLY = ("PySide6",)   # present in .venv-qb2, absent from v1's .venv
@@ -41,3 +44,72 @@ def pytest_ignore_collect(collection_path: Path,
               file=sys.stderr)
         return True
     return None
+
+
+# ------------------------------------------- tests never write real data -----
+#
+# test_recorder.py once called the recorder without a manifest of its own, and
+# every test run appended "AAPL 1m lost" to the REAL manifest -- 19 lines between
+# 2 and 5 October before anyone noticed. Passing tmp_path everywhere is a rule
+# people forget, so this makes forgetting impossible: while a qb2 test is
+# running, any WRITE under the repository's data/, logs/ or reports/ is refused.
+# Reads are untouched. Python-level writes are caught by an audit hook; parquet
+# goes through pyarrow's own file code, so DataFrame.to_parquet is guarded too.
+
+_REPO = Path(__file__).resolve().parents[2]
+PROTECTED = tuple(os.path.normcase(str(_REPO / name)) + os.sep
+                  for name in ("data", "logs", "reports"))
+_WRITE_EVENTS = {"os.remove", "os.rename", "os.replace", "os.mkdir",
+                 "os.rmdir", "shutil.rmtree", "shutil.move", "shutil.copyfile"}
+_guard_on = False
+
+
+def _is_protected(target: object) -> bool:
+    if isinstance(target, bytes):
+        target = target.decode(errors="replace")
+    if not isinstance(target, (str, os.PathLike)):
+        return False                      # a file descriptor, not a path
+    full = os.path.normcase(os.path.abspath(os.fspath(target))) + os.sep
+    return full.startswith(PROTECTED)
+
+
+def _refuse(target: object) -> None:
+    raise PermissionError(f"a test tried to write real data: {target!s} -- "
+                          f"pass it a tmp_path instead")
+
+
+def _audit(event: str, args: tuple[object, ...]) -> None:
+    if not _guard_on:
+        return
+    if event == "open":
+        path, mode, flags = args
+        writing = (isinstance(mode, str) and any(c in mode for c in "wax+")) or (
+            mode is None and isinstance(flags, int)
+            and flags & (os.O_WRONLY | os.O_RDWR | os.O_APPEND | os.O_CREAT))
+        if writing and _is_protected(path):
+            _refuse(path)
+    elif event in _WRITE_EVENTS and args and any(
+            _is_protected(a) for a in args[:2]):
+        _refuse(args[0])
+
+
+sys.addaudithook(_audit)       # hooks cannot be removed; _guard_on gates it
+
+
+@pytest.fixture(autouse=True)
+def _no_real_data_writes(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    global _guard_on
+    original = pd.DataFrame.to_parquet
+
+    def guarded(self: pd.DataFrame, path: object = None,
+                *args: object, **kwargs: object) -> object:
+        if _is_protected(path):
+            _refuse(path)
+        return original(self, path, *args, **kwargs)
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", guarded)
+    _guard_on = True
+    try:
+        yield
+    finally:
+        _guard_on = False

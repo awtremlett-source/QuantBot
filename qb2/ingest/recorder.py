@@ -716,9 +716,11 @@ def capture(entries: Sequence[tuple[str, str, str]], interval: str, *,
 # large enough that 226 names is a handful of requests, small enough that one
 # throttled request does not cost the whole run.
 BATCH_SIZE = 40
-# A name needing more than this many days is a BACKFILL, not an hourly top-up.
+# A name more than this many WEEKDAYS behind is a BACKFILL, not an hourly top-up.
 # Backfills are slow and belong in the after-hours step; letting them into the
-# hourly run is what made the hourly run take over an hour.
+# hourly run is what made the hourly run take over an hour. Weekdays, not
+# calendar days: Friday's close to Monday morning is three calendar days, and
+# counting those skipped every name at every Monday trigger (found 2026-10-05).
 HOURLY_MAX_DAYS = 2
 
 BatchFetcher = Callable[[Sequence[str], str, int], "dict[str, pd.DataFrame]"]
@@ -750,13 +752,22 @@ def capture_incremental(
     buckets: dict[int, list[str]] = {}
     for ticker, _market, _currency in entries:
         outcome.attempted.append(ticker)
-        wanted = days_needed(resume.get(ticker), interval, moment)
-        if max_days is not None and wanted > max_days:
-            outcome.skipped.append({
-                "ticker": ticker, "interval": interval,
-                "reason": f"needs {wanted} days, more than the hourly limit of "
-                          f"{max_days} -- left for the after-hours catch-up"})
-            continue
+        last = resume.get(ticker)
+        wanted = days_needed(last, interval, moment)
+        if max_days is not None:
+            # The request stays in calendar days (that is what the provider
+            # takes); only the hourly-or-backfill decision counts weekdays.
+            behind = (_weekdays_between(last.astimezone(timezone.utc),
+                                        moment.astimezone(timezone.utc))
+                      if last is not None else None)
+            if behind is None or behind > max_days:
+                gap = ("no history yet" if behind is None
+                       else f"{behind} weekdays behind")
+                outcome.skipped.append({
+                    "ticker": ticker, "interval": interval,
+                    "reason": f"{gap}, more than the hourly limit of {max_days} "
+                              f"weekdays -- left for the after-hours catch-up"})
+                continue
         buckets.setdefault(wanted, []).append(ticker)
 
     for wanted, names in sorted(buckets.items()):

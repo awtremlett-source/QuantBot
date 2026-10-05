@@ -323,7 +323,7 @@ def test_the_run_takes_a_delay_sample_during_market_hours(tmp_path: Path) -> Non
     assert outcome.delay_samples[0]["market"] == "LSE"
 
 
-def test_the_provider_limit_from_the_facts_file_is_respected() -> None:
+def test_the_provider_limit_from_the_facts_file_is_respected(tmp_path: Path) -> None:
     """Row n: 1m is 8 days per request. Asking for more returns nothing."""
     asked: list[int] = []
 
@@ -331,7 +331,10 @@ def test_the_provider_limit_from_the_facts_file_is_respected() -> None:
         asked.append(days)
         return pd.DataFrame()
 
-    recorder.capture([("AAPL", "US", "USD")], "1m", fetch=fetch)
+    # Its own manifest: without one, every test run wrote "AAPL 1m lost" into
+    # the REAL manifest (19 lines, 2-5 October). conftest now refuses that.
+    recorder.capture([("AAPL", "US", "USD")], "1m", fetch=fetch,
+                     manifest=tmp_path / "m.jsonl")
     assert asked == [8], f"asked for {asked} days of 1m data; the limit is 8"
 
 

@@ -48,10 +48,15 @@ HOURLY_TARGET_MINUTES = 10.0     # what a healthy hourly run should come in unde
 RUN_ALARM_MINUTES = 45.0         # past this, the HOURLY run blocks its own trigger
 # The catch-up is MEANT to be slow: it runs on the day's last trigger with
 # nothing after it until 07:00. The real 2026-10-02 catch-up took 110 minutes to
-# backfill 226 names and was wrongly reported as a failure. An alarm that fires
-# on correct behaviour just teaches people to ignore alarms. This bound is here
-# to catch a catch-up that is still running the next morning.
-CATCHUP_ALARM_MINUTES = 480.0
+# backfill 131 new names and was wrongly reported as a failure. An alarm that
+# fires on correct behaviour just teaches people to ignore alarms. But it must
+# sit BELOW the scheduled task's ExecutionTimeLimit (PT3H): the old 480 could
+# never ring, because the scheduler kills the run at 180 first.
+TASK_KILL_MINUTES = 180.0
+CATCHUP_ALARM_MINUTES = 150.0
+# More than this share of names skipped by the hourly limit, in a run with no
+# catch-up behind it, is an empty run -- and must not report itself clean.
+HOURLY_SKIP_ALARM_SHARE = 0.5
 LOG_KEEP_DAYS = 30
 RECORDER_LOCK = REPO_ROOT / "data" / "raw" / "intraday" / "recorder.lock"
 
@@ -314,6 +319,15 @@ def _run(args: argparse.Namespace, entries: list[tuple[str, str, str]],
         entries, args.interval,
         max_days=None if args.full else recorder.HOURLY_MAX_DAYS)
     complaints += _report(f"{args.interval} hourly", hourly)
+    attempted = len(hourly.attempted)
+    if (not do_catchup and attempted
+            and len(hourly.skipped) > HOURLY_SKIP_ALARM_SHARE * attempted):
+        # In a catch-up run the same names are backfilled minutes later, so the
+        # skips cost nothing. Without one, they wait until the evening.
+        complaints.append(
+            f"{args.interval} hourly: skipped {len(hourly.skipped)} of "
+            f"{attempted} names on the hourly limit -- this run recorded almost "
+            f"nothing, and they wait for the evening catch-up")
     elapsed_hourly = (time.monotonic() - clock) / 60
     say(f"  hourly took {elapsed_hourly:.1f} min "
           f"(target under {HOURLY_TARGET_MINUTES:.0f})")
