@@ -166,29 +166,30 @@ class AnchorLedger:
             out.append(row)
         return out
 
+    def unusable(self) -> str:
+        """Why --live must not trust this ledger, or "" (anchors.py F13)."""
+        try:
+            return "" if self.records() else (
+                "empty" if self.path.is_file() else "missing")
+        except LedgerCorrupt as exc:
+            return f"unreadable ({exc})"
+
     def states(self) -> dict[str, IntentState]:
         """Every intent, with its latest known state."""
         folded: dict[str, IntentState] = {}
         for row in self.records():
             intent_id = str(row["intent_id"])
             kind = row["kind"]
-            if kind == PRE_EXISTING:
+            if kind in (PRE_EXISTING, INTENT):
+                pre = kind == PRE_EXISTING        # a holding, not an order
                 folded[intent_id] = IntentState(
                     intent_id=intent_id,
                     ticker=str(row.get("ticker", "")),
                     at_utc=str(row.get("at_utc", "")),
                     quantity=_float(row.get("quantity")),
-                    est_gbp=0.0, state=PRE_EXISTING,
-                    detail=str(row.get("detail", "")))
-                continue
-            if kind == INTENT:
-                folded[intent_id] = IntentState(
-                    intent_id=intent_id,
-                    ticker=str(row.get("ticker", "")),
-                    at_utc=str(row.get("at_utc", "")),
-                    quantity=_float(row.get("quantity")),
-                    est_gbp=_float(row.get("est_gbp")),
-                    state=UNRESOLVED)
+                    est_gbp=0.0 if pre else _float(row.get("est_gbp")),
+                    state=PRE_EXISTING if pre else UNRESOLVED,
+                    detail=str(row.get("detail", "")) if pre else "")
                 continue
             known = folded.get(intent_id)
             if known is None:
@@ -242,8 +243,7 @@ class AnchorLedger:
     def refused(self) -> dict[str, str]:
         """Names the broker definitely refused, with why. Never retried by the
         program; only a RETRY_AUTHORISED line (the operator's words) lifts one."""
-        return {s.ticker: s.detail for s in self.states().values()
-                if s.state == REFUSED and not s.retry_authorised}
+        return {s.ticker: s.detail for s in self.refusals() if not s.retry_authorised}
 
     def refusals(self) -> list[IntentState]:
         """Every refusal, lifted or not -- the broker's words carry its rules."""

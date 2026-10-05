@@ -27,7 +27,8 @@ import pytest
 from qb2.execution import anchors, costs, safety
 from qb2.execution.anchor_ledger import (ACCEPTED, FILLED, INTENT, NOT_PLACED,
                                          OUTCOME, RECONCILED, UNRESOLVED,
-                                         AnchorLedger, LedgerCorrupt)
+                                         AnchorLedger, IntentState, LedgerCorrupt,
+                                         pre_existing_record)
 from qb2.execution.anchors import (NATIVE, SKIP, WAIT, WOULD_BUY,
                                    AnchorOrderClient, AnchorRefused,
                                    BrokerReader, Identity, Inputs,
@@ -189,6 +190,20 @@ class OrderWire:
                 if m == "POST"]
 
 
+def seeded(path: Path) -> AnchorLedger:
+    """A ledger that exists: --live refuses one missing or empty (F13). The seed is
+    a hand-bought holding outside the universe, so it fences and spends nothing."""
+    book = AnchorLedger(path)
+    book.append(pre_existing_record("SEED_US_EQ", 1.0, MON_OVERLAP,
+                                    "test seed: a live run needs a ledger"))
+    return book
+
+
+def orders(book: AnchorLedger) -> list[IntentState]:
+    """Every intent except the seed."""
+    return [s for s in book.states().values() if s.ticker != "SEED_US_EQ"]
+
+
 def live(tmp_path: Path, *, reader: FakeReader | None = None,
          wire: OrderWire | None = None, now: datetime = MON_OVERLAP,
          identities: list[Identity | Unresolved] | None = None,
@@ -198,7 +213,7 @@ def live(tmp_path: Path, *, reader: FakeReader | None = None,
                                                        AnchorLedger]:
     reader = reader or FakeReader(exchanges=calendar(now.date()))
     wire = wire or OrderWire()
-    book = ledger or AnchorLedger(tmp_path / "anchors" / "ledger.jsonl")
+    book = ledger or seeded(tmp_path / "anchors" / "ledger.jsonl")
     report = anchors.run_live(
         inputs=Inputs(identities or list(IDENTITIES),
                       quotes or quotes_on(now.date() - timedelta(days=1)),
@@ -748,7 +763,7 @@ def test_f8_an_unknown_outcome_halts_and_is_never_resent(tmp_path: Path) -> None
     report, _, wire, book = live(tmp_path, wire=OrderWire(on_post=timeout))
     assert wire.posts == 1, "the run must halt at the first unknown outcome"
     assert "halted" in report.halted.lower() or "unknown" in report.halted
-    [state] = book.states().values()
+    [state] = orders(book)
     assert state.state == UNRESOLVED and state.ticker == "MU_US_EQ"
 
     # A restart one minute later: nothing settles it yet, so nothing is sent.
@@ -769,7 +784,7 @@ def test_f8_a_lost_reply_found_in_history_is_settled_not_resent(tmp_path: Path) 
         return Response(500, {}, b"upstream")
 
     _, _, _, book = live(tmp_path, wire=OrderWire(on_post=lost))
-    [state] = book.states().values()
+    [state] = orders(book)
     history = {"MU_US_EQ": [{
         "order": {"id": 77, "ticker": "MU_US_EQ", "side": "BUY", "status": "FILLED",
                   "initiatedFrom": "API", "quantity": state.quantity,
@@ -955,7 +970,7 @@ def test_live_refuses_an_account_that_is_not_in_pounds(tmp_path: Path) -> None:
 def test_live_happy_path_buys_each_absent_anchor_once(tmp_path: Path) -> None:
     report, _, wire, book = live(tmp_path)
     assert [p["ticker"] for p in wire.posted()] == ["MU_US_EQ", "AZNl_EQ", "VUAGl_EQ"]
-    assert {s.state for s in book.states().values()} == {ACCEPTED}
+    assert {s.state for s in orders(book)} == {ACCEPTED}
     # A second run straight after: every name is blocking until reconciled.
     _, _, wire2, _ = live(tmp_path, ledger=book)
     assert wire2.posted() == []

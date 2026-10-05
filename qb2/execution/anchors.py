@@ -33,6 +33,7 @@ F10 not a back door -- never reads or writes ARMED; flatten subtracts anchor
     quantities read from the ledger (qb2/execution/anchor_ledger.py).
 F11 the dry run is the default and its client class has no order method at all.
 F12 secrets -- names only, in every message, log and ledger line.
+F13 the ledger is the memory: --live refuses one missing, empty or unreadable.
 
 CLI:  python -m qb2.execution.anchors            (dry run, read-only key)
       python -m qb2.execution.anchors --live     (practice orders, order key)
@@ -64,7 +65,7 @@ from qb2.execution import costs, safety
 from qb2.execution.anchor_ledger import (ACCEPTED, BLOCKING, FILLED, INTENT,
                                          NOT_FILLED, NOT_PLACED, OUTCOME,
                                          RECONCILED, REFUSED, UNRESOLVED,
-                                         AnchorLedger, IntentState,
+                                         AnchorLedger, IntentState, LedgerCorrupt,
                                          retry_record)
 from qb2.execution.t212_client import (KEY_VARIABLE, BrokerError, Credentials,
                                        CredentialsMissing, Endpoint, Response,
@@ -1193,6 +1194,12 @@ class LiveReport:
     refused: list[tuple[str, str]] = field(default_factory=list)
     halted: str = ""
 
+    def halt(self, why: str) -> LiveReport:
+        """Stop before any order, saying why."""
+        self.halted = why
+        self.lines.append(why)
+        return self
+
 
 def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
              ledger: AnchorLedger | None = None,
@@ -1206,11 +1213,11 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
     report = LiveReport(plan=None)
     say = report.lines.append
 
+    if why := book.unusable():                                             # F13
+        return report.halt(f"anchor ledger {why} -- --live refuses; rebuilding it "
+                           "needs the operator's GO, from broker order history")
     if safety.killswitch_armed(root):
-        report.halted = "killswitch: STOP_NEW_TRADES is present -- no anchor bought"
-        say(report.halted)
-        return report
-
+        return report.halt("killswitch: STOP_NEW_TRADES is present -- no anchor bought")
     summary = orderer.account_summary()
     if summary.get("currency") != "GBP":
         raise AnchorRefused(
@@ -1221,16 +1228,12 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
     try:
         seen = reader.account_summary()
     except (BrokerError, CredentialsMissing) as exc:
-        report.halted = f"could not read the account with the read-only key: {exc}"
-        say(report.halted)
-        return report
+        return report.halt(f"could not read the account with the read-only key: {exc}")
     order_id, read_id = summary.get("id"), seen.get("id")
     if (order_id is None or read_id is None or order_id != read_id
             or seen.get("currency") != "GBP"):
-        report.halted = ("the order key and the read-only key do not see the same "
-                         "account (id and GBP must both match) -- nothing bought")
-        say(report.halted)
-        return report
+        return report.halt("the order key and the read-only key do not see the same "
+                           "account (id and GBP must both match) -- nothing bought")
     say("order key: practice server, account currency GBP; same account as the "
         "read-only key (ids match)")
 
@@ -1239,17 +1242,13 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
             say(f"reconcile: {note}")
         still_open = book.blocking()
         if still_open:
-            report.halted = (f"{len(still_open)} anchor order(s) still have no "
-                             "confirmed outcome -- nothing is sent until they do")
-            say(report.halted)
-            return report
+            return report.halt(f"{len(still_open)} anchor order(s) still have no "
+                               "confirmed outcome -- nothing is sent until they do")
         schedules = parse_schedules(reader.exchanges())
         positions_now = reader.positions()
         pending_now = reader.pending_orders()
     except (BrokerError, CredentialsMissing) as exc:
-        report.halted = f"could not read the broker before starting: {exc}"
-        say(report.halted)
-        return report
+        return report.halt(f"could not read the broker before starting: {exc}")
     plan = build_plan(identities=inputs.identities, quotes=inputs.quotes,
                       fx=inputs.fx, positions=positions_now,
                       pending=pending_now, ledger=book, now=clock(),
@@ -1424,7 +1423,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(render(report.plan))
         print("\n".join(report.lines))
         return 1 if report.halted else 0
-    except AnchorRefused as exc:
+    except (AnchorRefused, LedgerCorrupt) as exc:
         print(f"REFUSED: {exc}")
         return 2
 

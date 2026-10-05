@@ -22,7 +22,7 @@ FOUNDING_DIRECTIVE and docs/sessions/ only when asked.
 - Envs never cross: .venv (v1) · .venv-ui (window) · .venv-qb2 (qb2).
 
 ## Laws (stories → docs/SCARS.md) — money first
-- Orders ONLY via qb2/execution/anchors.py (fences F1–F12 in its docstring). `--live`
+- Orders ONLY via qb2/execution/anchors.py (fences F1–F13 in its docstring). `--live`
   needs an operator GO; one GO covers top-ups to the £100 cap. Caps £3/order ·
   £100 lifetime · 50/UTC day: raising one = GO. Practice host only; v1 sender unarmed.
 - POST isn't idempotent: unknown outcome = UNRESOLVED, never resend, settle from
@@ -43,7 +43,7 @@ FOUNDING_DIRECTIVE and docs/sessions/ only when asked.
 - Operator words verbatim at issue time. Pre-commit: correctness · spelling · numbers.
 - v1 change = new strategy + full firewall re-run.
 
-## Lean code
+## Lean code (anti-sprawl)
 - Smallest change meeting the requirement; verify vs the requirement, not the plan.
 - One job per module, ≤250 lines; oversize pinned, may shrink never grow
   (tests/qb2/test_lean_lines.py); splitting = PROPOSE→GO.

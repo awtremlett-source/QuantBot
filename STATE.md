@@ -2,22 +2,37 @@
 
 Updated: 2026-10-05. History before today → docs/archive/STATE_2026-10-05.md
 (verbatim: settled decisions incl. v1 knobs, Done log, stage write-ups).
-Last box: doc-system review → docs/sessions/2026-10-05-doc-review.md.
+Last boxes: doc review (docs/sessions/2026-10-05-doc-review.md) · LEDGER GUARD (below).
 
 Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete**: only the quote delay is left
 to measure (FACTS row o: 1 US session of 3, London 0). It resolves by the recorder
 running; nothing to build. S3 close = QT-13. NOT S4.
 
 ## NEXT, in order
-1. LEDGER GUARD box (operator choice 2026-10-05: "Own box, before next --live").
-   A missing data/anchors/ledger.jsonl reads as EMPTY (anchor_ledger.py:148), which
-   silently resets the £100 tally, the refusals and the daily count. The file sits in
-   gitignored data/ and DEPLOY's restore skips it. Fail-first: refuse --live when the
-   ledger is missing but the account holds anchors; add the ledger to backup+restore.
+1. LEDGER GUARD (F13): DONE 2026-10-05 — section below.
 2. QT-12 FINISH: `python -m qb2.execution.anchors --live --hold-above 1.10` on a NEW
-   UTC day in London hours (08:10–16:15 London), earliest Tue 2026-10-06, after box 1.
+   UTC day in London hours (08:10–16:15 London), earliest Tue 2026-10-06.
+   **GATE: it may ONLY start if the ledger guard is merged on main and green** —
+   first run `.venv-qb2/Scripts/python -m pytest tests/qb2/test_ledger_guard.py -q`;
+   red, missing, or not on main = do not run.
    Closes when 50/50 names have a broker price → write the close-out here.
 3. QT-13 = S3 close, once the delay has 3 US and 3 London sessions.
+
+## LEDGER GUARD (F13) — DONE 2026-10-05
+Operator verbatim: *"GO LEDGER-GUARD — fail-first tests, red then green: 1. If the
+anchor ledger is missing, empty or unreadable, --live refuses to place any order
+(dry run still allowed) and says why. Never recreate or reset it silently;
+rebuilding it needs operator GO, from broker order history. 2. Prove it: tests for
+missing, empty and corrupt ledger → zero orders sent. 3. Tomorrow's QT-12 run may
+only start if this guard is merged and green; state that in STATE.md."*
+BUILT: run_live checks AnchorLedger.unusable() FIRST — before the killswitch, the
+broker and reconcile — and halts with the reason; the file is left byte-identical.
+tests/qb2/test_ledger_guard.py: 8 tests (missing · empty · blank · corrupt JSON ·
+non-record → 0 POSTs, 0 broker calls; dry run still plans; a real ledger passes).
+Red on old code: a missing ledger SENT 3 orders. Live tests now start from a
+seeded ledger. Pinned files did not grow (anchors.py 1,433 → 1,432).
+NOT in this GO, still open: the ledger sits in gitignored data/ and DEPLOY's
+backup+restore skip it.
 
 ## Standing GOs (operator words, verbatim)
 - Live anchors, 2026-10-05, operator chose "One GO until the £100 cap" — one GO covers top-up runs
@@ -55,4 +70,4 @@ Read-only key proved unable to order (HTTP 403, nothing created).
 - CLAUDE.md budget 4,000 (QT-04 had 3,600): default kept, no operator reply yet.
 
 ## Fingerprints
-v1 4add56ec…743b6 (must never move; re-verified 2026-10-05) · qb2 3ce2c634…d125.
+v1 4add56ec…743b6 (must never move; re-verified 2026-10-05) · qb2 b96a3420…6546 after LEDGER GUARD (3ce2c634…d125 before).

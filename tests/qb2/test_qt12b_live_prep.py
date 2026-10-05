@@ -23,7 +23,7 @@ from qb2.execution.anchor_ledger import (NOT_PLACED, PRE_EXISTING, REFUSED,
                                          UNRESOLVED, AnchorLedger,
                                          pre_existing_record)
 from qb2.execution.t212_client import Response
-from tests.qb2.test_qt12_anchors import (MON_OVERLAP, FakeReader, OrderWire,
+from tests.qb2.test_qt12_anchors import (MON_OVERLAP, FakeReader, OrderWire, orders,
                                          calendar, live, plan)
 
 UTC = timezone.utc
@@ -73,7 +73,7 @@ def test_an_unclear_refusal_still_halts(tmp_path: Path) -> None:
     report, _, wire, book = live(tmp_path, wire=OrderWire(
         on_post=lambda n, b: Response(400, {}, b"<html>proxy</html>")))
     assert wire.posts == 1 and report.halted
-    [state] = book.states().values()
+    [state] = orders(book)
     assert state.state == UNRESOLVED
 
 
@@ -81,7 +81,7 @@ def test_a_server_error_still_halts(tmp_path: Path) -> None:
     report, _, wire, book = live(tmp_path, wire=OrderWire(
         on_post=lambda n, b: Response(503, {}, b'{"code": "busy"}')))
     assert wire.posts == 1 and report.halted
-    assert next(iter(book.states().values())).state == UNRESOLVED
+    assert orders(book)[0].state == UNRESOLVED
 
 
 def test_a_refused_key_stops_the_run_without_blaming_the_name(tmp_path: Path) -> None:
@@ -91,7 +91,7 @@ def test_a_refused_key_stops_the_run_without_blaming_the_name(tmp_path: Path) ->
     report, _, wire, book = live(tmp_path, wire=OrderWire(
         on_post=lambda n, b: Response(403, {}, b'{"code": "Forbidden"}')))
     assert wire.posts == 1 and "403" in report.halted
-    [state] = book.states().values()
+    [state] = orders(book)
     assert state.state == NOT_PLACED
     assert report.refused == []
 

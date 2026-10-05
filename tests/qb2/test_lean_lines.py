@@ -25,7 +25,7 @@ OVERSIZE_PINNED: dict[str, int] = {
     "tools/record_now.py": 384,
     "data/front_door.py": 470,
     "ingest/recorder.py": 820,
-    "execution/anchors.py": 1433,
+    "execution/anchors.py": 1432,          # LEDGER-GUARD folded 5 halts
 }
 
 
