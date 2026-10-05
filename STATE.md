@@ -2,7 +2,8 @@
 
 Updated: 2026-10-05. History before today → docs/archive/STATE_2026-10-05.md
 (verbatim: settled decisions incl. v1 knobs, Done log, stage write-ups).
-Last boxes: doc review (docs/sessions/2026-10-05-doc-review.md) · LEDGER GUARD+BACKUP.
+Last boxes: doc review (docs/sessions/2026-10-05-doc-review.md) · LEDGER GUARD+BACKUP ·
+BACKUP-OFFSITE.
 
 Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete**: only the quote delay is left
 to measure (FACTS row o: 1 US session of 3, London 0). It resolves by the recorder
@@ -34,7 +35,20 @@ so any restore is covered) before reconcile writes. qb2/execution/ledger_backup.
 verified dated copy after every live run (also `python -m qb2.execution.ledger_backup`);
 DEPLOY steps 1 and 4 carry it. Red first: missing ledger SENT 3 orders; stale SENT 3.
 Real account 2026-10-05: 32 API orders, all in the ledger; hand orders are WEB/IOS.
-First backup verified but LOCAL-ONLY (QUANTBOT_BACKUP_DIR unset).
+First backup verified but LOCAL-ONLY (QUANTBOT_BACKUP_DIR unset) → fixed below.
+
+## BACKUP-OFFSITE — DONE 2026-10-05
+Operator verbatim: *"GO BACKUP-OFFSITE — set QUANTBOT_BACKUP_DIR to a OneDrive
+folder (create QuantBot_Backups under the user's OneDrive; name-only in output)
+... Restore never writes to the live file without operator GO."*
+QUANTBOT_BACKUP_DIR = user env var → QuantBot_Backups in the ONLY signed-in
+OneDrive (the university work account; the old C: OneDrive folder is not linked).
+Backups 22:44 BST, all hash-checked by hand, 0 of 4 .env values in any copy:
+ledger-20261005T224412+0100.jsonl c9adeab6…7343 (= live) · quantbot-20261005.db
+5b0760cd…8e72 (integrity ok, 82,670 rows) · trials-20261005.jsonl a14a7858…4fca (= live).
+No restore code exists; DEPLOY step 4 says restore = operator GO.
+DECISION REQUESTED: keep backups on the university OneDrive (lost if the account
+closes; university admins can read it)? Default: keep; move if you prefer a personal one.
 
 ## Standing GOs (operator words, verbatim)
 - Live anchors, 2026-10-05, operator chose "One GO until the £100 cap" — one GO covers top-up runs
@@ -62,8 +76,6 @@ Read-only key proved unable to order (HTTP 403, nothing created).
 - v1 QuantBot-Daily has not run since 28 Jul: Windows refuses start (0x800710E0,
   again 05/10 14:29); its bot is 31+ days behind. Revive-or-retire deferred.
 - QB2-Recorder wakes the PC only on mains power (Balanced plan: DC wake timers off).
-- Backups LOCAL-ONLY (journal AND anchor ledger) until QUANTBOT_BACKUP_DIR points
-  off-laptop (rubric cond. 7).
 - .env.example keeps the old T212 "to verify" note (inside the engine fingerprint).
 - Daily auto clock-sync task not set up (admin). gh CLI absent → plain git.
 - Manual app's journal not migrated (trades.shares INTEGER vs REAL; MERGE_PLAN 3b).

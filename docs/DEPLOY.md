@@ -27,7 +27,8 @@ plan, not a to-do.
    `powershell -ExecutionPolicy Bypass -File install.ps1`
    (Python 3.13 check → venv → pins → bat generated from the NEW root → DB
    init → tasks registered → verify report).
-4. **NEW machine — restore the journal.** Replace `data\quantbot.db` (and
+4. **NEW machine — restore the journal.** Restore is an operator GO: no tool
+   writes a backup over a live file (backups only ever read it). Replace `data\quantbot.db` (and
    `data\trials.jsonl`) with the NEWEST verified backup pair from the remote
    destination, then rerun `install.ps1 -Verify`: database integrity must be
    ok and the latest CLEAN bar age plausible for the gap. Restore the anchor

@@ -89,8 +89,8 @@ Built/Wired/Armed checklist.
 The live NVDA regime-switcher, its journal, monitors, backups and scheduled runs
 carry on exactly as they are. Do not edit v1's engine folders; the fingerprint is
 checked in every box.
-- [ ] OPERATOR ACTION: set `QUANTBOT_BACKUP_DIR` to an off-laptop folder
-      (OneDrive) — rubric condition 7 counts as MET only when backups land off-laptop
+- [x] `QUANTBOT_BACKUP_DIR` → OneDrive QuantBot_Backups (user env var), 2026-10-05:
+      first journal + ledger backups landed there, hash-verified (rubric 7)
 - [ ] OPERATOR ACTION: daily auto clock-sync scheduled task (needs admin)
 - [ ] Run the loop once to clear the catch-up gap (31 trading days unprocessed as
       of 2026-09-21; the loop is catch-up-safe)

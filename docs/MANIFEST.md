@@ -95,7 +95,7 @@ this logic leaves NVDA or this laptop.
   via the Phase-6 watchlist generator, through the full firewall, never as positions.
 
 ## OPEN FLAGS
-- QUANTBOT_BACKUP_DIR unset → backups LOCAL-ONLY (rubric 7) · cash-floor sizing
+- Backups off-laptop since 2026-10-05 (OneDrive QuantBot_Backups) · cash-floor sizing
   (firewall-gated).
 
 ## GRADUATION RUBRIC — before this logic moves to ticker #2 or another device (ALL required)
