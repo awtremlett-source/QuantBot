@@ -7,7 +7,7 @@ point: the bot's flatten has to know how much of a position is anchor (so it nev
 sells one), but the bot must never be able to import the module that can place an
 order. So the bot imports this, and only this.
 
-One JSON object per line in ``data/anchors/ledger.jsonl``, append-only, three kinds:
+One JSON object per line in ``data/anchors/ledger.jsonl``, append-only, five kinds:
 
 * ``INTENT``     -- written BEFORE an order is sent. A crash after this line and
   before the next leaves an intent with no outcome, which reads as UNRESOLVED,
@@ -22,8 +22,11 @@ One JSON object per line in ``data/anchors/ledger.jsonl``, append-only, three ki
   NOT by the program. Fenced like an anchor (never in the bot's pot, never sold by
   flatten) but it spends nothing from the anchor caps and is not an order.
 
+* ``RETRY_AUTHORISED`` -- the operator's words lifting ONE refusal, once.
+
 An OUTCOME may also be REFUSED: the broker definitely rejected the order and
-created nothing. That name is never retried automatically -- a person decides.
+created nothing. That name is never retried automatically -- a person decides,
+and a RETRY_AUTHORISED line records that they did.
 
 A line that is not valid JSON is never skipped: a ledger we cannot read is a
 ledger whose blocking intents we cannot see, so reading it raises.
@@ -34,7 +37,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from pathlib import Path
 
@@ -45,7 +48,9 @@ INTENT = "INTENT"
 OUTCOME = "OUTCOME"
 RECONCILED = "RECONCILED"
 PRE_EXISTING = "PRE_EXISTING"
-KINDS = frozenset({INTENT, OUTCOME, RECONCILED, PRE_EXISTING})
+# The operator's recorded words lifting ONE refusal, once (QT-12 fix, 2026-10-05).
+RETRY_AUTHORISED = "RETRY_AUTHORISED"
+KINDS = frozenset({INTENT, OUTCOME, RECONCILED, PRE_EXISTING, RETRY_AUTHORISED})
 
 ACCEPTED = "ACCEPTED"
 UNRESOLVED = "UNRESOLVED"
@@ -80,6 +85,7 @@ class IntentState:
     filled_quantity: float = 0.0
     filled_gbp: float = 0.0
     detail: str = ""
+    retry_authorised: str = ""      # the operator's words, if this refusal is lifted
 
     @property
     def day(self) -> date:
@@ -188,6 +194,13 @@ class AnchorLedger:
             if known is None:
                 raise LedgerCorrupt(
                     f"{kind} for intent {intent_id} has no INTENT before it")
+            if kind == RETRY_AUTHORISED:
+                if known.state != REFUSED:
+                    raise LedgerCorrupt(f"retry authorised for intent {intent_id}, "
+                                        f"which is {known.state}, not REFUSED")
+                folded[intent_id] = replace(
+                    known, retry_authorised=str(row.get("operator_words", "")))
+                continue
             state = str(row.get("status", UNRESOLVED))
             order_id = row.get("order_id")
             folded[intent_id] = IntentState(
@@ -227,9 +240,14 @@ class AnchorLedger:
                    if s.day == day and s.state not in NOT_AN_ORDER)
 
     def refused(self) -> dict[str, str]:
-        """Names the broker definitely refused, with why. Never retried."""
+        """Names the broker definitely refused, with why. Never retried by the
+        program; only a RETRY_AUTHORISED line (the operator's words) lifts one."""
         return {s.ticker: s.detail for s in self.states().values()
-                if s.state == REFUSED}
+                if s.state == REFUSED and not s.retry_authorised}
+
+    def refusals(self) -> list[IntentState]:
+        """Every refusal, lifted or not -- the broker's words carry its rules."""
+        return [s for s in self.states().values() if s.state == REFUSED]
 
     def anchor_quantities(self) -> dict[str, float]:
         quantities: dict[str, float] = {}
@@ -248,3 +266,18 @@ def pre_existing_record(ticker: str, quantity: float, at: datetime,
     return {"kind": PRE_EXISTING, "intent_id": f"pre-existing-{ticker}",
             "at_utc": at.isoformat(), "ticker": ticker, "quantity": quantity,
             "detail": how_placed}
+
+
+def retry_record(ledger: AnchorLedger, intent_id: str, operator_words: str,
+                 at: datetime) -> dict[str, object]:
+    """The ledger line lifting one refusal. Words and a REFUSED intent required."""
+    if not operator_words.strip():
+        raise ValueError("a retry needs the operator's words")
+    state = ledger.states().get(intent_id)
+    if state is None or state.state != REFUSED:
+        raise ValueError(f"intent {intent_id} is not a refusal -- nothing to lift")
+    if state.retry_authorised:
+        raise ValueError(f"intent {intent_id} is already lifted")
+    return {"kind": RETRY_AUTHORISED, "intent_id": intent_id,
+            "at_utc": at.isoformat(), "ticker": state.ticker,
+            "operator_words": operator_words}

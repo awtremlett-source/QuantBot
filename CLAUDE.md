@@ -7,8 +7,8 @@ days, Simons' method) on 30%, and an ADVISOR (suggests only; he trades; weeks to
 £/day target. Operator is a complete beginner: teach before building; define
 terms on first use; decisions arrive as `DECISION REQUESTED` + default.
 CURRENT: S3d DONE; S3 NOT complete — only the measured quote delay is left
-(1 US session of 3, London 0) → S3 close = QT-13. P18–P20 agreed. QT-12 LIVE 2026-10-05: 26 anchors
-filled, 18 refused, 1 pending (STATE).
+(1 US session of 3, London 0) → S3 close = QT-13. P18–P20 agreed. QT-12 FIX 2026-10-05: 32 anchors
+bought, 13 London names lifted to retry in the next overlap (STATE).
 v1 KEEPS RUNNING UNTOUCHED as the baseline v2 must beat out-of-sample at 2×
 costs; engine folders read-only. Machine: sometimes-off laptop → loops
 catch-up-safe.

@@ -45,6 +45,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -63,7 +64,8 @@ from qb2.execution import costs, safety
 from qb2.execution.anchor_ledger import (ACCEPTED, BLOCKING, FILLED, INTENT,
                                          NOT_FILLED, NOT_PLACED, OUTCOME,
                                          RECONCILED, REFUSED, UNRESOLVED,
-                                         AnchorLedger, IntentState)
+                                         AnchorLedger, IntentState,
+                                         retry_record)
 from qb2.execution.t212_client import (KEY_VARIABLE, BrokerError, Credentials,
                                        CredentialsMissing, Endpoint, Response,
                                        T212DemoClient, Throttle, read_env_file)
@@ -104,6 +106,10 @@ MAX_ORDERS_PER_DAY = 50
 ASSUMED_MIN_ORDER_GBP = 1.00
 ASSUMED_QUANTITY_DECIMALS = 4
 QUANTUM = Decimal(1).scaleb(-ASSUMED_QUANTITY_DECIMALS)
+# FACTS u, v MEASURED 2026-10-05: the broker states each name's rule only when it
+# refuses -- "must trade at least 0.01121443", "invalid quantity precision 3".
+MIN_QUANTITY_RE = re.compile(r"must trade at least ([0-9]+(?:\.[0-9]+)?)")
+PRECISION_RE = re.compile(r"invalid quantity precision ([0-9]+)")
 # Two prices for one name must agree this closely after conversion. A unit slip is
 # a factor of 100; a day's move is a few percent. STARTING FIGURE.
 PRICE_AGREEMENT = 0.25
@@ -457,6 +463,37 @@ def raw_last(symbol: str, raw_root: Path | None = None) -> Quote | None:
 
 
 @dataclass(frozen=True, slots=True)
+class InstrumentRule:
+    """One name's order rules, as the broker stated them. None = not stated."""
+
+    decimals: int | None = None
+    min_quantity: Decimal | None = None
+
+
+def parse_rule(detail: str) -> InstrumentRule:
+    """The rule a refusal states; an empty rule if it states none."""
+    decimals = PRECISION_RE.search(detail)
+    minimum = MIN_QUANTITY_RE.search(detail)
+    return InstrumentRule(
+        decimals=int(decimals.group(1)) if decimals else None,
+        min_quantity=Decimal(minimum.group(1)) if minimum else None)
+
+
+def instrument_rules(ledger: AnchorLedger) -> dict[str, InstrumentRule]:
+    """Every rule the broker has stated, per ticker, combined across refusals."""
+    out: dict[str, InstrumentRule] = {}
+    for state in ledger.refusals():
+        new = parse_rule(state.detail)
+        old = out.get(state.ticker, InstrumentRule())
+        decimals = [d for d in (old.decimals, new.decimals) if d is not None]
+        minimum = [m for m in (old.min_quantity, new.min_quantity) if m is not None]
+        out[state.ticker] = InstrumentRule(
+            decimals=min(decimals) if decimals else None,
+            min_quantity=max(minimum) if minimum else None)
+    return out
+
+
+@dataclass(frozen=True, slots=True)
 class Sizing:
     quantity: Decimal
     value_gbp: float            # quantity x the sizing price
@@ -465,20 +502,34 @@ class Sizing:
 
 
 def size_anchor(price_gbp: float, cap_price_gbp: float,
-                instrument: costs.Instrument) -> Sizing:
-    """Round DOWN to the assumed precision; lift to the assumed minimum.
+                instrument: costs.Instrument,
+                rule: InstrumentRule | None = None) -> Sizing:
+    """No stated rule: round DOWN to the assumed precision, lift to the assumed
+    minimum. A rule the broker stated: round UP to its decimal places, and to at
+    least its minimum quantity (operator, 2026-10-05).
 
     The estimate the GBP 3 cap is judged on uses the larger of the two prices
     plus the cost model's charges (FX fee, stamp duty, spread, slippage), so
     the cap errs towards refusing.
     """
     price = Decimal(repr(price_gbp))
-    quantity = (Decimal(repr(TARGET_GBP)) / price).quantize(QUANTUM, ROUND_DOWN)
     note = ""
-    minimum = Decimal(repr(ASSUMED_MIN_ORDER_GBP))
-    if quantity * price < minimum:
-        quantity = (minimum / price).quantize(QUANTUM, ROUND_UP)
-        note = f"raised to the assumed GBP {ASSUMED_MIN_ORDER_GBP:.2f} minimum"
+    if rule is not None and (rule.decimals is not None
+                             or rule.min_quantity is not None):
+        places = (rule.decimals if rule.decimals is not None
+                  else ASSUMED_QUANTITY_DECIMALS)
+        step = Decimal(1).scaleb(-places)
+        quantity = (Decimal(repr(TARGET_GBP)) / price).quantize(step, ROUND_UP)
+        if rule.min_quantity is not None and quantity < rule.min_quantity:
+            quantity = rule.min_quantity.quantize(step, ROUND_UP)
+        note = (f"broker's rule: {places} dp"
+                + (f", at least {rule.min_quantity}" if rule.min_quantity else ""))
+    else:
+        quantity = (Decimal(repr(TARGET_GBP)) / price).quantize(QUANTUM, ROUND_DOWN)
+        minimum = Decimal(repr(ASSUMED_MIN_ORDER_GBP))
+        if quantity * price < minimum:
+            quantity = (minimum / price).quantize(QUANTUM, ROUND_UP)
+            note = f"raised to the assumed GBP {ASSUMED_MIN_ORDER_GBP:.2f} minimum"
     consideration = float(quantity) * max(price_gbp, cap_price_gbp)
     est = consideration + costs.leg_cost(instrument, consideration, "BUY").total_gbp
     return Sizing(quantity=quantity, value_gbp=float(quantity) * price_gbp,
@@ -640,13 +691,15 @@ def build_plan(*, identities: Sequence[Identity | Unresolved],
                ledger: AnchorLedger,
                now: datetime,
                schedules: Schedules | None,
-               killswitch_on: bool) -> Plan:
+               killswitch_on: bool,
+               hold_above_gbp: float | None = None) -> Plan:
     """Decide every name, cheapest and most certain refusal first. Pure: no
     network, no orders -- the dry run prints this; the live run re-checks each
     BUY against fresh broker reads before it sends anything."""
     states = ledger.states()
     blocking = {s.ticker for s in states.values() if s.state in BLOCKING}
     refused = ledger.refused()
+    rules = instrument_rules(ledger)
     anchors_held = ledger.anchor_quantities()
     committed = ledger.committed_gbp()
     today = ledger.orders_on(now.astimezone(timezone.utc).date())
@@ -748,7 +801,7 @@ def build_plan(*, identities: Sequence[Identity | Unresolved],
         instrument = costs.Instrument(ticker=ticker, currency=ident.currency,
                                       market=ident.market, kind=ident.kind,
                                       aim=ident.aim)
-        sizing = size_anchor(sizing_gbp, check_gbp, instrument)
+        sizing = size_anchor(sizing_gbp, check_gbp, instrument, rules.get(ticker))
         if sizing.quantity <= 0:
             plan.rows.append(row(SKIP, "sizing: no positive quantity", unit_note,
                                  sizing_gbp))
@@ -757,6 +810,13 @@ def build_plan(*, identities: Sequence[Identity | Unresolved],
             plan.rows.append(row(SKIP, f"over GBP 3 cap: est GBP "
                                        f"{sizing.est_gbp:,.2f} for "
                                        f"{sizing.quantity} at the larger price",
+                                 unit_note, sizing_gbp, sizing))
+            continue
+        if hold_above_gbp is not None and sizing.est_gbp > hold_above_gbp:
+            plan.rows.append(row(SKIP, f"over GBP {hold_above_gbp:.2f}: est GBP "
+                                       f"{sizing.est_gbp:,.2f} for "
+                                       f"{sizing.quantity} -- held for the "
+                                       "operator to see first",
                                  unit_note, sizing_gbp, sizing))
             continue
         if running_gbp + sizing.est_gbp > LIFETIME_CAP_GBP:
@@ -1103,7 +1163,8 @@ def _read(what: str, call: Callable[[], list[dict[str, Any]]],
 # =============================================================== dry run ===
 
 def run_dry(*, inputs: Inputs, reader: Reader, ledger: AnchorLedger | None = None,
-            now: datetime | None = None, root: Path | None = None) -> Plan:
+            now: datetime | None = None, root: Path | None = None,
+            hold_above_gbp: float | None = None) -> Plan:
     """F11: reads, decides, prints. Constructs no order client and writes nothing
     to the ledger."""
     moment = now or datetime.now(timezone.utc)
@@ -1116,7 +1177,8 @@ def run_dry(*, inputs: Inputs, reader: Reader, ledger: AnchorLedger | None = Non
                       ledger=ledger or AnchorLedger(), now=moment,
                       schedules=(parse_schedules(exchanges)
                                  if exchanges is not None else None),
-                      killswitch_on=safety.killswitch_armed(root))
+                      killswitch_on=safety.killswitch_armed(root),
+                      hold_above_gbp=hold_above_gbp)
     plan.notes[:0] = notes
     return plan
 
@@ -1136,7 +1198,8 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
              ledger: AnchorLedger | None = None,
              now_fn: Callable[[], datetime] | None = None,
              root: Path | None = None,
-             sleep: Callable[[float], None] = time.sleep) -> LiveReport:
+             sleep: Callable[[float], None] = time.sleep,
+             hold_above_gbp: float | None = None) -> LiveReport:
     """Practice orders, one at a time, every fence re-checked before each."""
     clock = now_fn or (lambda: datetime.now(timezone.utc))
     book = ledger or AnchorLedger()
@@ -1190,7 +1253,8 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
     plan = build_plan(identities=inputs.identities, quotes=inputs.quotes,
                       fx=inputs.fx, positions=positions_now,
                       pending=pending_now, ledger=book, now=clock(),
-                      schedules=schedules, killswitch_on=False)
+                      schedules=schedules, killswitch_on=False,
+                      hold_above_gbp=hold_above_gbp)
     report.plan = plan
 
     for row in plan.rows:
@@ -1323,13 +1387,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="P20 anchors on the PRACTICE account. Dry run unless --live.")
     parser.add_argument("--live", action="store_true",
                         help="place practice orders (needs the order key)")
+    parser.add_argument("--hold-above", type=float, default=None, metavar="GBP",
+                        help="skip and report any name whose estimate is above this")
+    parser.add_argument("--authorise-retry", metavar="WORDS", default=None,
+                        help="lift every current refusal ONCE, recording these "
+                             "operator words in the ledger; sends nothing")
     args = parser.parse_args(argv)
+    if args.authorise_retry is not None:
+        book = AnchorLedger()
+        moment = datetime.now(timezone.utc)
+        lifted = [s for s in book.refusals() if not s.retry_authorised]
+        for state in lifted:
+            book.append(retry_record(book, state.intent_id, args.authorise_retry,
+                                     moment))
+        print(f"lifted {len(lifted)} refusal(s) once: "
+              + " ".join(sorted(s.ticker for s in lifted)))
+        return 0
     try:
         refuse_host_overrides()
         inputs = load_inputs()
         reader = BrokerReader()
         if not args.live:
-            plan = run_dry(inputs=inputs, reader=reader)
+            plan = run_dry(inputs=inputs, reader=reader,
+                           hold_above_gbp=args.hold_above)
             text = render(plan)
             REPORT_DIR.mkdir(parents=True, exist_ok=True)
             out = REPORT_DIR / f"dry-run-{plan.now:%Y-%m-%d}.txt"
@@ -1338,7 +1418,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"\n(dry run: nothing was sent; saved to {out.relative_to(REPO_ROOT)})")
             return 0
         orderer = AnchorOrderClient(order_credentials())
-        report = run_live(inputs=inputs, reader=reader, orderer=orderer)
+        report = run_live(inputs=inputs, reader=reader, orderer=orderer,
+                          hold_above_gbp=args.hold_above)
         if report.plan is not None:
             print(render(report.plan))
         print("\n".join(report.lines))

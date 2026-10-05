@@ -11,10 +11,43 @@ delay that row o could not", and row o still cannot be quoted — 1 session of t
 required for the US, and ZERO for London.** It resolves by the recorder running;
 nothing to build.
 NEXT BOX: let the delay accumulate (2 more sessions), then S3 closes. NOT S4.
+ALSO NEXT: the 13 London anchors in the next overlap (QT-12 FIX below).
 RENUMBERED 2026-10-04: S3 close = QT-13 (QT-12 is the P20 anchor buyer).
 CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
 the bot trades (same company / same index fund, two lines each; both still get an
 anchor, because the broker prices each line separately).
+
+## QT-12 FIX — sized to each name's rule; 5 of 18 bought, 13 London left (2026-10-05)
+Operator verbatim: *"GO QT-12 FIX — fail-first tests, red then green: 1. Size each
+anchor order to its instrument's rules: round quantity UP to the allowed decimal
+places and to at least the minimum quantity, then re-run live (practice only) for
+the 18 refused names during the London+NY overlap. Report any name over £1.10
+before buying it. Lifetime cap stays £100. 2. Settle CSH2 from broker records and
+report. 3. Prove the read-only key cannot order: one practice order attempt with
+it must be refused and create nothing. Report the exact reply. 4. Set the hourly
+recorder task to wake the computer to run; show the setting. Do NOT create the
+weekday top-up task — that gets its own GO."*
+BUILT (12 tests, red on old code, green): rules parsed from the broker's own
+refusals (precision N dp · "must trade at least X"); a name WITH a stated rule
+rounds UP to its places and to at least its minimum; a name without one is sized
+as before. Ledger kind RETRY_AUTHORISED = the operator's words lifting ONE refusal
+once (a second refusal sticks). `--hold-above GBP` skips + reports dearer names.
+CLI: `--authorise-retry "WORDS"` (writes ledger lines, sends nothing).
+(1) 18 lifted with the words above. Dry run: none over GBP 1.10 (max RIO 1.08).
+Live 14:27 UTC: INTC 0.0113, MRVL 0.0050, BE 0.0047, NFLX 0.020, WMT 0.0128 --
+5 ACCEPTED, 0 refused, broker holds all 5 (ledger still ACCEPTED; next run's
+reconcile settles them). **13 London names NOT bought: the 50-orders/day fence
+(F5) counts today's 45 attempts incl. refusals** -- fence kept, not raised. They
+stay lifted: ISF VALL SMGB VUKE SHEL HSBA RR BP GLEN BARC RIO AAL ULVR, est GBP
+1.01–1.08 each. NEXT: `python -m qb2.execution.anchors --live --hold-above 1.10`
+in tomorrow's overlap (14:30–16:15 London). Committed 32.92 of 100.
+(2) CSH2 FILLED from order history: 0.0008 for GBP 1.00, order 56050885915.
+(3) Read-only key (T212_API_KEY), POST market KO_US_EQ 0.02 at 14:29:09 UTC:
+**HTTP 403, empty body**; after: KO 0 pending, 0 positions, 0 order history.
+FACTS p now PROVED by an order. (KO is outside the 50; scratch script, not repo.)
+(4) QB2-Recorder WakeToRun=True (schtasks XML shows it). BUT the Balanced plan's
+"Allow wake timers" is AC=Enable, DC=Disable: it wakes ONLY when plugged in.
+Not changed. Weekday top-up task NOT created (own GO).
 
 ## QT-12 PART B — LIVE on the practice account (2026-10-05, 13:41–13:56 UTC)
 Operator verbatim: *"GO QT-12 LIVE — with these changes first (fail-first tests,
@@ -141,7 +174,7 @@ Scheduler starts tasks in C:\Windows\system32, which is why the old relative
 recorder.log never existed anywhere.
 
 FINGERPRINTS: v1 4add56ec…743b6 (must never move, verified 2026-10-04) ·
-qb2 a689addf…0acf after QT-12 Part B (b7698297…8682 after the weekend fix; 2ba4d210…ab12 after QT-12; was 69ae0f43…a0da after S3e; 8d007b10…c85c after S3d)
+qb2 3ce2c634…d125 after QT-12 FIX (a689addf…0acf after QT-12 Part B; b7698297…8682 after the weekend fix; 2ba4d210…ab12 after QT-12; was 69ae0f43…a0da after S3e; 8d007b10…c85c after S3d)
 
 ## P20 AGREED — cross-check prices against the broker (2026-10-04)
 Operator verbatim: *"GO on P20 — 'Compare yfinance with Trading 212 prices: hold
