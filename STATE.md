@@ -650,3 +650,7 @@ PLAN_V2 is superseded and kept for history (its gate still runs, still 32).
 - Pre-existing Qt fault: the manual suite prints 2 "Windows fatal exception:
   access violation" lines from a worker thread and still passes. Confirmed
   pre-existing (the untouched original repo does the same). Not diagnosed.
+- v1 QuantBot-Daily not run since 28 Jul; Windows refuses start (0x800710E0);
+  revive-or-retire decision deferred. (Operator words, recorded 2026-10-05.
+  Task Scheduler still shows it Ready with next run 05/10 07:30; last attempt
+  04/10 18:37 returned 0x800710E0. No change made.)
