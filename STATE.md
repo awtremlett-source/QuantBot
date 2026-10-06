@@ -2,8 +2,7 @@
 
 Updated: 2026-10-06. History before today → docs/archive/STATE_2026-10-05.md
 (verbatim: settled decisions incl. v1 knobs, Done log, stage write-ups).
-Last boxes: doc review (docs/sessions/2026-10-05-doc-review.md) · LEDGER GUARD+BACKUP ·
-BACKUP-OFFSITE.
+Last boxes: LEDGER GUARD+BACKUP · BACKUP-OFFSITE · QT-12 MARGIN (2026-10-06).
 
 Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete**: only the quote delay is left
 to measure (FACTS row o: 1 US session of 3, London 0). It resolves by the recorder
@@ -11,8 +10,8 @@ running; nothing to build. S3 close = QT-13. NOT S4.
 
 ## NEXT, in order
 1. LEDGER GUARD + BACKUP (F13): DONE 2026-10-05 — section below.
-2. QT-12 FINISH: run 2026-10-06 (below) left 48/50 priced; RR and BP are REFUSED.
-   They need operator words (`--authorise-retry "..."`) for one retry, in London hours.
+2. QT-12 FINISH: 49/50 priced. Only RR is left, REFUSED; it needs operator words
+   (`--authorise-retry "..."`) for one retry, London hours. It will now send 0.072 (3 dp).
    Gate is unchanged: test_ledger_guard + test_ledger_backup green on main first.
    Closes when 50/50 names have a broker price → write the close-out here.
 3. QT-13 = S3 close, once the delay has 3 US and 3 London sessions.
@@ -54,19 +53,20 @@ closes; university admins can read it)? Default: keep; move if you prefer a pers
 - Weekday anchor top-up TASK: not created — "that gets its own GO".
 
 ## QT-12 anchors (P20) — where it stands, 2026-10-06
-Operator verbatim: *"GO QT-12 FINISH — practice account only. ... If 50/50, write
-the QT-12 close-out in STATE.md, commit and push."*
-Gate 11:46 BST: 113 guard/anchor tests green on main (stale-ledger test incl.);
-QUANTBOT_BACKUP_DIR visible. Live run 11:47 BST: 11 accepted and held (ISF VALL
-SMGB VUKE SHEL HSBA GLEN BARC RIO AAL ULVR); 2 REFUSED, HTTP 400 min-quantity:
-RR (sent 0.0679, broker wanted ≥0.06822222), BP (sent 0.1794, wanted ≥0.18090720).
-Cause (INFERRED): broker min ≈ GBP 1 at ITS price (under ours); the rule now
-keeps the higher minimum. Held above GBP 1.10: none. Committed £44.36 of
-£100. Broker prices 48 of 50. Ledger backup verified on OneDrive 11:49 BST.
-Orders today: 13 of 50.
-DECISION REQUESTED: retry RR+BP once (`--authorise-retry`), or first add a small
-buffer so every order is a bit over the minimum (code change: PROPOSE→GO).
-Default: retry, no code change (learned minimums should clear it).
+Operator verbatim: *"GO QT-12 FINISH — practice account only."* · *"GO QT-12
+MARGIN — size each anchor order as the larger of (broker's remembered minimum,
+£1 estimate) × 1.05, rounded UP to the instrument's allowed precision; the £1.10
+hold-above still applies."* · *"GO QT-12 RETRY RR BP — record these words in
+the ledger and retry RR and BP once"* (in the ledger in full).
+11:47 BST: 11 FILLED (ISF VALL SMGB VUKE SHEL HSBA GLEN BARC RIO AAL ULVR,
+£1.02–1.09 each, settled from order history). RR and BP refused, min-quantity.
+MARGIN fix 89b4dcf (replay red→green). 11:57 retry: BP ACCEPTED 0.19 (est
+£1.07, broker holds it). RR REFUSED again: "invalid quantity precision 3"
+(sent 0.0717). Its rule is now 3 dp, at least 0.06822222.
+Committed £45.52 of £100. Broker prices 49 of 50. Orders today 15 of 50.
+Ledger backup verified on OneDrive 11:57 BST.
+DECISION REQUESTED: retry RR once more (it would send 0.072, est ≈£1.07).
+Default: yes, today before 16:15 London or next weekday.
 ## Carried flags
 - CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
   the bot trades (same company / same index fund); both still get an anchor.
