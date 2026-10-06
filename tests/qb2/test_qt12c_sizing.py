@@ -88,7 +88,7 @@ def test_the_minimum_quantity_is_met_rounded_up() -> None:
                                     kind="STOCK", aim=False)
     s = anchors.size_anchor(89.5, 89.5, inst,
                             InstrumentRule(min_quantity=Decimal("0.01121443")))
-    assert s.quantity == Decimal("0.0113"), s.quantity
+    assert s.quantity == Decimal("0.0118"), s.quantity     # 0.01121443 x 1.05
     assert s.quantity >= Decimal("0.01121443")
 
 
@@ -97,15 +97,33 @@ def test_both_rules_together() -> None:
                                     kind="STOCK", aim=False)
     s = anchors.size_anchor(4.0, 4.0, inst, InstrumentRule(
         decimals=2, min_quantity=Decimal("0.301")))
-    assert s.quantity == Decimal("0.31"), s.quantity
+    assert s.quantity == Decimal("0.32"), s.quantity       # 0.301 x 1.05 = 0.316
 
 
-def test_a_name_with_no_rule_is_sized_as_before() -> None:
+@pytest.mark.parametrize("price, remembered, broker_wanted", [
+    (14.772, "0.06781570", "0.06822222"),       # RR.L, refused 2026-10-06 11:47 BST
+    (5.578, "0.17935212", "0.18090720"),        # BP.L, same run
+])
+def test_margin_replays_the_2026_10_06_refusals(price: float, remembered: str,
+                                               broker_wanted: str) -> None:
+    """QT-12 MARGIN, operator verbatim (2026-10-06): *"size each anchor order as
+    the larger of (broker's remembered minimum, £1 estimate) × 1.05, rounded UP
+    to the instrument's allowed precision; the £1.10 hold-above still applies."*
+    The broker's minimum is about GBP 1 at ITS price, a little under ours."""
+    inst = costs.Instrument(ticker="X", currency="GBP", market="LSE",
+                            kind="STOCK", aim=False)
+    s = anchors.size_anchor(price, price, inst,
+                            InstrumentRule(min_quantity=Decimal(remembered)))
+    assert s.quantity >= Decimal(broker_wanted), s.quantity
+    assert s.est_gbp <= 1.10, s.est_gbp
+
+
+def test_no_rule_and_an_empty_rule_size_alike() -> None:
     inst = costs.Instrument(ticker="X", currency="GBP", market="LSE",
                                     kind="STOCK", aim=False)
     assert (anchors.size_anchor(118.7, 118.48, inst).quantity
             == anchors.size_anchor(118.7, 118.48, inst, InstrumentRule()).quantity
-            == Decimal("0.0085"))
+            == Decimal("0.0089"))                          # 1/118.7 x 1.05
 
 
 # ================================== a refusal is lifted only by recorded words ===

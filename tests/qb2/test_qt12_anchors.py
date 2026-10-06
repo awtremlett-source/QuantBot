@@ -601,8 +601,8 @@ def test_f6_clean_store_pounds_are_never_divided_again(tmp_path: Path) -> None:
     """Scar #22: the clean store is already in pounds for London."""
     row = next(r for r in plan(tmp_path).rows if r.yfinance == "AZN.L")
     assert row.price_gbp == pytest.approx(118.7)
-    assert row.quantity == Decimal("0.0085")             # 1/118.7 -> 0.0084 -> lifted
-    assert row.est_gbp is not None and 1.0 < row.est_gbp < 1.05
+    assert row.quantity == Decimal("0.0089")             # 1/118.7 x 1.05, rounded up
+    assert row.est_gbp is not None and 1.05 < row.est_gbp < 1.10
 
 
 def test_f6_a_planted_double_divided_price_cannot_buy_100x(
@@ -631,13 +631,13 @@ def test_f6_dollars_go_through_the_stored_rate_and_the_fx_fee(tmp_path: Path) ->
     assert row.est_gbp == pytest.approx(consideration * (1 + fees))
 
 
-def test_f6_quantity_rounds_down_then_lifts_only_to_the_minimum() -> None:
+def test_f6_quantity_is_gbp1_plus_margin_rounded_up() -> None:
     etf = costs.Instrument("T", "GBP", "LSE", "ETF")
     exact = anchors.size_anchor(0.5, 0.5, etf)
-    assert exact.quantity == Decimal("2.0000") and exact.note == ""
-    third = anchors.size_anchor(3.0, 3.0, etf)          # 1/3 -> 0.3333 (down)
-    assert third.quantity == Decimal("0.3334")           # lifted to >= GBP 1
-    assert "minimum" in third.note
+    assert exact.quantity == Decimal("2.1000")           # 2 x 1.05
+    third = anchors.size_anchor(3.0, 3.0, etf)          # 1/3 x 1.05 = 0.35
+    assert third.quantity == Decimal("0.3500")
+    assert "assumed" in third.note and "margin" in third.note
     assert third.quantity.as_tuple().exponent == -anchors.ASSUMED_QUANTITY_DECIMALS
 
 

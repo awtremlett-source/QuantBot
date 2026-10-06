@@ -54,7 +54,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from datetime import time as clock_time
-from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from decimal import ROUND_UP, Decimal
 from http.client import HTTPMessage
 from pathlib import Path
 from typing import IO, Any, Protocol
@@ -95,6 +95,7 @@ ORDER_TIMEOUT_SECONDS = 20.0
 
 # --- F5: the caps. Raising one needs the operator's GO (PLAN_V3 P20). ----------
 TARGET_GBP = 1.00
+SIZE_MARGIN = Decimal("1.05")  # QT-12 MARGIN, operator GO 2026-10-06
 MAX_ORDER_GBP = 3.00
 LIFETIME_CAP_GBP = 100.00
 MAX_ORDERS_PER_DAY = 50
@@ -106,7 +107,6 @@ MAX_ORDERS_PER_DAY = 50
 # them, and both are printed as UNKNOWN in every report.
 ASSUMED_MIN_ORDER_GBP = 1.00
 ASSUMED_QUANTITY_DECIMALS = 4
-QUANTUM = Decimal(1).scaleb(-ASSUMED_QUANTITY_DECIMALS)
 # FACTS u, v MEASURED 2026-10-05: the broker states each name's rule only when it
 # refuses -- "must trade at least 0.01121443", "invalid quantity precision 3".
 MIN_QUANTITY_RE = re.compile(r"must trade at least ([0-9]+(?:\.[0-9]+)?)")
@@ -505,32 +505,24 @@ class Sizing:
 def size_anchor(price_gbp: float, cap_price_gbp: float,
                 instrument: costs.Instrument,
                 rule: InstrumentRule | None = None) -> Sizing:
-    """No stated rule: round DOWN to the assumed precision, lift to the assumed
-    minimum. A rule the broker stated: round UP to its decimal places, and to at
-    least its minimum quantity (operator, 2026-10-05).
+    """Operator, 2026-10-06 (QT-12 MARGIN): the larger of the broker's remembered
+    minimum quantity and the GBP 1 estimate, times 1.05, rounded UP to the
+    allowed decimal places (the broker's stated rule, else the assumed 4).
 
     The estimate the GBP 3 cap is judged on uses the larger of the two prices
     plus the cost model's charges (FX fee, stamp duty, spread, slippage), so
     the cap errs towards refusing.
     """
+    rule = rule or InstrumentRule()
     price = Decimal(repr(price_gbp))
-    note = ""
-    if rule is not None and (rule.decimals is not None
-                             or rule.min_quantity is not None):
-        places = (rule.decimals if rule.decimals is not None
-                  else ASSUMED_QUANTITY_DECIMALS)
-        step = Decimal(1).scaleb(-places)
-        quantity = (Decimal(repr(TARGET_GBP)) / price).quantize(step, ROUND_UP)
-        if rule.min_quantity is not None and quantity < rule.min_quantity:
-            quantity = rule.min_quantity.quantize(step, ROUND_UP)
-        note = (f"broker's rule: {places} dp"
-                + (f", at least {rule.min_quantity}" if rule.min_quantity else ""))
-    else:
-        quantity = (Decimal(repr(TARGET_GBP)) / price).quantize(QUANTUM, ROUND_DOWN)
-        minimum = Decimal(repr(ASSUMED_MIN_ORDER_GBP))
-        if quantity * price < minimum:
-            quantity = (minimum / price).quantize(QUANTUM, ROUND_UP)
-            note = f"raised to the assumed GBP {ASSUMED_MIN_ORDER_GBP:.2f} minimum"
+    places = (rule.decimals if rule.decimals is not None
+              else ASSUMED_QUANTITY_DECIMALS)
+    floor = max(Decimal(repr(TARGET_GBP)) / price, rule.min_quantity or Decimal(0))
+    quantity = (floor * SIZE_MARGIN).quantize(Decimal(1).scaleb(-places), ROUND_UP)
+    stated = rule.decimals is not None or rule.min_quantity is not None
+    note = (("broker's rule: " if stated else "assumed: ") + f"{places} dp"
+            + (f", at least {rule.min_quantity}" if rule.min_quantity else "")
+            + f", x{SIZE_MARGIN} margin")
     consideration = float(quantity) * max(price_gbp, cap_price_gbp)
     est = consideration + costs.leg_cost(instrument, consideration, "BUY").total_gbp
     return Sizing(quantity=quantity, value_gbp=float(quantity) * price_gbp,
