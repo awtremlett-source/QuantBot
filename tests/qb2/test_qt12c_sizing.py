@@ -224,3 +224,41 @@ def test_the_live_run_never_sends_a_held_name(tmp_path: Path) -> None:
         sleep=lambda s: None, hold_above_gbp=1.10)
     assert wire.posted() == [], "a name over GBP 1.10 was bought before review"
     assert report.halted == ""
+
+
+def test_the_review_line_holds_without_being_asked(tmp_path: Path) -> None:
+    # Operator 2026-10-06: "the GBP 1.10 hold-above still applies" -- by default.
+    book = AnchorLedger(tmp_path / "ledger.jsonl")
+    book.append(retry_record(book, refuse(book, "AZNl_EQ", PRECISION_2), WORDS,
+                             MON_OVERLAP))
+    p = anchors.build_plan(
+        identities=[AZN],
+        quotes=quotes_on(MON_OVERLAP.date() - timedelta(days=3)),
+        fx=fx_on(MON_OVERLAP.date() - timedelta(days=3)),
+        positions=[], pending=[], ledger=book, now=MON_OVERLAP,
+        schedules=anchors.parse_schedules(calendar(MON_OVERLAP.date())),
+        killswitch_on=False)
+    azn = p.rows[0]
+    assert azn.decision == SKIP and "over GBP 1.10" in azn.reason, azn.reason
+
+
+def test_the_command_line_holds_above_gbp_1_10_by_default(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_run_dry(**kwargs: object) -> anchors.Plan:
+        seen["hold_above_gbp"] = kwargs["hold_above_gbp"]
+        raise anchors.AnchorRefused("stop here")
+
+    monkeypatch.setattr(anchors, "refuse_host_overrides", lambda: None)
+    monkeypatch.setattr(anchors, "load_inputs", lambda: None)
+    monkeypatch.setattr(anchors, "BrokerReader", lambda: None)
+    monkeypatch.setattr(anchors, "run_dry", fake_run_dry)
+    assert anchors.main([]) == 2
+    assert seen["hold_above_gbp"] == 1.10
+
+
+def test_the_report_states_the_measured_rules_not_the_old_assumption() -> None:
+    text = " ".join(anchors.UNKNOWN_FACTS)
+    assert "NOT DOCUMENTED" not in text
+    assert "measured" in text and "x1.05" in text

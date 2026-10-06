@@ -25,7 +25,7 @@ OVERSIZE_PINNED: dict[str, int] = {
     "tools/record_now.py": 384,
     "data/front_door.py": 470,
     "ingest/recorder.py": 820,
-    "execution/anchors.py": 1424,          # QT-12 MARGIN folded the sizing branches
+    "execution/anchors.py": 1422,          # QB-HOLD-1 dropped the unused GBP 1 assumption
 }
 
 

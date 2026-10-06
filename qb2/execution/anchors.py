@@ -99,16 +99,12 @@ SIZE_MARGIN = Decimal("1.05")  # QT-12 MARGIN, operator GO 2026-10-06
 MAX_ORDER_GBP = 3.00
 LIFETIME_CAP_GBP = 100.00
 MAX_ORDERS_PER_DAY = 50
+HOLD_ABOVE_GBP = 1.10  # operator 2026-10-06: "the £1.10 hold-above still applies"
 
-# --- F6: what Trading 212 does not publish, so we ASSUME it, and say so. -------
-# FACTS rows u and v: no minimum order and no quantity precision is documented,
-# and the instrument list carries neither. Community reports: about GBP 1, and an
-# error "invalid quantity precision 4". Both are assumptions until a fill proves
-# them, and both are printed as UNKNOWN in every report.
-ASSUMED_MIN_ORDER_GBP = 1.00
+# --- F6: FACTS u, v MEASURED 2026-10-05: the broker states each name's rule only
+# when it refuses -- "must trade at least 0.01121443", "invalid quantity precision
+# 3". Until a name is refused, assume 4 dp (printed as UNKNOWN in every report).
 ASSUMED_QUANTITY_DECIMALS = 4
-# FACTS u, v MEASURED 2026-10-05: the broker states each name's rule only when it
-# refuses -- "must trade at least 0.01121443", "invalid quantity precision 3".
 MIN_QUANTITY_RE = re.compile(r"must trade at least ([0-9]+(?:\.[0-9]+)?)")
 PRECISION_RE = re.compile(r"invalid quantity precision ([0-9]+)")
 # Two prices for one name must agree this closely after conversion. A unit slip is
@@ -153,10 +149,11 @@ WAIT = "WAIT"
 SKIP = "SKIP"
 
 UNKNOWN_FACTS: tuple[str, ...] = (
-    "minimum order value/quantity: NOT DOCUMENTED (FACTS row u) -- assumed "
-    f"GBP {ASSUMED_MIN_ORDER_GBP:.2f}",
-    "quantity precision per instrument: NOT DOCUMENTED (FACTS row v) -- assumed "
-    f"{ASSUMED_QUANTITY_DECIMALS} decimal places",
+    "minimum order per instrument: measured 2026-10-05 (FACTS row u), stated only "
+    f"in a refusal -- sized at the larger of GBP {TARGET_GBP:.0f} and the "
+    f"remembered minimum, x{SIZE_MARGIN}",
+    "quantity precision per instrument: measured 2026-10-05 (FACTS row v), stated "
+    f"only in a refusal -- assumed {ASSUMED_QUANTITY_DECIMALS} dp until refused",
     "which instruments allow fractional orders: no such field in the "
     "instrument list -- UNKNOWN until a fill",
 )
@@ -685,7 +682,7 @@ def build_plan(*, identities: Sequence[Identity | Unresolved],
                now: datetime,
                schedules: Schedules | None,
                killswitch_on: bool,
-               hold_above_gbp: float | None = None) -> Plan:
+               hold_above_gbp: float | None = HOLD_ABOVE_GBP) -> Plan:
     """Decide every name, cheapest and most certain refusal first. Pure: no
     network, no orders -- the dry run prints this; the live run re-checks each
     BUY against fresh broker reads before it sends anything."""
@@ -1156,7 +1153,7 @@ def _read(what: str, call: Callable[[], list[dict[str, Any]]],
 
 def run_dry(*, inputs: Inputs, reader: Reader, ledger: AnchorLedger | None = None,
             now: datetime | None = None, root: Path | None = None,
-            hold_above_gbp: float | None = None) -> Plan:
+            hold_above_gbp: float | None = HOLD_ABOVE_GBP) -> Plan:
     """F11: reads, decides, prints. Constructs no order client and writes nothing
     to the ledger."""
     moment = now or datetime.now(timezone.utc)
@@ -1197,7 +1194,7 @@ def run_live(*, inputs: Inputs, reader: Reader, orderer: AnchorOrderClient,
              now_fn: Callable[[], datetime] | None = None,
              root: Path | None = None,
              sleep: Callable[[float], None] = time.sleep,
-             hold_above_gbp: float | None = None) -> LiveReport:
+             hold_above_gbp: float | None = HOLD_ABOVE_GBP) -> LiveReport:
     """Practice orders, one at a time, every fence re-checked before each."""
     clock = now_fn or (lambda: datetime.now(timezone.utc))
     book = ledger or AnchorLedger()
@@ -1378,8 +1375,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="P20 anchors on the PRACTICE account. Dry run unless --live.")
     parser.add_argument("--live", action="store_true",
                         help="place practice orders (needs the order key)")
-    parser.add_argument("--hold-above", type=float, default=None, metavar="GBP",
-                        help="skip and report any name whose estimate is above this")
+    parser.add_argument("--hold-above", type=float, default=HOLD_ABOVE_GBP,
+                        metavar="GBP", help="skip and report any name whose estimate "
+                        f"is above this (default {HOLD_ABOVE_GBP:.2f})")
     parser.add_argument("--authorise-retry", metavar="WORDS", default=None,
                         help="lift every current refusal ONCE, recording these "
                              "operator words in the ledger; sends nothing")

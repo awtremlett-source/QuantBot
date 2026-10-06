@@ -2,7 +2,7 @@
 
 Updated: 2026-10-06. History before today → docs/archive/STATE_2026-10-05.md
 (verbatim: settled decisions incl. v1 knobs, Done log, stage write-ups).
-Last boxes: LEDGER GUARD+BACKUP · BACKUP-OFFSITE · QT-12 MARGIN (2026-10-06).
+Last boxes: BACKUP-OFFSITE · QT-12 MARGIN · QB-HOLD-1 (2026-10-06): £1.10 hold-above ON by default; report says rules u, v measured.
 
 Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete**: only the quote delay is left
 to measure (FACTS row o: 1 US session of 3, London 0). It resolves by the recorder
