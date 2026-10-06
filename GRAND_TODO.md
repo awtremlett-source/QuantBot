@@ -38,7 +38,7 @@ this page is only the running order. Earlier backlogs are archived whole at
       commit point, pence→pounds once, splits never re-applied · census + meter with
       birth certificate · first-light charts. STILL OPEN: earnings dates not
       ingested (S3 gate line) · quote delay still UNMEASURED (0 samples)
-- [~] QT-12 P20 ANCHOR BUYER (2026-10-04): qb2/execution/anchors.py BUILT + dry-run
+- [x] (2026-10-06 CLOSED: 50/50 priced, £46.59 of £100) QT-12 P20 ANCHOR BUYER (2026-10-04): qb2/execution/anchors.py BUILT + dry-run
       (45 names to buy, est £45.69; 5 already held), fences F1–F12 each seen red;
       the ONE order path, practice-only. LIVE = Part B. S3 close renumbered QT-13
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
