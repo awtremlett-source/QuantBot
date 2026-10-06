@@ -1,6 +1,6 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-05. History before today → docs/archive/STATE_2026-10-05.md
+Updated: 2026-10-06. History before today → docs/archive/STATE_2026-10-05.md
 (verbatim: settled decisions incl. v1 knobs, Done log, stage write-ups).
 Last boxes: doc review (docs/sessions/2026-10-05-doc-review.md) · LEDGER GUARD+BACKUP ·
 BACKUP-OFFSITE.
@@ -11,12 +11,9 @@ running; nothing to build. S3 close = QT-13. NOT S4.
 
 ## NEXT, in order
 1. LEDGER GUARD + BACKUP (F13): DONE 2026-10-05 — section below.
-2. QT-12 FINISH: `python -m qb2.execution.anchors --live --hold-above 1.10` on a NEW
-   UTC day in London hours (08:10–16:15 London), earliest Tue 2026-10-06.
-   **GATE: it may ONLY start if the ledger guard is merged on main and green** —
-   first run `.venv-qb2/Scripts/python -m pytest tests/qb2/test_ledger_guard.py
-   tests/qb2/test_ledger_backup.py -q`;
-   red, missing, or not on main = do not run.
+2. QT-12 FINISH: run 2026-10-06 (below) left 48/50 priced; RR and BP are REFUSED.
+   They need operator words (`--authorise-retry "..."`) for one retry, in London hours.
+   Gate is unchanged: test_ledger_guard + test_ledger_backup green on main first.
    Closes when 50/50 names have a broker price → write the close-out here.
 3. QT-13 = S3 close, once the delay has 3 US and 3 London sessions.
 
@@ -56,13 +53,20 @@ closes; university admins can read it)? Default: keep; move if you prefer a pers
   still needs its own GO.
 - Weekday anchor top-up TASK: not created — "that gets its own GO".
 
-## QT-12 anchors (P20) — where it stands, 2026-10-05
-Ledger: 32 FILLED · 5 PRE_EXISTING · 18 REFUSED (all lifted once). Committed £32.93
-of £100. Broker prices 37 of 50. Missing = 13 London names, still lifted: ISF VALL
-SMGB VUKE SHEL HSBA RR BP GLEN BARC RIO AAL ULVR (est £1.01–1.08 each, none over
-£1.10). Two runs on 10-05 bought 0: the 50/UTC-day fence counts refusals too (kept).
-Read-only key proved unable to order (HTTP 403, nothing created).
-
+## QT-12 anchors (P20) — where it stands, 2026-10-06
+Operator verbatim: *"GO QT-12 FINISH — practice account only. ... If 50/50, write
+the QT-12 close-out in STATE.md, commit and push."*
+Gate 11:46 BST: 113 guard/anchor tests green on main (stale-ledger test incl.);
+QUANTBOT_BACKUP_DIR visible. Live run 11:47 BST: 11 accepted and held (ISF VALL
+SMGB VUKE SHEL HSBA GLEN BARC RIO AAL ULVR); 2 REFUSED, HTTP 400 min-quantity:
+RR (sent 0.0679, broker wanted ≥0.06822222), BP (sent 0.1794, wanted ≥0.18090720).
+Cause (INFERRED): broker min ≈ GBP 1 at ITS price (under ours); the rule now
+keeps the higher minimum. Held above GBP 1.10: none. Committed £44.36 of
+£100. Broker prices 48 of 50. Ledger backup verified on OneDrive 11:49 BST.
+Orders today: 13 of 50.
+DECISION REQUESTED: retry RR+BP once (`--authorise-retry`), or first add a small
+buffer so every order is a bit over the minimum (code change: PROPOSE→GO).
+Default: retry, no code change (learned minimums should clear it).
 ## Carried flags
 - CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
   the bot trades (same company / same index fund); both still get an anchor.
