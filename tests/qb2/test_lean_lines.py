@@ -17,7 +17,6 @@ QB2 = Path(__file__).resolve().parents[2] / "qb2"
 OVERSIZE_PINNED: dict[str, int] = {
     "data/census.py": 255,
     "ingest/dividends.py": 269,
-    "tools/sample_delay.py": 274,
     "execution/anchor_ledger.py": 283,
     "tools/build_universe.py": 318,
     "ingest/verify_universe.py": 341,

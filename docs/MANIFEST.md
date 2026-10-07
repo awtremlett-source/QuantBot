@@ -40,8 +40,9 @@ this logic leaves NVDA or this laptop.
     anchor_ledger.py (its append-only ledger, data/anchors/ledger.jsonl; the bot
     reads anchor quantities from here, never from anchors.py)
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
-    from CLEAN only) · sample_delay.py (measures FACTS row o, plus a meter that
-    goes red when a session passes with no samples) · record_now.py (hourly top-up
+    from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
+    (which samples count: full calendar sessions, each bar once; the meter that
+    goes red when a session has under 3 samples) · record_now.py (hourly top-up
     vs after-hours catch-up, under a single-writer lock, with a per-name ledger) ·
     run_recorder.bat (one log per run, kept 30 days) · fingerprint.py
 - logs/recorder/ one log per recorder run, gitignored, rotated after 30 days

@@ -25,8 +25,10 @@ from __future__ import annotations
 import json
 import statistics
 from collections.abc import Sequence
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
+
+from qb2.tools import delay_count
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = REPO_ROOT / "data" / "raw" / "intraday" / "manifest.jsonl"
@@ -58,7 +60,9 @@ def take_samples(probes: Sequence[tuple[str, str]] = PROBES,
     clock_check = clock_module.check()
 
     for ticker, market in probes:
-        if not market_is_open(market, now):
+        # Weekday hours AND the real calendar: holidays and half-days are shut.
+        if not (market_is_open(market, now)
+                and delay_count.in_full_session(market, now)):
             continue
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -83,61 +87,32 @@ def take_samples(probes: Sequence[tuple[str, str]] = PROBES,
 
 def collected(manifest: Path | None = None,
               verified_only: bool = False) -> dict[str, list[float]]:
-    """Delay samples by market.
+    """Delay samples by market -- only the ones delay_count says may count.
 
     ``verified_only`` keeps just the readings taken with a checked clock. An
     unverified reading is not wrong -- it is unknown, and the difference matters
     when deciding whether row o may be quoted.
     """
-    target = manifest or MANIFEST
     out: dict[str, list[float]] = {}
-    if not target.exists():
-        return out
-    with target.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(row, dict) and row.get("kind") == "delay_sample":
-                if verified_only and not row.get("clock_checked"):
-                    continue
-                market = str(row.get("market"))
-                age = row.get("age_seconds")
-                if isinstance(age, (int, float)):
-                    out.setdefault(market, []).append(float(age))
+    rows = delay_count.read_samples(manifest or MANIFEST)
+    for row in delay_count.countable(rows, verified_only=verified_only):
+        age = row["age_seconds"]
+        if isinstance(age, (int, float)):
+            out.setdefault(str(row["market"]), []).append(float(age))
     return out
 
 
 def sessions_covered(manifest: Path | None = None,
                      verified_only: bool = False) -> dict[str, int]:
-    """How many distinct days each market has samples from."""
-    target = manifest or MANIFEST
+    """How many distinct FULL sessions each market has countable samples from."""
     days: dict[str, set[str]] = {}
-    if not target.exists():
-        return {}
-    with target.open(encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(row, dict) and row.get("kind") == "delay_sample":
-                if verified_only and not row.get("clock_checked"):
-                    continue
-                stamp = str(row.get("at_utc", ""))[:10]
-                if stamp:
-                    days.setdefault(str(row.get("market")), set()).add(stamp)
+    rows = delay_count.read_samples(manifest or MANIFEST)
+    for row in delay_count.countable(rows, verified_only=verified_only):
+        days.setdefault(str(row["market"]), set()).add(str(row["at_utc"])[:10])
     return {market: len(seen) for market, seen in days.items()}
 
 
-def verdict(manifest: Path | None = None) -> str:
+def verdict(manifest: Path | None = None, today: date | None = None) -> str:
     """Plain words, and the word UNMEASURED when that is the truth.
 
     Only readings taken with a CHECKED clock count towards the threshold. A
@@ -151,6 +126,9 @@ def verdict(manifest: Path | None = None) -> str:
     unverified = {m: len(everything.get(m, [])) - len(samples.get(m, []))
                   for m in everything}
     lines = ["QUOTE DELAY (FACTS row o)"]
+    # The meter rides in the verdict because every recorder run prints this.
+    meter = [f"  meter {m['market']}: {m['status']} -- {m['detail']}"
+             for m in delay_count.session_meter(manifest or MANIFEST, today=today)]
     if not samples:
         total = sum(len(v) for v in everything.values())
         lines.append(
@@ -160,7 +138,7 @@ def verdict(manifest: Path | None = None) -> str:
             lines.append(
                 f"      ({total} unverified reading(s) on record and NOT counted: "
                 "the clock they were taken on was never checked)")
-        return "\n".join(lines)
+        return "\n".join(lines + meter)
 
     for market in sorted(samples):
         ages = samples[market]
@@ -182,7 +160,7 @@ def verdict(manifest: Path | None = None) -> str:
         if market not in samples and count:
             lines.append(f"  {market}: UNMEASURED -- {count} unverified "
                          "reading(s) only, none with a checked clock")
-    return "\n".join(lines)
+    return "\n".join(lines + meter)
 
 
 def main() -> None:
@@ -199,76 +177,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-# --------------------------------------------------------------- the meter --
-# A number that is only ever absent looks exactly like a number that is fine.
-# FACTS row o sat "UNMEASURED" for three attempts and nothing ever went red about
-# it, because nothing was watching for the ABSENCE of samples. This watches.
-
-def completed_sessions(market: str, days_back: int = 5,
-                       today: date | None = None) -> list[date]:
-    """Trading sessions that have finished, newest first. Real calendar."""
-    import exchange_calendars as xcals  # type: ignore[import-untyped]
-    import pandas as pd
-
-    code = {"US": "XNYS", "LSE": "XLON"}[market]
-    calendar = xcals.get_calendar(code)
-    end = today or date.today()
-    out: list[date] = []
-    for back in range(1, days_back + 1):
-        day = end - timedelta(days=back)
-        stamp = pd.Timestamp(day)
-        try:
-            if calendar.is_session(stamp):
-                out.append(day)
-        except Exception:                                 # noqa: BLE001
-            continue
-    return out
-
-
-def session_meter(manifest: Path | None = None, *,
-                  markets: Sequence[str] = ("US", "LSE"),
-                  days_back: int = 3,
-                  today: date | None = None) -> list[dict[str, object]]:
-    """RED for any market whose finished session collected no samples at all.
-
-    A session that came and went without a single sample means the sampler did
-    not run, or ran only when the market was shut. Either way the delay is not
-    being measured and the only honest colour is red.
-    """
-    target = manifest or MANIFEST
-    by_day: dict[tuple[str, str], int] = {}
-    if target.exists():
-        with target.open(encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(row, dict) and row.get("kind") == "delay_sample":
-                    key = (str(row.get("market")), str(row.get("at_utc", ""))[:10])
-                    by_day[key] = by_day.get(key, 0) + 1
-
-    meters: list[dict[str, object]] = []
-    for market in markets:
-        empty: list[str] = []
-        for session in completed_sessions(market, days_back, today):
-            stamp = session.isoformat()
-            if by_day.get((market, stamp), 0) == 0:
-                empty.append(stamp)
-        meters.append({
-            "market": market,
-            "status": "RED" if empty else "OK",
-            "sessions_checked": days_back,
-            "sessions_with_no_samples": empty,
-            "detail": (f"no delay sample at all on {', '.join(empty)} -- the "
-                       "sampler did not run while this market was open"
-                       if empty else
-                       f"every finished session in the last {days_back} has "
-                       "samples"),
-        })
-    return meters

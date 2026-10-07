@@ -37,10 +37,14 @@ this page is only the running order. Earlier backlogs are archived whole at
       that became another company) · FRONT DOOR RAW→CLEAN, one writer, manifest as
       commit point, pence→pounds once, splits never re-applied · census + meter with
       birth certificate · first-light charts. STILL OPEN: earnings dates not
-      ingested (S3 gate line) · quote delay still UNMEASURED (0 samples)
+      ingested (S3 gate line) · quote delay NOT YET ENOUGH (US 9, London 4 of 20)
 - [x] (2026-10-06 CLOSED: 50/50 priced, £46.59 of £100) QT-12 P20 ANCHOR BUYER (2026-10-04): qb2/execution/anchors.py BUILT + dry-run
       (45 names to buy, est £45.69; 5 already held), fences F1–F12 each seen red;
       the ONE order path, practice-only. LIVE = Part B. S3 close renumbered QT-13
+- [x] QT-12R (2026-10-07) Recorder London diagnosis: PC shut down every London
+      morning (no code fault). Session meter wired + RED below 3/session;
+      delay_count.py: full calendar sessions only, each bar once → docs/reports/QT-12R.md
+- [ ] QT-13 = S3 close, after Fri 2026-10-09 21:00 UK (needs PC on 08:00–21:00 Thu+Fri)
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
       survivorship mark-down
 - [ ] S5 Safety layer FIRST: stops, brakes, pot limits, age + earnings checks,

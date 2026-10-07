@@ -477,7 +477,9 @@ def test_a_handful_of_samples_is_not_allowed_to_call_itself_measured(
             fh.write(json.dumps({"kind": "delay_sample", "market": "US",
                                  "age_seconds": 900.0,
                                  "clock_checked": True,
-                                 "at_utc": "2026-10-01T15:00:00+00:00"}) + "\n")
+                                 # distinct minutes: identical rows are one
+                                 # reading read twice (QT-12R overlap guard)
+                                 "at_utc": f"2026-10-01T15:0{n}:00+00:00"}) + "\n")
     text = sample_delay.verdict(manifest)
     assert "NOT YET ENOUGH" in text
     assert "5 clock-checked samples over 1 session" in text

@@ -12,7 +12,6 @@ Every test below names the specific silence it breaks.
 
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Sequence
 from datetime import date, datetime, timedelta, timezone
@@ -22,7 +21,7 @@ import pandas as pd
 import pytest
 
 from qb2.ingest import recorder
-from qb2.tools import record_now, sample_delay
+from qb2.tools import record_now
 
 UTC = timezone.utc
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -290,34 +289,7 @@ def test_a_slow_run_raises_an_alarm_rather_than_passing_quietly() -> None:
 
 # ======================================================== the delay sampler
 
-def test_a_session_with_no_samples_is_red(tmp_path: Path) -> None:
-    """The birth certificate (SCARS #9), for the meter that was missing.
-
-    Row o sat unmeasured through three attempts and nothing ever went red about
-    it, because nothing watched for samples being ABSENT. A finished session with
-    no sample at all means the sampler did not run while the market was open.
-    """
-    manifest = tmp_path / "manifest.jsonl"
-    manifest.write_text("", encoding="utf-8")
-
-    meters = sample_delay.session_meter(
-        manifest, markets=("US",), days_back=3, today=date(2026, 10, 2))
-    assert meters[0]["status"] == "RED"
-    assert meters[0]["sessions_with_no_samples"]
-    assert "did not run" in str(meters[0]["detail"])
-
-
-def test_a_session_with_samples_is_not_red(tmp_path: Path) -> None:
-    """The other half of the certificate: it must be able to go green too."""
-    manifest = tmp_path / "manifest.jsonl"
-    with manifest.open("w", encoding="utf-8") as fh:
-        for day in ("2026-09-29", "2026-09-30", "2026-10-01"):
-            fh.write(json.dumps({"kind": "delay_sample", "market": "US",
-                                 "age_seconds": 80.0,
-                                 "at_utc": f"{day}T15:00:00+00:00"}) + "\n")
-    meters = sample_delay.session_meter(
-        manifest, markets=("US",), days_back=3, today=date(2026, 10, 2))
-    assert meters[0]["status"] == "OK", meters[0]["detail"]
+# The session meter's tests moved to test_delay_count.py with the meter (QT-12R).
 
 
 def test_the_sampler_runs_before_anything_slow() -> None:
