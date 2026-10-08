@@ -42,7 +42,8 @@ this logic leaves NVDA or this laptop.
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
     (which samples count: full calendar sessions, each bar once; the meter that
-    goes red when a session has under 3 samples) · record_now.py (hourly top-up
+    goes red when a session has under 3 samples) · status_push.py (QB2-StatusPush
+    task: hourly status file → orphan branch "status", secret scan first) · record_now.py (hourly top-up
     vs after-hours catch-up, under a single-writer lock, with a per-name ledger) ·
     run_recorder.bat (one log per run, kept 30 days) · fingerprint.py
 - logs/recorder/ one log per recorder run, gitignored, rotated after 30 days

@@ -81,20 +81,28 @@ def in_full_session(market: str, moment: datetime,
 
 def read_samples(manifest: Path) -> list[dict[str, object]]:
     """Every delay_sample row on file. Unreadable lines are skipped, as before."""
+    return scan_samples(manifest)[0]
+
+
+def scan_samples(manifest: Path) -> tuple[list[dict[str, object]], int]:
+    """read_samples, plus how many sample lines could not be read -- a line
+    half-written while the recorder appends -- so a reader can say so (QT-12S)."""
     rows: list[dict[str, object]] = []
+    bad = 0
     if not manifest.exists():
-        return rows
-    with manifest.open(encoding="utf-8") as fh:
+        return rows, bad
+    with manifest.open(encoding="utf-8", errors="replace") as fh:
         for line in fh:
             if '"delay_sample"' not in line:
                 continue
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
+                bad += 1
                 continue
             if isinstance(row, dict) and row.get("kind") == "delay_sample":
                 rows.append(row)
-    return rows
+    return rows, bad
 
 
 def countable(rows: Iterable[dict[str, object]], *, verified_only: bool = False,

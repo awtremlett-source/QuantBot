@@ -44,6 +44,9 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [x] QT-12R (2026-10-07) Recorder London diagnosis: PC shut down every London
       morning (no code fault). Session meter wired + RED below 3/session;
       delay_count.py: full calendar sessions only, each bar once → docs/reports/QT-12R.md
+- [x] QT-12S (2026-10-08) Hourly status push: task QB2-StatusPush (Mon–Fri :50,
+      08:50–21:50 UK) pushes logs/status_push/recorder_status.md to orphan branch
+      "status" (one commit, force-pushed); recorder untouched → docs/reports/QT-12S.md
 - [ ] QT-13 = S3 close, after Fri 2026-10-09 21:00 UK (needs PC on 08:00–21:00 Thu+Fri)
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
       survivorship mark-down

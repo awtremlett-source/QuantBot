@@ -1,11 +1,11 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-07. History → docs/archive/STATE_2026-10-06.md (LEDGER GUARD,
+Updated: 2026-10-08. History → docs/archive/STATE_2026-10-06.md (LEDGER GUARD,
 BACKUP-OFFSITE, QT-12 close-out, verbatim) and STATE_2026-10-05.md.
-Last box: QT-12R (2026-10-07) → docs/reports/QT-12R.md.
+Last box: QT-12S (2026-10-08) → docs/reports/QT-12S.md.
 
 Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete**: only the quote delay is left
-(FACTS row o). Clock-checked samples: US 9, London 4, each over 3 sessions; the
+(FACTS row o). Counted samples (17:12 run, 8 Oct): US 19, London 14, each over 4 sessions; the
 bar is 20 samples over 3 sessions. Nothing to build. S3 close = QT-13. NOT S4.
 
 ## NEXT, in order
@@ -14,6 +14,16 @@ bar is 20 samples over 3 sessions. Nothing to build. S3 close = QT-13. NOT S4.
    on mains, never from Shut down).
 2. QT-13 runs after Fri 2026-10-09 21:00 UK (US close), if London gets its 8 runs
    on both days. London has no slack: one missed hour → after Mon 2026-10-12.
+
+## QT-12S — DONE 2026-10-08 (hourly status push)
+Operator, 2026-10-08: *"can the recorder automatically push every set interval
+and then you can check it automatically?"*
+Task QB2-StatusPush (Mon–Fri :50, 08:50–21:50 UK, pythonw, no wake) runs
+qb2/tools/status_push.py: counts via delay_count (read-only, no lock, no data/
+writes), writes logs/status_push/recorder_status.md, secret scan, then pushes
+ONLY that file to orphan branch "status" (plumbing, force, 1 commit). Read it:
+raw.githubusercontent.com/awtremlett-source/QuantBot/status/status/recorder_status.md
+Outcomes → logs/status_push/push.log. QB2-Recorder byte-for-byte unchanged.
 
 ## QT-12R — DONE 2026-10-07 (recorder London diagnosis + fix)
 Cause: the PC is shut down nightly (02:13–03:24, Fast Startup) and switched on in
