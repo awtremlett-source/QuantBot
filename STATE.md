@@ -76,5 +76,5 @@ London delay ≈ 16–17 min (BP.L); US ≈ 1–2 min (AAPL).
 - CLAUDE.md budget 4,000 (QT-04 had 3,600): default kept, no operator reply yet.
 
 ## Fingerprints
-v1 4add56ec…743b6 (must never move; re-verified 2026-10-07) · qb2 10351678…bd67d
-after QT-12R (was ec7efd39…8646 at 278f2a2).
+v1 4add56ec…743b6 (must never move; re-verified 2026-10-08) · qb2 073e0978…fe543
+after QT-12S, on a normal CRLF checkout (was 10351678…bd67d after QT-12R).

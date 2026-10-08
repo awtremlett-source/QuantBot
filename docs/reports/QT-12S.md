@@ -126,7 +126,7 @@ still run after Fri 9 Oct 21:00 UK.
 | ruff | clean | clean |
 | mypy --strict | 4 errors in manual/ui Qt stubs | the same 4, none new |
 | v1 fingerprint | 4add56ec…743b6 | 4add56ec…743b6 |
-| qb2 fingerprint | 10351678…bd67d | **6b390f5f…234ce**: status_push.py added, delay_count.py gained scan_samples |
+| qb2 fingerprint | 10351678…bd67d | **073e0978…fe543**: status_push.py added, delay_count.py gained scan_samples. (6b390f5f…234ce in d8b2bda's message was taken with LF files on disk; this is the normal CRLF checkout) |
 
 One-in-one-out: nothing dead to remove. The new code reuses `delay_count`,
 `sample_delay.MANIFEST` and its targets, and `t212_client.read_env_file`.
