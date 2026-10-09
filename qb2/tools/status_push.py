@@ -8,6 +8,8 @@ The recorder itself is not touched. A separate task (QB2-StatusPush, Mon-Fri at
 
 1. reads the manifest READ-ONLY and counts with delay_count -- the one rule, no
    second copy. It never takes the recorder's lock and never writes data/;
+   It also reads the last saved censuses (data/clean, READ-ONLY) for the
+   clean-store line, and today's run logs for the trigger rule (run_times);
 2. writes a small plain-words file to logs/status_push/recorder_status.md;
 3. scans it for anything secret-shaped and refuses to push if it finds one;
 4. pushes ONLY that file to the orphan branch "status": one commit, rebuilt and
@@ -31,7 +33,8 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from qb2.tools import delay_count, sample_delay
+from qb2.data import clean_step
+from qb2.tools import delay_count, run_times, sample_delay
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO_ROOT / "logs" / "status_push"
@@ -46,9 +49,8 @@ REMOTE = "origin"
 UK = ZoneInfo("Europe/London")
 SINCE = date(2026, 10, 5)                  # first day of clock-checked samples
 MARKETS = (("LSE", "London"), ("US", "US"))
-# Mirrors QB2-Recorder's trigger: 07:00 UK and every hour for 14 hours.
-RECORDER_HOURS = range(7, 21)
-GRACE = timedelta(minutes=20)              # a run's sample is on file by then
+RECORDER_HOURS = run_times.HOURS           # QB2-Recorder's 14 fixed triggers
+GRACE = run_times.GRACE                    # a run's sample is on file by then
 
 Git = Callable[..., object]
 
@@ -73,30 +75,6 @@ def last_run(log_dir: Path) -> str:
     if finished is None:
         return f"{begin}, no finish line yet (still running, or killed)"
     return f"{begin}, finished {_uk(finished):%H:%M}, exit {exit_code}"
-
-
-def runs_today(log_dir: Path, now: datetime) -> str:
-    """Today's run starts, flagging any that began GRACE or more past the hour.
-
-    QT-13: after a late catch-up (PC switched on at 08:50) Windows re-based
-    the hourly trigger, so every run landed at :53 and London's last slot fell
-    after its close. Nothing on this page said so; now it does.
-    """
-    today = _uk(now).date()
-    starts = []
-    for path in sorted(log_dir.glob(f"run-{today.isoformat()}T*.log")):
-        head = path.read_text(encoding="utf-8", errors="replace").splitlines()[:1]
-        if head and head[0].startswith("==== run started "):
-            starts.append(_uk(datetime.fromisoformat(head[0].split()[-1])))
-    if not starts:
-        return "- Runs today (UK): none yet"
-    late = [s for s in starts if timedelta(minutes=s.minute) >= GRACE]
-    line = "- Runs today (UK): " + ", ".join(f"{s:%H:%M}" for s in starts)
-    if late:
-        line += (f" -- OFF THE HOUR: {len(late)} of {len(starts)} started "
-                 f"{int(GRACE.total_seconds() // 60)}+ min past the hour, so a "
-                 "slot can fall after a market's close (QT-13)")
-    return line
 
 
 def _market(market: str, name: str, rows: Sequence[dict[str, object]],
@@ -134,7 +112,8 @@ def _market(market: str, name: str, rows: Sequence[dict[str, object]],
     return lines + [""]
 
 
-def build_status(manifest: Path, log_dir: Path, now: datetime) -> str:
+def build_status(manifest: Path, log_dir: Path, now: datetime,
+                 clean_root: Path | None = None) -> str:
     """The whole status file, in plain words. Reads; never writes."""
     raw, bad = delay_count.scan_samples(manifest)
     rows = [r for r in delay_count.countable(raw, verified_only=True)
@@ -144,7 +123,8 @@ def build_status(manifest: Path, log_dir: Path, now: datetime) -> str:
     lines = ["# QB2 recorder status", "",
              f"- Updated at: {_uk(now):%Y-%m-%d %H:%M} (UK)",
              f"- Last recorder run: {last_run(log_dir)}",
-             runs_today(log_dir, now),
+             *run_times.judge(run_times.starts_today(log_dir, now), now),
+             f"- {clean_step.status_verdict(now, clean_root=clean_root).line()}",
              f"- Target: {sample_delay.MIN_SAMPLES_PER_MARKET} counted samples per "
              f"market over {sample_delay.MIN_SESSIONS} full sessions. Counted = "
              "clock-checked, inside a full session, each bar once "

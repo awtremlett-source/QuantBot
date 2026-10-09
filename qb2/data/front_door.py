@@ -7,11 +7,9 @@ the two ever disagree about what happened, RAW wins and CLEAN is rebuilt.
 
 What the door insists on, and why each one is here:
 
-**One writer, enforced by a lock.** Two copies of the recorder running at once --
-easy on a laptop that wakes from sleep and fires a catch-up run into a run already
-going -- would interleave writes into the same file. The lock makes the second one
-wait or refuse, and a stale lock from a machine that was switched off mid-run is
-detected rather than respected forever.
+**One writer, enforced by a lock.** Two writers at once (a catch-up fired into a
+run already going) would interleave rows in one file. The second one refuses, and
+a stale lock from a machine switched off mid-run is detected, not respected forever.
 
 **The manifest is the commit point.** A parquet file is written under a temporary
 name, flushed to the physical disk, and only then renamed and recorded in the
@@ -36,9 +34,8 @@ session have? Not 390 every day: exchanges close early, and the UK and US move
 their clocks on different weekends. ``exchange_calendars`` is asked, so a half-day
 is not reported as missing data.
 
-**Reconciliation is exact, not approximate.** Every row that goes in comes out
-somewhere -- written, already present, quarantined or dropped with a reason -- and
-the arithmetic is asserted. "About right" is how data quietly goes missing.
+**Reconciliation is exact.** Every row that goes in comes out written, already
+present, quarantined or dropped with a reason, and the arithmetic is asserted.
 """
 
 from __future__ import annotations
@@ -166,6 +163,7 @@ class Reconciliation:
     files_excluded: int = 0
     pence_converted: int = 0
     problems: list[str] = field(default_factory=list)
+    unreadable: list[str] = field(default_factory=list)   # skipped, named, retried
 
     @property
     def accounted_for(self) -> int:
@@ -215,11 +213,7 @@ def manifest_path(root: Path | None = None) -> Path:
 
 
 def read_manifest(root: Path | None = None) -> dict[str, dict[str, object]]:
-    """What the store believes it holds, keyed by the raw file it came from.
-
-    The manifest IS the store's index: a parquet file nobody wrote a line about
-    is treated as absent, because it may be a half-written leftover.
-    """
+    """What the store holds, keyed by raw source. No manifest line = absent."""
     path = manifest_path(root)
     if not path.exists():
         return {}
@@ -254,9 +248,8 @@ def _write_parquet_atomically(frame: pd.DataFrame, destination: Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_suffix(".parquet.partial")
     frame.to_parquet(temporary)
-    # Flush to the physical disk before the rename, so a power cut cannot leave a
-    # file that exists but holds nothing. The handle must be WRITABLE for this:
-    # fsync on a read-only handle fails with EBADF on Windows.
+    # Flush to disk before the rename, so a power cut cannot leave an empty file.
+    # The handle must be WRITABLE: fsync on a read-only one is EBADF on Windows.
     with temporary.open("r+b") as fh:
         fh.flush()
         os.fsync(fh.fileno())
@@ -345,7 +338,13 @@ def ingest_file(path: Path, *, symbol: str, interval: str, market: str,
     source = path.relative_to(base).as_posix()
     digest = file_digest(path)
 
-    frame = pd.read_parquet(path)
+    try:
+        frame = pd.read_parquet(path)
+    except (OSError, ValueError) as exc:
+        # QT-13b: a raw file the recorder was killed while writing. Skipped and
+        # NAMED, never half-ingested; with no manifest line it is retried next run.
+        tally.unreadable.append(f"{source} ({type(exc).__name__})")
+        return
     tally.files_read += 1
     tally.rows_in += len(frame)
 
@@ -464,7 +463,8 @@ def ingest(intervals: Sequence[str] = ("1m", "5m", "1h"),
         _append_manifest({
             "event": "run",
             "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            **{k: v for k, v in asdict(tally).items() if k != "problems"},
+            **{k: v for k, v in asdict(tally).items()
+               if k not in ("problems", "unreadable")},
             "problem_count": len(tally.problems),
         }, clean_root)
     return tally

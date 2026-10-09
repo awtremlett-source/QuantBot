@@ -362,7 +362,8 @@ def test_the_default_label_is_the_cautious_one() -> None:
 
 class FakeName:
     def __init__(self, symbol: str, passes: bool, sessions: int,
-                 reasons: tuple[str, ...] = ()) -> None:
+                 reasons: tuple[str, ...] = (), last_bar: str | None = None) -> None:
+        self.last_bar = last_bar        # QT-13b: a pass counts only on newer bars
         self.symbol = symbol
         self.passes = passes
         self.sessions_present = sessions
@@ -378,12 +379,14 @@ class FakeCensus:
 def test_promotion_needs_two_passes_so_a_label_does_not_flip_on_noise() -> None:
     """One quiet day must not promote a name, and one busy day must not either."""
     first = access.update_labels(
-        FakeCensus([FakeName("AAA", True, 30)], "2026-10-01T20:00:00"))
+        FakeCensus([FakeName("AAA", True, 30, last_bar="2026-10-01 19:59")],
+                   "2026-10-01T20:00:00"))
     assert first["AAA"].label == access.FIVE_MIN_ONLY
     assert first["AAA"].consecutive_passes == 1
 
     second = access.update_labels(
-        FakeCensus([FakeName("AAA", True, 30)], "2026-10-02T20:00:00"), first)
+        FakeCensus([FakeName("AAA", True, 30, last_bar="2026-10-02 19:59")],
+                   "2026-10-02T20:00:00"), first)
     assert second["AAA"].label == access.MINUTE_OK
     assert second["AAA"].consecutive_passes == 2
     assert second["AAA"].census_date == "2026-10-02"

@@ -160,7 +160,7 @@ class _Planted:
         monkeypatch.setattr(sample_delay, "take_samples", lambda: [])
         monkeypatch.setattr(sample_delay, "verdict", lambda: "QUOTE DELAY: planted")
         monkeypatch.setattr(record_now, "rotate_logs", lambda: [])
-        monkeypatch.setattr(record_now, "_update_minute_labels", lambda: [])
+        monkeypatch.setattr(record_now, "_clean_step", lambda after_hours: [])
         monkeypatch.setattr(record_now, "say", self.lines.append)
 
     def run(self, do_catchup: bool) -> int:

@@ -26,7 +26,11 @@ pins it.
   built on holes.
 * Demotion is **immediate** on one failed census — the data has already changed.
 * Promotion needs **two consecutive** passing censuses, so a label does not flip
-  back and forth on one quiet day.
+  back and forth on one quiet day -- and a pass counts only on NEW data: the
+  name's newest bar must be newer than at its previous pass (QT-13b; on 5 Oct
+  86 names were promoted by a second census over the same bars as 3 Oct).
+* Recomputing on unchanged data leaves a label exactly as it was, so running
+  the after-hours step twice changes nothing.
 * Both are recomputed in the after-hours step, from the census that just ran.
 """
 
@@ -34,7 +38,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date
 from pathlib import Path
 
@@ -71,6 +75,7 @@ class Label:
     census_date: str           # the day it was taken
     consecutive_passes: int
     sessions_seen: int
+    newest_bar: str = ""       # the name's last bar at this census ("" = unknown)
 
 
 def load_labels(path: Path | None = None) -> dict[str, Label]:
@@ -117,37 +122,45 @@ def update_labels(census: object, previous: Mapping[str, Label] | None = None,
     for name in getattr(census, "names", []):
         symbol = str(name.symbol)
         sessions = int(getattr(name, "sessions_present", 0))
+        newest = str(getattr(name, "last_bar", None) or "")
         before = was.get(symbol)
         passes_before = before.consecutive_passes if before else 0
         label_before = before.label if before else FIVE_MIN_ONLY
 
         if sessions < MIN_SESSIONS_TO_JUDGE:
-            out[symbol] = Label(
+            label = Label(
                 symbol, FIVE_MIN_ONLY,
                 f"only {sessions} session(s) of minute history, fewer than the "
                 f"{MIN_SESSIONS_TO_JUDGE} needed to judge",
-                taken, day, 0, sessions)
-            continue
-
-        if not name.passes:
+                taken, day, 0, sessions, newest)
+        elif not name.passes:
             # Immediate: the data has already changed.
-            out[symbol] = Label(
+            label = Label(
                 symbol, FIVE_MIN_ONLY,
                 "failed the minute census: " + "; ".join(name.reasons),
-                taken, day, 0, sessions)
+                taken, day, 0, sessions, newest)
+        elif (before is not None and passes_before
+              and (not newest or newest <= before.newest_bar)):
+            # Same bars as the last pass: no new evidence, so nothing changes --
+            # not the count, not the label, not the reason it was given.
+            out[symbol] = before
             continue
-
-        passes = passes_before + 1
-        if passes >= PASSES_TO_PROMOTE or label_before == MINUTE_OK:
-            out[symbol] = Label(symbol, MINUTE_OK,
-                                f"passed the minute census {passes} time(s) in a row",
-                                taken, day, passes, sessions)
         else:
-            out[symbol] = Label(
-                symbol, FIVE_MIN_ONLY,
-                f"passed {passes} of the {PASSES_TO_PROMOTE} consecutive censuses "
-                "needed for promotion",
-                taken, day, passes, sessions)
+            passes = passes_before + 1
+            if passes >= PASSES_TO_PROMOTE or label_before == MINUTE_OK:
+                label = Label(symbol, MINUTE_OK,
+                              f"passed the minute census {passes} time(s) in a row",
+                              taken, day, passes, sessions, newest)
+            else:
+                label = Label(
+                    symbol, FIVE_MIN_ONLY,
+                    f"passed {passes} of the {PASSES_TO_PROMOTE} consecutive "
+                    "censuses needed for promotion",
+                    taken, day, passes, sessions, newest)
+        unchanged = before is not None and replace(
+            label, census_taken=before.census_taken,
+            census_date=before.census_date) == before
+        out[symbol] = before if unchanged and before is not None else label
     return out
 
 

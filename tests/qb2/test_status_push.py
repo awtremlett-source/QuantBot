@@ -60,7 +60,7 @@ def _logs(tmp_path: Path) -> Path:
 
 def _status(tmp_path: Path, manifest: Path | None = None) -> str:
     return status_push.build_status(manifest or _planted(tmp_path),
-                                    _logs(tmp_path), NOW)
+                                    _logs(tmp_path), NOW, clean_root=tmp_path)
 
 
 # ------------------------------------------- counts are delay_count's counts --
@@ -232,15 +232,80 @@ def test_runs_that_start_late_in_the_hour_are_flagged(tmp_path: Path) -> None:
     logs = _runs(tmp_path, ["2026-10-08T14:53:36+00:00",
                             "2026-10-08T15:53:36+00:00",
                             "2026-10-08T16:53:36+00:00"])
-    text = status_push.build_status(_planted(tmp_path), logs, NOW)
+    text = status_push.build_status(_planted(tmp_path), logs, NOW, clean_root=tmp_path)
     assert "Runs today (UK): 15:53, 16:53, 17:53" in text
-    assert "OFF THE HOUR: 3 of 3" in text
+    # QT-13b: the same off-hour minute twice is the re-based trigger itself.
+    assert "DRIFT: :53 more than once" in text
 
 
 def test_runs_on_the_hour_raise_no_flag(tmp_path: Path) -> None:
+    # QT-13b: with fixed triggers "on the hour" means within 5 minutes (was 20).
     logs = _runs(tmp_path, ["2026-10-07T16:00:02+00:00",   # yesterday: not today
                             "2026-10-08T15:00:02+00:00",
-                            "2026-10-08T16:12:42+00:00"])
-    text = status_push.build_status(_planted(tmp_path), logs, NOW)
-    assert "Runs today (UK): 16:00, 17:12" in text
-    assert "OFF THE HOUR" not in text
+                            "2026-10-08T16:00:42+00:00"])
+    text = status_push.build_status(_planted(tmp_path), logs, NOW, clean_root=tmp_path)
+    assert "Runs today (UK): 16:00, 17:00" in text
+    assert "OFF THE HOUR" not in text and "DRIFT" not in text
+    assert "catch-up" not in text
+
+
+# ------------------------- QT-13b: fixed triggers, and the clean-store line --
+
+MONDAY = datetime(2026, 10, 12, 9, 30, tzinfo=timezone.utc)      # 10:30 UK
+
+
+def test_one_late_run_after_a_morning_switch_on_is_named_not_flagged(
+        tmp_path: Path) -> None:
+    logs = _runs(tmp_path, ["2026-10-12T07:53:10+00:00",          # 08:53 UK
+                            "2026-10-12T08:00:01+00:00"])         # 09:00 UK
+    text = status_push.build_status(_planted(tmp_path), logs, MONDAY,
+                                    clean_root=tmp_path)
+    assert "08:53 was the catch-up after switch-on (expected)" in text
+    assert "DRIFT" not in text and "OFF THE HOUR" not in text
+
+
+def test_a_missing_on_the_hour_run_on_monday_is_listed(tmp_path: Path) -> None:
+    logs = _runs(tmp_path, ["2026-10-12T07:00:01+00:00",          # 08:00 UK
+                            "2026-10-12T09:00:01+00:00"])         # 10:00 UK
+    text = status_push.build_status(_planted(tmp_path), logs, MONDAY,
+                                    clean_root=tmp_path)
+    assert "Missed runs today: 07:00, 09:00" in text
+
+
+def test_two_different_late_minutes_are_off_the_hour_not_drift(tmp_path: Path) -> None:
+    logs = _runs(tmp_path, ["2026-10-12T06:00:01+00:00",
+                            "2026-10-12T07:16:00+00:00", "2026-10-12T08:47:00+00:00"])
+    text = status_push.build_status(_planted(tmp_path), logs, MONDAY,
+                                    clean_root=tmp_path)
+    assert "OFF THE HOUR: 2 of 3 (08:16, 09:47)" in text and "DRIFT" not in text
+
+
+def _census_file(root: Path, name: str, interval: str, fraction: float,
+                 last_bar: str) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    (root / name).write_text(json.dumps({
+        "interval": interval, "fraction_passing": fraction,
+        "names": [{"symbol": "AAPL", "sleeve": "us_liquid", "last_bar": last_bar},
+                  {"symbol": "BP.L", "sleeve": "uk_share", "last_bar": last_bar}]}),
+        encoding="utf-8")
+
+
+def test_the_status_page_carries_the_clean_store_line(tmp_path: Path) -> None:
+    clean = tmp_path / "clean"
+    _census_file(clean, "census-2026-10-09.json", "5m", 0.982, "2026-10-09 19:55:00+00:00")
+    _census_file(clean, "census-1m-2026-10-09.json", "1m", 0.747,
+                 "2026-10-09 19:59:00+00:00")
+    text = status_push.build_status(_planted(tmp_path), _logs(tmp_path), MONDAY,
+                                    clean_root=clean)
+    assert "- Clean store: fresh to 2026-10-09 · 5m census 98.2% · OK" in text
+
+
+def test_a_stale_clean_store_is_red_on_the_status_page(tmp_path: Path) -> None:
+    clean = tmp_path / "clean"
+    _census_file(clean, "census-2026-10-03.json", "5m", 0.0, "2026-10-02 19:55:00+00:00")
+    _census_file(clean, "census-1m-2026-10-09.json", "1m", 0.0,
+                 "2026-10-02 19:59:00+00:00")
+    text = status_push.build_status(_planted(tmp_path), _logs(tmp_path), MONDAY,
+                                    clean_root=clean)
+    assert "- Clean store: fresh to 2026-10-02 · 5m census 0.0% · RED" in text
+    assert status_push.secret_hits(text, {}) == []

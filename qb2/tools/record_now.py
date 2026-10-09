@@ -222,30 +222,31 @@ def _report(label: str, outcome: recorder.Outcome) -> list[str]:
     return complaints
 
 
-def _update_minute_labels() -> list[str]:
-    """Recompute MINUTE_OK / FIVE_MIN_ONLY from a fresh 1-minute census.
+def _clean_step(after_hours: bool) -> list[str]:
+    """The after-hours step (QT-13b): raw -> clean, both censuses, the labels.
 
-    This changes no gate. The census still counts every name in the active
-    universe exactly as PLAN_V3 measures it; the label only decides whether a
-    strategy may ASK for that name's minute bars.
+    Called AFTER the sampling and the fetches, so it can never delay them. It
+    runs once per finished trading day (qb2/data/clean_step.py decides), and
+    every run prints the clean store's verdict, so a stale store is never silent.
     """
-    from qb2.data import access, census
+    from qb2.data import clean_step
 
+    complaints: list[str] = []
     try:
-        taken = census.take("1m")
-    except Exception as exc:                              # noqa: BLE001
-        return [f"the minute census could not be taken: {type(exc).__name__}: {exc}"]
-
-    if not access.census_unchanged_by_labels(taken):
-        return ["the minute census and the labels disagree about which names "
-                "exist -- refusing to relabel"]
-
-    labels = access.update_labels(taken, access.load_labels())
-    access.save_labels(labels)
-    ok = sum(1 for v in labels.values() if v.label == access.MINUTE_OK)
-    say(f"  minute labels: {ok} MINUTE_OK, {len(labels) - ok} FIVE_MIN_ONLY "
-        f"(census {taken.fraction_passing:.1%} of {len(taken.names)} names)")
-    return []
+        result = clean_step.run_if_due(datetime.now(timezone.utc),
+                                       after_hours=after_hours)
+    except Exception as exc:                  # noqa: BLE001 - logged, never silent
+        result = None
+        complaints.append(f"the after-hours step failed: {type(exc).__name__}: {exc}")
+    if isinstance(result, str):
+        say(f"  after-hours step: not due ({result})")
+    elif result is not None:
+        say("  after-hours step:")
+        for line in result.lines:
+            say(f"    {line}")
+        complaints += result.complaints
+    say("  " + clean_step.status_verdict(datetime.now(timezone.utc)).line())
+    return complaints
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -341,11 +342,9 @@ def _run(args: argparse.Namespace, entries: list[tuple[str, str, str]],
             slow = recorder.capture_incremental(entries, interval, max_days=None)
             complaints += _report(f"{interval} catch-up", slow)
 
-        # The minute labels are worked out here, once a day, from the census that
-        # has just run on fresh data. Doing it hourly would let a label flip on one
-        # quiet afternoon; doing it never would leave every name on the cautious
-        # default for ever.
-        complaints += _update_minute_labels()
+    # --- the after-hours step: raw -> clean, censuses, labels. ALWAYS after the
+    # sampling and the fetches above, so it can never slow them (QT-13b). ---
+    complaints += _clean_step(after_hours=do_catchup)
 
     rotated = rotate_logs()
     if rotated:
