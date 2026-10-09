@@ -341,6 +341,22 @@ def test_the_practice_account_test_is_off_unless_keys_exist() -> None:
         "a missing key must be reported as a skip with its reason, never as a pass")
 
 
+def test_the_live_smoke_test_is_marked_and_the_default_run_deselects_it() -> None:
+    """QT-13: keys DO exist on the operator's PC, so 'off unless keys exist' put
+    a real call to Trading 212 into every default run. Now it runs only when
+    asked for by name: pytest -m network tests/qb2"""
+    body = (QB2_TESTS / "test_t212_client.py").read_text(encoding="utf-8")
+    smoke = body.split("def test_live_demo_smoke_read_only")[0][-400:]
+    assert "@pytest.mark.network" in smoke, "the live smoke test must be marked"
+    # The deselection lives in tests/qb2/conftest.py, because pyproject.toml is
+    # inside v1's frozen fingerprint and must not move.
+    conftest = (QB2_TESTS / "conftest.py").read_text(encoding="utf-8")
+    hook = conftest.split("def pytest_collection_modifyitems")[1].split("\n\n\n")[0]
+    assert '"network" not in item.keywords' in hook
+    assert "items[:] = offline" in hook
+    assert 'config.getoption("markexpr")' in hook
+
+
 def test_nothing_in_qb2_calls_the_network_at_import_time() -> None:
     """Importing a module must never open a socket."""
     offenders: list[str] = []

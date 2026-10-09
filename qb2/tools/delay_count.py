@@ -22,8 +22,10 @@ It now runs inside ``sample_delay.verdict()``, which every recorder run prints.
 from __future__ import annotations
 
 import json
+import statistics
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -173,3 +175,32 @@ def session_meter(manifest: Path, *, markets: Sequence[str] = ("US", "LSE"),
                        f"at least {MIN_SAMPLES_PER_SESSION} samples"),
         })
     return meters
+
+
+@dataclass(frozen=True, slots=True)
+class Summary:
+    """FACTS row o's figures for one market, in minutes (QT-13)."""
+
+    market: str
+    count: int
+    sessions: int
+    median: float
+    p90: float
+    worst: float
+
+
+def summary(rows: Iterable[dict[str, object]], market: str) -> Summary | None:
+    """Row o's figures from rows that ``countable`` has already passed.
+
+    The 90th percentile is ``statistics.quantiles(n=10, method="inclusive")``:
+    nine in ten counted samples were this fresh or fresher. None: no samples.
+    """
+    mine = [r for r in rows if r.get("market") == market]
+    ages = [float(a) / 60 for r in mine
+            if isinstance(a := r.get("age_seconds"), (int, float))]
+    if not ages:
+        return None
+    p90 = (statistics.quantiles(ages, n=10, method="inclusive")[8]
+           if len(ages) > 1 else ages[0])
+    return Summary(market, len(ages), len({str(r["at_utc"])[:10] for r in mine}),
+                   statistics.median(ages), p90, max(ages))

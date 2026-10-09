@@ -546,21 +546,32 @@ def test_s4_cannot_open_on_a_universe_nobody_agreed_to() -> None:
     assert "date" in gate.lower()
 
 
-def test_s3_still_names_what_is_missing_before_it_can_be_called_done() -> None:
-    """S3c built the earnings dates. Dividends are still not ingested.
+def _s3_exit_check() -> dict[str, str]:
+    """QT-13: the S3 block carries one line, '- Exit check (...): item GREEN ·
+    item RED · ...', each item judged against the gate on evidence."""
+    lines = [line for line in stage_blocks()["S3"].splitlines()
+             if line.startswith("- Exit check (")]
+    assert len(lines) == 1, "S3 must carry exactly one exit-check line"
+    items = re.findall(r"([^·:]+?) (GREEN|RED)\b", lines[0].split("):", 1)[1])
+    return {name.strip(" *"): verdict for name, verdict in items}
 
-    An unbuilt requirement that quietly disappears from the plan is the most
-    expensive kind of omission, because the plan is what we check against later.
-    The gate must keep naming what is left, and must not read as finished while
-    anything it asked for is missing.
+
+def test_s3_is_done_only_when_every_exit_item_is_green() -> None:
+    """Marking a stage DONE with an item red is the failure this guards.
+
+    The check line names every gate item (and the stage's own promise, the
+    quote delay, and its Wired line); DONE in the heading needs all GREEN, and
+    any RED must leave the block saying NOT complete.
     """
-    gate = stage_blocks()["S3"]
-    assert "OUTSTANDING" in gate
-    assert "not complete" in gate.lower()
-    # The thing still missing is the measured quote delay, and the gate must keep
-    # saying so until it is actually measured.
-    assert "quote delay" in gate
-    assert "ZERO for London" in gate
+    check = _s3_exit_check()
+    assert len(check) >= 8, f"the exit check lost items: {sorted(check)}"
+    heading = stage_blocks()["S3"].splitlines()[0]
+    red = sorted(name for name, verdict in check.items() if verdict == "RED")
+    if "DONE" in heading:
+        assert not red, f"S3 is marked DONE with items red: {red}"
+    if red:
+        assert "NOT complete" in stage_blocks()["S3"], (
+            f"items red ({red}) but the block does not say NOT complete")
 
 
 # ------------------------------------------- QT-11a: the minute rule, P18 ---

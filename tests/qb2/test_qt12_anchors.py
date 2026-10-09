@@ -1004,3 +1004,43 @@ def test_an_account_check_with_no_reply_is_a_refusal_not_a_crash() -> None:
     client = AnchorOrderClient(FAKE, transport=silent, throttle=frozen_throttle())
     with pytest.raises(AnchorRefused, match="no reply"):
         client.account_summary()
+
+
+# ------------------- QT-13: anchors are measuring equipment, never measured --
+
+MEASUREMENT_MODULES = ("qb2/data/census.py", "qb2/data/access.py",
+                       "qb2/ingest/tickers.py", "qb2/tools/delay_count.py",
+                       "qb2/tools/status_push.py", "qb2/tools/record_now.py")
+
+
+@pytest.mark.parametrize("module", MEASUREMENT_MODULES)
+def test_no_census_label_universe_or_delay_figure_can_see_an_anchor(
+        module: str) -> None:
+    """A census, label, universe or delay figure that read the anchor ledger
+    could be moved by what we happen to hold. None of them may name it."""
+    source = (Path(__file__).resolve().parents[2] / module).read_text(
+        encoding="utf-8").lower()
+    assert "anchor" not in source, f"{module} reaches for the anchors"
+
+
+def test_the_census_denominator_is_all_221_with_or_without_anchors(
+        tmp_path: Path) -> None:
+    """Pinned: 221 names (98 US, 100 UK shares, 23 UK ETFs), whatever we hold."""
+    from qb2.data import census
+    from qb2.ingest import tickers
+    entries = list(tickers._recording_file()["entries"])   # noqa: SLF001
+    taken = census.take("5m", clean_root=tmp_path, entries=entries)
+    assert len(taken.names) == 221
+    assert {s: t for s, (_, t) in taken.by_sleeve().items()} == {
+        "us_liquid": 98, "uk_share": 100, "uk_etf": 23}
+    bot_names = {str(e["yfinance"]) for e in json.loads(
+        anchors.UNIVERSE_FILE.read_text(encoding="utf-8"))["entries"]}
+    assert bot_names <= {n.symbol for n in taken.names}   # anchors add none
+
+
+def test_the_bot_sees_its_own_position_never_the_anchor() -> None:
+    """Pot and results do not exist before S4; what the bot will count as its
+    own already does, and an anchor must not be in it."""
+    view = safety.bot_view({"AAPL_US_EQ": 0.0123, "BP_EQ": 1.5123},
+                           {"AAPL_US_EQ": 0.0123, "BP_EQ": 0.0123})
+    assert view == {"AAPL_US_EQ": 0.0, "BP_EQ": pytest.approx(1.5)}

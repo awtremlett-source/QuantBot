@@ -75,6 +75,30 @@ def last_run(log_dir: Path) -> str:
     return f"{begin}, finished {_uk(finished):%H:%M}, exit {exit_code}"
 
 
+def runs_today(log_dir: Path, now: datetime) -> str:
+    """Today's run starts, flagging any that began GRACE or more past the hour.
+
+    QT-13: after a late catch-up (PC switched on at 08:50) Windows re-based
+    the hourly trigger, so every run landed at :53 and London's last slot fell
+    after its close. Nothing on this page said so; now it does.
+    """
+    today = _uk(now).date()
+    starts = []
+    for path in sorted(log_dir.glob(f"run-{today.isoformat()}T*.log")):
+        head = path.read_text(encoding="utf-8", errors="replace").splitlines()[:1]
+        if head and head[0].startswith("==== run started "):
+            starts.append(_uk(datetime.fromisoformat(head[0].split()[-1])))
+    if not starts:
+        return "- Runs today (UK): none yet"
+    late = [s for s in starts if timedelta(minutes=s.minute) >= GRACE]
+    line = "- Runs today (UK): " + ", ".join(f"{s:%H:%M}" for s in starts)
+    if late:
+        line += (f" -- OFF THE HOUR: {len(late)} of {len(starts)} started "
+                 f"{int(GRACE.total_seconds() // 60)}+ min past the hour, so a "
+                 "slot can fall after a market's close (QT-13)")
+    return line
+
+
 def _market(market: str, name: str, rows: Sequence[dict[str, object]],
             meter: Mapping[str, object], now: datetime) -> list[str]:
     mine = [r for r in rows if r["market"] == market]
@@ -120,6 +144,7 @@ def build_status(manifest: Path, log_dir: Path, now: datetime) -> str:
     lines = ["# QB2 recorder status", "",
              f"- Updated at: {_uk(now):%Y-%m-%d %H:%M} (UK)",
              f"- Last recorder run: {last_run(log_dir)}",
+             runs_today(log_dir, now),
              f"- Target: {sample_delay.MIN_SAMPLES_PER_MARKET} counted samples per "
              f"market over {sample_delay.MIN_SESSIONS} full sessions. Counted = "
              "clock-checked, inside a full session, each bar once "

@@ -331,6 +331,7 @@ def test_the_instrument_list_lands_raw_and_goes_no_further(tmp_path: Path) -> No
 
 # --------------------------------------- the practice account, if keys exist ---
 
+@pytest.mark.network
 @pytest.mark.skipif(not t212.available(),
                     reason="no T212 practice credentials in .env -- "
                            "see docs/t212/SETUP.md (this is not a failure)")

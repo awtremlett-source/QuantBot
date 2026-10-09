@@ -188,3 +188,67 @@ def test_the_meter_is_in_the_verdict_every_run_prints(tmp_path: Path) -> None:
     text = sample_delay.verdict(manifest, today=date(2026, 10, 7))
     assert "meter LSE: RED" in text
     assert "meter US: RED" in text
+
+
+# ---------------------------------------------- QT-13: row o, one rule only --
+
+FACTS = Path(__file__).resolve().parents[2] / "docs" / "t212" / "FACTS.md"
+EVIDENCE = FACTS.parent / "row_o_samples.jsonl"
+WINDOW = ("2026-10-05T00:00:00", "2026-10-09T19:00:00")   # UTC, as in row o
+
+
+@pytest.mark.parametrize("market, late", [
+    # 9 Oct: the "16:00" run started at 16:53 UK, after London's 16:30 close.
+    ("LSE", datetime(2026, 10, 9, 15, 53, 36, tzinfo=timezone.utc)),
+    # The same drift at the US end: a run at 21:53 UK is after the 21:00 close.
+    ("US", datetime(2026, 10, 9, 20, 53, 36, tzinfo=timezone.utc)),
+])
+def test_a_late_run_after_the_close_is_not_counted(market: str,
+                                                   late: datetime) -> None:
+    assert delay_count.countable([_row(market, late)]) == []
+
+
+@pytest.mark.parametrize("market", ["US", "LSE"])
+def test_summary_gives_count_sessions_median_p90_and_worst(market: str) -> None:
+    planted = (_hourly(market, date(2026, 10, 6), 3)
+               + _hourly(market, date(2026, 10, 7), 2))
+    for row, minutes in zip(planted, (1.0, 2.0, 3.0, 4.0, 10.0)):
+        row["age_seconds"] = row["age_seconds_raw"] = minutes * 60
+    got = delay_count.summary(delay_count.countable(planted), market)
+    assert got is not None
+    assert (got.count, got.sessions) == (5, 2)
+    assert (got.median, got.worst) == (3.0, 10.0)
+    assert got.p90 == pytest.approx(7.6)     # inclusive: 4 + 0.6 x (10 - 4)
+    assert delay_count.summary(planted, "XX") is None
+
+
+def _row_o() -> str:
+    return next(line for line in FACTS.read_text(encoding="utf-8").splitlines()
+                if line.startswith("| o |"))
+
+
+def test_row_o_quotes_exactly_what_delay_count_gives() -> None:
+    """A second counting rule would let row o drift from the recorder's own
+    figures. Row o's numbers must be delay_count's, on the frozen evidence."""
+    rows = delay_count.countable(delay_count.read_samples(EVIDENCE),
+                                 verified_only=True)
+    row = _row_o()
+    assert "**VERIFIED**" in row
+    for market, name in (("LSE", "London"), ("US", "US")):
+        got = delay_count.summary(rows, market)
+        assert got is not None
+        quoted = (f"{name}: {got.count} counted over {got.sessions} sessions, "
+                  f"median {got.median:.2f}, 90th percentile {got.p90:.2f}, "
+                  f"max {got.worst:.2f} min")
+        assert quoted in row, f"row o does not say: {quoted}"
+        assert got.count >= sample_delay.MIN_SAMPLES_PER_MARKET
+        assert got.sessions >= sample_delay.MIN_SESSIONS
+
+
+@pytest.mark.skipif(not sample_delay.MANIFEST.is_file(),
+                    reason="no recorder manifest on this machine (not a failure)")
+def test_the_evidence_is_the_manifest_window_untouched() -> None:
+    """The frozen file must be the recorder's own rows, not a hand edit."""
+    live = [r for r in delay_count.read_samples(sample_delay.MANIFEST)
+            if WINDOW[0] <= str(r["at_utc"])[:19] < WINDOW[1]]
+    assert delay_count.read_samples(EVIDENCE) == live

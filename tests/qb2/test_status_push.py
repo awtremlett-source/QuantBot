@@ -209,3 +209,38 @@ def test_the_manifest_is_only_read(tmp_path: Path) -> None:
     finally:
         manifest.chmod(0o644)
     assert manifest.read_bytes() == before
+
+
+# ------------------------------------- QT-13: runs that drift off the hour --
+
+def _runs(tmp_path: Path, starts: list[str]) -> Path:
+    folder = tmp_path / "drift"
+    folder.mkdir()
+    for start in starts:                       # UTC, as the recorder logs it
+        stamp = datetime.fromisoformat(start)
+        name = f"run-{status_push._uk(stamp):%Y-%m-%dT%H%M%S}.log"
+        (folder / name).write_text(
+            f"==== run started {start}\n==== run finished exit=0 at {start}\n",
+            encoding="utf-8")
+    return folder
+
+
+def test_runs_that_start_late_in_the_hour_are_flagged(tmp_path: Path) -> None:
+    """9 Oct: Windows re-anchored the hourly trigger to a 08:53 catch-up, so every
+    run landed at :53 and London's 16:00 slot fell after the close. The page
+    called the 17:00 hour 'missed' at 17:50; it was due at 17:53."""
+    logs = _runs(tmp_path, ["2026-10-08T14:53:36+00:00",
+                            "2026-10-08T15:53:36+00:00",
+                            "2026-10-08T16:53:36+00:00"])
+    text = status_push.build_status(_planted(tmp_path), logs, NOW)
+    assert "Runs today (UK): 15:53, 16:53, 17:53" in text
+    assert "OFF THE HOUR: 3 of 3" in text
+
+
+def test_runs_on_the_hour_raise_no_flag(tmp_path: Path) -> None:
+    logs = _runs(tmp_path, ["2026-10-07T16:00:02+00:00",   # yesterday: not today
+                            "2026-10-08T15:00:02+00:00",
+                            "2026-10-08T16:12:42+00:00"])
+    text = status_push.build_status(_planted(tmp_path), logs, NOW)
+    assert "Runs today (UK): 16:00, 17:12" in text
+    assert "OFF THE HOUR" not in text

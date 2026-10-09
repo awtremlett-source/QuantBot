@@ -46,6 +46,29 @@ def pytest_ignore_collect(collection_path: Path,
     return None
 
 
+# ------------------------------------------- the default run stays offline ---
+#
+# QT-13: the practice-account smoke test was gated only on keys existing, and
+# the keys exist on the operator's PC, so every default run called Trading 212.
+# A test marked `network` now runs only when asked: pytest -m network tests/qb2
+# (Here, not in pyproject.toml: that file is inside v1's frozen fingerprint.)
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers", "network: reaches a real server; off unless -m network")
+
+
+def pytest_collection_modifyitems(config: pytest.Config,
+                                  items: list[pytest.Item]) -> None:
+    if config.getoption("markexpr"):
+        return                 # an explicit -m chooses for itself
+    offline = [item for item in items if "network" not in item.keywords]
+    if len(offline) != len(items):
+        config.hook.pytest_deselected(
+            items=[item for item in items if "network" in item.keywords])
+        items[:] = offline
+
+
 # ------------------------------------------- tests never write real data -----
 #
 # test_recorder.py once called the recorder without a manifest of its own, and

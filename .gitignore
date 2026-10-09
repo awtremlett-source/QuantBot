@@ -29,6 +29,8 @@ var/
 *.zip
 # Trial log (append-only run tally; lives under data/ but pin the pattern too).
 *.jsonl
+# QT-13: FACTS row o's frozen evidence (51 delay samples, no secrets) is tracked.
+!docs/t212/row_o_samples.jsonl
 
 # Manual app (manual/) local state: its SQLite DB, price cache and backups.
 # data/ above already covers it -- pinned explicitly so a future narrowing of

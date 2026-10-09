@@ -1,41 +1,33 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-08. History → docs/archive/STATE_2026-10-06.md (LEDGER GUARD,
-BACKUP-OFFSITE, QT-12 close-out, verbatim) and STATE_2026-10-05.md.
-Last box: QT-12S (2026-10-08) → docs/reports/QT-12S.md.
+Updated: 2026-10-09. History → docs/archive/STATE_2026-10-08.md (QT-12R, QT-12S,
+verbatim) and earlier archives. Last box: QT-13 (2026-10-09) → docs/reports/QT-13.md.
 
-Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete**: only the quote delay is left
-(FACTS row o). Counted samples (17:12 run, 8 Oct): US 19, London 14, each over 4 sessions; the
-bar is 20 samples over 3 sessions. Nothing to build. S3 close = QT-13. NOT S4.
+Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete** (QT-13 exit check, PLAN_V3 S3).
+S3 close = QT-13 ran 2026-10-09: quote delay now VERIFIED (FACTS row o: US median
+1.25 min, London 16.66 min, 5 sessions each), but the census went RED: nothing on
+the schedule runs the front door (raw → clean), so the clean store stopped on 2 Oct
+and on 9 Oct all 221 names fail as stale (0.0%). A scratch rebuild from raw passes
+217/221 (98.2%): the data is fine, the pipe is not wired. NOT S4.
 
 ## NEXT, in order
-1. OPERATOR: PC ON and awake 08:00–21:00 UK on Thu 8 and Fri 9 Oct. Do not use
-   Shut down overnight: leave it on, or use Sleep (the task can wake it from Sleep
-   on mains, never from Shut down).
-2. QT-13 runs after Fri 2026-10-09 21:00 UK (US close), if London gets its 8 runs
-   on both days. London has no slack: one missed hour → after Mon 2026-10-12.
+1. QT-13b (mentor writes it): run the front door + the 5-minute census in the
+   recorder's after-hours step, RED when the clean store is stale; a label pass
+   counts only on NEW data (today two runs on the same data promote). Then one
+   fresh census on the real store ≥95% → S3 DONE. Earliest: the next weekday
+   evening after QT-13b lands.
+2. OPERATOR: two DECISIONS below. Keep the PC on (or Sleep) 08:00–21:00 UK on
+   weekdays; Shut down at night shifts every next-day run (see QT-13 §2).
 
-## QT-12S — DONE 2026-10-08 (hourly status push)
-Operator, 2026-10-08: *"can the recorder automatically push every set interval
-and then you can check it automatically?"*
-Task QB2-StatusPush (Mon–Fri :50, 08:50–21:50 UK, pythonw, no wake) runs
-qb2/tools/status_push.py: counts via delay_count (read-only, no lock, no data/
-writes), writes logs/status_push/recorder_status.md, secret scan, then pushes
-ONLY that file to orphan branch "status" (plumbing, force, 1 commit). Read it:
-raw.githubusercontent.com/awtremlett-source/QuantBot/status/status/recorder_status.md
-Outcomes → logs/status_push/push.log. QB2-Recorder byte-for-byte unchanged.
-
-## QT-12R — DONE 2026-10-07 (recorder London diagnosis + fix)
-Cause: the PC is shut down nightly (02:13–03:24, Fast Startup) and switched on in
-the afternoon (14:26 / 11:44 for 25 min / 16:13), so no run fell in London hours.
-Not the cause: trigger (07:00 +1h ×14h), wake-on-mains (desktop, no battery,
-AC wake timers on), the sampler, the clock check (all 4 London samples verified).
-Fixed: the session meter was never called → now inside verdict(), RED below
-MIN_SAMPLES_PER_SESSION = 3 (standing-GO default, logged); today it reads London RED
-(5 Oct 2/3, 6 Oct 1/3), US OK. New qb2/tools/delay_count.py: a sample counts only in
-a FULL calendar session (no holidays, no half-days), in hours, of a bar from that
-session, each bar once. 24 tests, both markets, 4 seen red first.
-London delay ≈ 16–17 min (BP.L); US ≈ 1–2 min (AAPL).
+## DECISION REQUESTED (open)
+- Recorder trigger (Windows, not touched): after a late catch-up the hourly runs
+  move to that minute (9 Oct: all at :53, London's 16:00 slot after the close).
+  Default: re-register QB2-Recorder with 14 fixed triggers 07:00…20:00 UK, no
+  repetition, same settings. GO words: "GO on recorder triggers: 14 fixed hourly".
+- S4 and London's 17-minute delay. Default (c): act only on bars seen complete,
+  each market at its measured delay, and in S4 measure Trading 212's own price
+  freshness for (a). GO words: "GO on S4 delay: (c), measure T212 freshness".
+- Backups on the university OneDrive? Default: keep (2026-10-06 archive).
 
 ## Standing GOs (operator words, verbatim)
 - 2026-10-07: *"STANDING GO: For routine settings and thresholds, go with the
@@ -48,33 +40,37 @@ London delay ≈ 16–17 min (BP.L); US ≈ 1–2 min (AAPL).
   50/UTC day) still needs its own GO. QT-12 CLOSED 06/10: 50/50 priced, £46.59.
 - Weekday anchor top-up TASK: not created — "that gets its own GO".
 
-## DECISION REQUESTED (open)
-- Keep backups on the university OneDrive (lost if the account closes; admins can
-  read it)? Default: keep. Detail in the 2026-10-06 archive.
+## CARRIED INTO S4 (from QT-13)
+- GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot trades (same
+  company / same index fund); both still get an anchor.
+- P20 cross-check thresholds are built in S4; their 1.6-min premise is now US
+  1.25 / London 16.66 min (row o) — London's gap rule must allow for it.
+- The S4 delay decision above. P19's 18 trials stay pre-registered as written.
+- FX: costs.py already charges 0.15% per leg on US names. Trading 212 (page read
+  2026-10-09): only the Invest account holds USD; the ISA does not, so in an ISA
+  every US trade converts. Can an API order choose USD? UNKNOWN.
+- Parked: which fund is D3 · the holdout period · advisor trial counting (S9) ·
+  v1 revive-or-retire.
 
-## Carried flags
-- CARRIED FLAG FOR THE S4 BOX: GOOG/GOOGL and VUAG/VUSA each count as ONE bet when
-  the bot trades (same company / same index fund); both still get an anchor.
-- Parked for their stage: which fund is D3 (S4) · which period is the holdout (S4) ·
-  do advisor ideas face trial counting (S9) · v1 revive-or-retire.
-- anchors.py is 1,433 lines (pinned oversize): splitting it = its own PROPOSE→GO.
-- Test files named after boxes (test_qt12*) break "tests mirror the tree"; fold in
-  when anchors.py is split.
-- Idea, not started: a 15-minute sampler task would give ~4× the readings per hour
-  awake; it would need a new scheduled task, so it is a GO.
+## Recorder facts
+QB2-Recorder (Mon–Fri 07:00 +1h ×14h, wake, catch-up) writes RAW only; the hourly
+status page (QB2-StatusPush, :50) now lists today's run times and flags runs 20+
+min past the hour. Raw page: raw.githubusercontent.com/awtremlett-source/
+QuantBot/status/status/recorder_status.md. Minute labels: 0 MINUTE_OK (86
+promoted 5 Oct on the same data as 3 Oct, all demoted 7 Oct as stale).
+Default test run is offline: the live smoke test runs only with -m network.
 
 ## Open flags
-- v1 QuantBot-Daily has not run since 28 Jul: Windows refuses start (0x800710E0,
-  again 07/10 16:16); its bot is 31+ days behind. Revive-or-retire deferred.
+- anchors.py is 1,433 lines (pinned oversize): splitting = its own PROPOSE→GO;
+  test_qt12* files fold in then.
+- v1 QuantBot-Daily has not run since 28 Jul (0x800710E0); revive-or-retire deferred.
 - Task Scheduler's history log is off on this PC; run evidence = logs/recorder.
 - .env.example keeps the old T212 "to verify" note (inside the engine fingerprint).
-- Daily auto clock-sync task not set up (admin). gh CLI absent → plain git.
-- Manual app's journal not migrated (trades.shares INTEGER vs REAL; MERGE_PLAN 3b).
-- Two killswitch faces (tools/gui.py + Bot tab) until stage 4.
+- No daily clock-sync task (admin). gh CLI absent → plain git.
+- Manual journal not migrated (MERGE_PLAN 3b). Two killswitch faces until stage 4.
 - Typing debt: 52 mypy errors silenced in 5 inherited modules (docs/merge/TYPING_DEBT.md).
-- Manual suite prints 2 Qt "access violation" lines and passes; pre-existing.
-- CLAUDE.md budget 4,000 (QT-04 had 3,600): default kept, no operator reply yet.
+- Idea: a 15-minute sampler task (a new task = GO).
 
 ## Fingerprints
-v1 4add56ec…743b6 (must never move; re-verified 2026-10-08) · qb2 073e0978…fe543
-after QT-12S, on a normal CRLF checkout (was 10351678…bd67d after QT-12R).
+v1 4add56ec…743b6 (must never move; re-verified 2026-10-09) · qb2 a087ffbf…1580e
+after QT-13 (normal CRLF checkout; delay_count.py, status_push.py changed).

@@ -47,7 +47,12 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [x] QT-12S (2026-10-08) Hourly status push: task QB2-StatusPush (Mon–Fri :50,
       08:50–21:50 UK) pushes logs/status_push/recorder_status.md to orphan branch
       "status" (one commit, force-pushed); recorder untouched → docs/reports/QT-12S.md
-- [ ] QT-13 = S3 close, after Fri 2026-10-09 21:00 UK (needs PC on 08:00–21:00 Thu+Fri)
+- [~] QT-13 (2026-10-09) S3 close: row o VERIFIED (US 1.25 / London 16.66 min);
+      census RED 0.0% (clean store unfed since 2 Oct; scratch rebuild 98.2%) →
+      S3 stays open; recorder runs drifted to :53 (Windows trigger) → DECISION;
+      default test run made offline (-m network) → docs/reports/QT-13.md
+- [ ] QT-13b: front door + 5m census in the after-hours step, RED on a stale
+      clean store; label passes only on new data; fresh census ≥95% → S3 DONE
 - [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
       survivorship mark-down
 - [ ] S5 Safety layer FIRST: stops, brakes, pot limits, age + earnings checks,
