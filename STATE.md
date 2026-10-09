@@ -1,7 +1,8 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
 Updated: 2026-10-09. History → docs/archive/STATE_2026-10-08.md (QT-12R, QT-12S,
-verbatim) and earlier archives. Last box: QT-13 (2026-10-09) → docs/reports/QT-13.md.
+verbatim) and earlier archives. Last box: QT-13-GO (2026-10-09) →
+docs/reports/QT-13-GO.md (two decisions applied); before it QT-13.
 
 Phase: v2 BUILDING. S0–S3d DONE. **S3 NOT complete** (QT-13 exit check, PLAN_V3 S3).
 S3 close = QT-13 ran 2026-10-09: quote delay now VERIFIED (FACTS row o: US median
@@ -16,18 +17,17 @@ and on 9 Oct all 221 names fail as stale (0.0%). A scratch rebuild from raw pass
    counts only on NEW data (today two runs on the same data promote). Then one
    fresh census on the real store ≥95% → S3 DONE. Earliest: the next weekday
    evening after QT-13b lands.
-2. OPERATOR: two DECISIONS below. Keep the PC on (or Sleep) 08:00–21:00 UK on
-   weekdays; Shut down at night shifts every next-day run (see QT-13 §2).
+2. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays. A Shut down
+   loses the hours it is off; since QT-13-GO the later runs stay on :00.
+3. First weekday (Mon 12 Oct): check the status page reads OFF THE HOUR 0
+   (at most the one catch-up run after a switch-on).
 
 ## DECISION REQUESTED (open)
-- Recorder trigger (Windows, not touched): after a late catch-up the hourly runs
-  move to that minute (9 Oct: all at :53, London's 16:00 slot after the close).
-  Default: re-register QB2-Recorder with 14 fixed triggers 07:00…20:00 UK, no
-  repetition, same settings. GO words: "GO on recorder triggers: 14 fixed hourly".
-- S4 and London's 17-minute delay. Default (c): act only on bars seen complete,
-  each market at its measured delay, and in S4 measure Trading 212's own price
-  freshness for (a). GO words: "GO on S4 delay: (c), measure T212 freshness".
 - Backups on the university OneDrive? Default: keep (2026-10-06 archive).
+
+## Decided 2026-10-09 (QT-13-GO, operator words verbatim)
+- *"GO on recorder triggers: 14 fixed hourly"* → APPLIED same evening.
+- *"GO on S4 delay: (c), measure T212 freshness"* → written into PLAN_V3 S4.
 
 ## Standing GOs (operator words, verbatim)
 - 2026-10-07: *"STANDING GO: For routine settings and thresholds, go with the
@@ -45,7 +45,10 @@ and on 9 Oct all 221 names fail as stale (0.0%). A scratch rebuild from raw pass
   company / same index fund); both still get an anchor.
 - P20 cross-check thresholds are built in S4; their 1.6-min premise is now US
   1.25 / London 16.66 min (row o) — London's gap rule must allow for it.
-- The S4 delay decision above. P19's 18 trials stay pre-registered as written.
+- S4 delay DECIDED (c): act only on bars seen complete, each market at its row-o
+  delay; S4 also measures T212 `currentPrice` freshness on anchored London names
+  (read-only, ≥20 over 3 sessions) so London can reopen on evidence. P19's 18
+  trials stay pre-registered as written.
 - FX: costs.py already charges 0.15% per leg on US names. Trading 212 (page read
   2026-10-09): only the Invest account holds USD; the ISA does not, so in an ISA
   every US trade converts. Can an API order choose USD? UNKNOWN.
@@ -53,7 +56,8 @@ and on 9 Oct all 221 names fail as stale (0.0%). A scratch rebuild from raw pass
   v1 revive-or-retire.
 
 ## Recorder facts
-QB2-Recorder (Mon–Fri 07:00 +1h ×14h, wake, catch-up) writes RAW only; the hourly
+QB2-Recorder (Mon–Fri, 14 fixed triggers 07:00…20:00 local, no repetition, wake,
+catch-up, IgnoreNew, 3h limit; since QT-13-GO) writes RAW only; the hourly
 status page (QB2-StatusPush, :50) now lists today's run times and flags runs 20+
 min past the hour. Raw page: raw.githubusercontent.com/awtremlett-source/
 QuantBot/status/status/recorder_status.md. Minute labels: 0 MINUTE_OK (86
