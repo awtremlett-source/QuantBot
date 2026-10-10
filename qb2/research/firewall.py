@@ -11,6 +11,11 @@ The one scoring path a candidate goes through, in order:
 6. the Deflated Sharpe over qb2's whole trial count (drills excluded);
 7. the benchmark (D3) over the same period, both compounded; the verdict; ONE
    trial-log line.
+
+QT-15: ``n_trials`` sets a floor under the Deflated Sharpe's N, so every trial of
+a batch is deflated over the batch's FULL count, not the count so far; ``final``
+is the single holdout pass -- each name's sealed bars are graded, its unsealed bars
+only warm the indicators up; the per-name OOS frames are kept for description.
 """
 
 from __future__ import annotations
@@ -26,8 +31,8 @@ import pandas as pd
 
 from qb2.data import access, universe
 from qb2.execution import costs
-from qb2.research import (bet_groups, benchmark, deflation, fills, holdout, monte_carlo,
-                          preregister, stats, trial_log, verdict, walk_forward)
+from qb2.research import (backtest, bet_groups, benchmark, deflation, fills, holdout,
+                          monte_carlo, preregister, stats, trial_log, verdict, walk_forward)
 from qb2.research.strategy import Strategy
 
 Transform = Callable[[pd.DataFrame, costs.Instrument, str], pd.DataFrame]
@@ -83,22 +88,38 @@ class Portfolio:
     net: pd.Series
     marked: pd.Series
     trades: int
+    parts: dict[str, pd.DataFrame] = field(default_factory=dict)
+
+
+def _sealed(token: preregister.Registered, strategy: Strategy, name: NameData,
+            interval: str, stress: float, final: holdout.HoldoutPass) -> pd.DataFrame:
+    """The holdout run for one name: one full run, graded on the sealed bars only."""
+    full = backtest.run(token, strategy, name.bars, instrument=name.instrument,
+                        interval=interval, market=name.market, stress=stress,
+                        final=final, plan=name.plan, log_path=None)
+    days = holdout.local_index(name.bars.index, name.market).date
+    first = int((days < holdout.SEALED_FROM[interval]).sum())      # bars are in order
+    return walk_forward._frame(full, first, len(name.bars))       # noqa: SLF001
 
 
 def portfolio(token: preregister.Registered, make: Callable[[NameData], Strategy],
-              data: Sequence[NameData], interval: str, stress: float) -> Portfolio:
+              data: Sequence[NameData], interval: str, stress: float,
+              final: holdout.HoldoutPass | None = None) -> Portfolio:
     parts: dict[str, pd.DataFrame] = {}
     for name in data:
-        result = walk_forward.walk_forward(
-            token, walk_forward.Fixed(make(name)), name.bars, instrument=name.instrument,
-            interval=interval, market=name.market, stress=stress, plan=name.plan,
-            log_path=None)
-        if len(result.oos):
-            parts[name.symbol] = result.oos
+        if final is not None:
+            oos = _sealed(token, make(name), name, interval, stress, final)
+        else:
+            oos = walk_forward.walk_forward(
+                token, walk_forward.Fixed(make(name)), name.bars,
+                instrument=name.instrument, interval=interval, market=name.market,
+                stress=stress, plan=name.plan, log_path=None).oos
+        if len(oos):
+            parts[name.symbol] = oos
     combine = {col: bet_groups.combine({s: f[col].astype(float) for s, f in parts.items()})
                for col in ("gross", "net", "marked")}
     trades = int(sum(int(f["entries"].sum()) for f in parts.values()))
-    return Portfolio(combine["gross"], combine["net"], combine["marked"], trades)
+    return Portfolio(combine["gross"], combine["net"], combine["marked"], trades, parts)
 
 
 @dataclass(slots=True)
@@ -133,9 +154,10 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
           skipped: Sequence[str] = (), n_null: int = monte_carlo.DEFAULT_TRIALS,
           seed: int = 0,
           bench: Callable[[date, date], benchmark.Benchmark] = benchmark.over,
-          log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG) -> FirewallResult:
+          log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG, n_trials: int = 0,
+          final: holdout.HoldoutPass | None = None) -> FirewallResult:
     registered = preregister.check(token)
-    seen = portfolio(registered, make, data, interval, stress)
+    seen = portfolio(registered, make, data, interval, stress, final)
     flat = seen.marked.to_numpy(dtype=float)
     when = pd.DatetimeIndex(seen.marked.index).tz_convert("Europe/London")
     start, end = (when.min().date(), when.max().date()) if len(when) else (None, None)
@@ -143,21 +165,21 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
     result = FirewallResult(
         registered.id, registered.commit, interval, stress, len(data),
         bet_groups.effective_n([d.symbol for d in data]), list(skipped), start, end, seen,
-        portfolio(registered, make, data, interval, 1.0) if stress != 1.0 else None,
+        portfolio(registered, make, data, interval, 1.0, final) if stress != 1.0 else None,
         None, None, None)
     if start and end:
         result.benchmark = bench(start, end)
     if seen.trades >= verdict.MIN_OOS_TRADES and len(flat) >= verdict.MIN_OOS_BARS:
-        nulls = [stats.compute(portfolio(registered, _coin(s), data, interval, stress)
+        nulls = [stats.compute(portfolio(registered, _coin(s), data, interval, stress, final)
                                .marked, interval, market).sharpe_per_bar
                  for s in monte_carlo.trial_seeds(seed, n_null)]
         observed = stats.compute(flat, interval, market).sharpe_per_bar
         result.p_value = monte_carlo.p_value(observed, nulls)
         result.null_mean, result.null_std = float(np.mean(nulls)), float(np.std(nulls))
         counted, _ = trial_log.count_selection_trials(log_path)
-        n_trials = max(2, counted + (0 if registered.is_drill else 1))
+        n_full = max(2, counted + (0 if registered.is_drill else 1), n_trials)
         try:
-            result.deflated = deflation.deflated_sharpe(flat, n_trials, float(np.var(nulls)))
+            result.deflated = deflation.deflated_sharpe(flat, n_full, float(np.var(nulls)))
         except ValueError:
             result.deflated = {}              # judged INSUFFICIENT below, never PASS
     result.verdict = verdict.judge(
