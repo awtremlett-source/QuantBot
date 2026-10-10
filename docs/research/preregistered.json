@@ -1,0 +1,502 @@
+{
+ "register": "qb2 pre-registration (S4)",
+ "rule": "A candidate is scored only if it is here AND in the committed version of this file, unchanged. Adding anything later is a NEW entry, logged before it is run. Never edit an entry: a changed candidate is a new candidate.",
+ "created": "2026-10-10",
+ "entries": [
+  {
+   "id": "P19-01-5m",
+   "kind": "trial",
+   "rule": "price_x_ema9",
+   "name": "price × EMA 9",
+   "entry_rule": "close crosses the EMA 9",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the EMA 9. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "ema": 9
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-02-5m",
+   "kind": "trial",
+   "rule": "price_x_ema21",
+   "name": "price × EMA 21",
+   "entry_rule": "close crosses the EMA 21",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the EMA 21. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "ema": 21
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-03-5m",
+   "kind": "trial",
+   "rule": "price_x_ema50",
+   "name": "price × EMA 50",
+   "entry_rule": "close crosses the EMA 50",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the EMA 50. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "ema": 50
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-04-5m",
+   "kind": "trial",
+   "rule": "ema9_x_ema21",
+   "name": "EMA 9 × EMA 21",
+   "entry_rule": "the fast EMA crosses the medium",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the EMA 9 crosses back below the EMA 21. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "fast": 9,
+    "slow": 21
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-05-5m",
+   "kind": "trial",
+   "rule": "ema9_x_ema50",
+   "name": "EMA 9 × EMA 50",
+   "entry_rule": "the fast EMA crosses the slow",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the EMA 9 crosses back below the EMA 50. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "fast": 9,
+    "slow": 50
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-06-5m",
+   "kind": "trial",
+   "rule": "ema21_x_ema50",
+   "name": "EMA 21 × EMA 50",
+   "entry_rule": "the medium EMA crosses the slow",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the EMA 21 crosses back below the EMA 50. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "fast": 21,
+    "slow": 50
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-07-5m",
+   "kind": "trial",
+   "rule": "stacked_emas",
+   "name": "stacked EMAs",
+   "entry_rule": "EMA 9 > EMA 21 > EMA 50, all three aligned",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the alignment EMA 9 > EMA 21 > EMA 50 stops holding. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "emas": [
+     9,
+     21,
+     50
+    ]
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-08-5m",
+   "kind": "trial",
+   "rule": "keltner_breakout",
+   "name": "Keltner breakout",
+   "entry_rule": "close crosses the upper band",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the upper band. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "middle": "EMA 21",
+    "atr": "Wilder ATR(14)",
+    "multiple": 2.0
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-09-5m",
+   "kind": "trial",
+   "rule": "keltner_reversion",
+   "name": "Keltner reversion",
+   "entry_rule": "close touches the lower band and closes back inside",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50 (30 us_liquid, 10 uk_etf, 10 uk_share), GOOG/GOOGL and VUAG/VUSA one bet each (docs/research/bet_groups.json v1)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the bar touches the upper band and closes back inside. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "middle": "EMA 21",
+    "atr": "Wilder ATR(14)",
+    "multiple": 2.0
+   },
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-01-1d",
+   "kind": "trial",
+   "rule": "price_x_ema9",
+   "name": "price × EMA 9",
+   "entry_rule": "close crosses the EMA 9",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the EMA 9.",
+   "parameters": {
+    "ema": 9
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-02-1d",
+   "kind": "trial",
+   "rule": "price_x_ema21",
+   "name": "price × EMA 21",
+   "entry_rule": "close crosses the EMA 21",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the EMA 21.",
+   "parameters": {
+    "ema": 21
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-03-1d",
+   "kind": "trial",
+   "rule": "price_x_ema50",
+   "name": "price × EMA 50",
+   "entry_rule": "close crosses the EMA 50",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the EMA 50.",
+   "parameters": {
+    "ema": 50
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-04-1d",
+   "kind": "trial",
+   "rule": "ema9_x_ema21",
+   "name": "EMA 9 × EMA 21",
+   "entry_rule": "the fast EMA crosses the medium",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the EMA 9 crosses back below the EMA 21.",
+   "parameters": {
+    "fast": 9,
+    "slow": 21
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-05-1d",
+   "kind": "trial",
+   "rule": "ema9_x_ema50",
+   "name": "EMA 9 × EMA 50",
+   "entry_rule": "the fast EMA crosses the slow",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the EMA 9 crosses back below the EMA 50.",
+   "parameters": {
+    "fast": 9,
+    "slow": 50
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-06-1d",
+   "kind": "trial",
+   "rule": "ema21_x_ema50",
+   "name": "EMA 21 × EMA 50",
+   "entry_rule": "the medium EMA crosses the slow",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the EMA 21 crosses back below the EMA 50.",
+   "parameters": {
+    "fast": 21,
+    "slow": 50
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-07-1d",
+   "kind": "trial",
+   "rule": "stacked_emas",
+   "name": "stacked EMAs",
+   "entry_rule": "EMA 9 > EMA 21 > EMA 50, all three aligned",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the alignment EMA 9 > EMA 21 > EMA 50 stops holding.",
+   "parameters": {
+    "emas": [
+     9,
+     21,
+     50
+    ]
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-08-1d",
+   "kind": "trial",
+   "rule": "keltner_breakout",
+   "name": "Keltner breakout",
+   "entry_rule": "close crosses the upper band",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the close crosses back below the upper band.",
+   "parameters": {
+    "middle": "EMA 21",
+    "atr": "Wilder ATR(14)",
+    "multiple": 2.0
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "P19-09-1d",
+   "kind": "trial",
+   "rule": "keltner_reversion",
+   "name": "Keltner reversion",
+   "entry_rule": "close touches the lower band and closes back inside",
+   "bar_size": "1d",
+   "universe": "advisor-universe-v1: the 171 names DERIVED by P6's rule (P19: daily bars are the advisor's)",
+   "exit_rule": "the mirror of the entry, fixed: exit when the bar touches the upper band and closes back inside.",
+   "parameters": {
+    "middle": "EMA 21",
+    "atr": "Wilder ATR(14)",
+    "multiple": 2.0
+   },
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "costs": "qb2/execution/costs.py on every fill; judged at 2x (P17)",
+   "fills": "delay rule (c): the first bar starting after the signal bar's close + row-o delay (US 1.25 min, London 16.66 min); daily at the next open",
+   "date": "2026-10-10",
+   "source": "PLAN_V3 P19, settings fixed 2026-10-03; this list registered before any result exists"
+  },
+  {
+   "id": "KN-COIN-5m",
+   "kind": "drill",
+   "rule": "coin_flip",
+   "name": "a coin-flip, one coin per bet; must be REJECTED",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50, unsealed bars of the REAL clean store (pattern drills: copies of them)",
+   "exit_rule": "a fresh coin every bar. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "prob_long": 0.5,
+    "seed": 4242
+   },
+   "expect": "FAIL",
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "date": "2026-10-10",
+   "source": "QT-14 B6 known-null gate; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-INSTANT-5m",
+   "kind": "drill",
+   "rule": "planted_harvester",
+   "name": "a 1.5% move planted inside the bar after a marker and gone a bar later: only an instant fill could catch it, so with delay rule (c) it must be REJECTED",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50, unsealed bars of the REAL clean store (pattern drills: copies of them)",
+   "exit_rule": "hold 1 decisions from the marker, then flat. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "pattern": "instant",
+    "marker_bar": 12,
+    "delta": 0.015,
+    "hold": 1,
+    "block_bars_needed": 15
+   },
+   "expect": "FAIL",
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "date": "2026-10-10",
+   "source": "QT-14 B6 known-null gate; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-COIN-1d",
+   "kind": "drill",
+   "rule": "coin_flip",
+   "name": "a coin-flip on daily bars; must be REJECTED",
+   "bar_size": "1d",
+   "universe": "bot-universe-v1: the agreed 50, unsealed bars of the REAL clean store (pattern drills: copies of them)",
+   "exit_rule": "a fresh coin every bar",
+   "parameters": {
+    "prob_long": 0.5,
+    "seed": 4242
+   },
+   "expect": "FAIL",
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "date": "2026-10-10",
+   "source": "QT-14 B6 known-null gate; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-PLANT-5m",
+   "kind": "drill",
+   "rule": "planted_harvester",
+   "name": "a marker bar, then +0.15% a bar for 24 bars from 6 bars later, then back down: must PASS at 1x and 2x costs",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50, unsealed bars of the REAL clean store (pattern drills: copies of them)",
+   "exit_rule": "hold 24 decisions from the marker, then flat. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "pattern": "trend",
+    "marker_bar": 12,
+    "up_start": 6,
+    "up_bars": 24,
+    "delta_per_bar": 0.0015,
+    "hold": 24,
+    "block_bars_needed": 66
+   },
+   "expect": "PASS",
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "date": "2026-10-10",
+   "source": "QT-14 B6 known-null gate; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-PLANT-1d",
+   "kind": "drill",
+   "rule": "planted_harvester",
+   "name": "every 20 days a marker, then +1.5% a day for 8 days, then back down: must PASS at 1x and 2x costs",
+   "bar_size": "1d",
+   "universe": "bot-universe-v1: the agreed 50, unsealed bars of the REAL clean store (pattern drills: copies of them)",
+   "exit_rule": "hold 8 decisions from the marker, then flat",
+   "parameters": {
+    "pattern": "trend",
+    "block": 20,
+    "marker_bar": 0,
+    "up_start": 1,
+    "up_bars": 8,
+    "delta_per_bar": 0.015,
+    "hold": 8,
+    "block_bars_needed": 17
+   },
+   "expect": "PASS",
+   "side": "long-only",
+   "holdout": "daily bars sealed from 2025-10-10 (the last 12 months to 2026-10-09); one final holdout run",
+   "date": "2026-10-10",
+   "source": "QT-14 B6 known-null gate; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-PLANT-SMALL-5m",
+   "kind": "drill",
+   "rule": "planted_harvester",
+   "name": "the same trend shrunk so the part caught is 0.7 of that name's own round-trip cost: an edge smaller than its costs must be REJECTED",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50, unsealed bars of the REAL clean store (pattern drills: copies of them)",
+   "exit_rule": "hold 24 decisions from the marker, then flat. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "pattern": "trend",
+    "marker_bar": 12,
+    "up_start": 6,
+    "up_bars": 24,
+    "edge_vs_round_trip": 0.7,
+    "steps_caught": {
+     "US": 21,
+     "LSE": 24
+    },
+    "hold": 24,
+    "block_bars_needed": 66
+   },
+   "expect": "FAIL",
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "date": "2026-10-10",
+   "source": "QT-14 B6 known-null gate; logged kind=drill, excluded from the trial count"
+  }
+ ]
+}
