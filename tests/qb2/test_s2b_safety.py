@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from qb2.execution import costs, safety, sender
+from qb2.execution import costs, safety, sender, xcheck
 from qb2.execution.costs import Instrument
 from qb2.execution.fill_recorder import FillRecorder
 from qb2.execution.safety import BOT, ADVISOR, MANUAL, Blocked, Holding
@@ -379,11 +379,13 @@ def test_the_sender_is_disarmed_and_nothing_can_arm_it() -> None:
 
 def test_even_armed_there_is_nothing_behind_the_door(
         monkeypatch: pytest.MonkeyPatch) -> None:
-    """Belt and braces: arming it reaches a function that refuses to exist."""
+    """Belt and braces: arming it reaches a function that refuses to exist --
+    even with a clean P20 cross-check in hand (QT-14 added that step)."""
     monkeypatch.setattr(sender, "ARMED", True)
     request = OrderRequest("ISFl_EQ", "BUY", 10.0, "LSE", 7.0, 10.0)
+    clean = xcheck.Rating("ISFl_EQ", "LSE", xcheck.OK, 0.0, 0.016, "planted")
     with pytest.raises(NotImplementedError, match="S10"):
-        sender.send(request, market_is_open=True)
+        sender.send(request, market_is_open=True, price_check=clean)
 
 
 def test_a_buy_is_refused_while_the_killswitch_is_armed(

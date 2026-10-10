@@ -38,7 +38,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from qb2.data.front_door import StoreLocked, WriterLock
-from qb2.ingest import recorder, tickers
+from qb2.ingest import fresh_run, recorder, tickers
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = REPO_ROOT / "logs" / "recorder"
@@ -344,7 +344,7 @@ def _run(args: argparse.Namespace, entries: list[tuple[str, str, str]],
 
     # --- the after-hours step: raw -> clean, censuses, labels. ALWAYS after the
     # sampling and the fetches above, so it can never slow them (QT-13b). ---
-    complaints += _clean_step(after_hours=do_catchup)
+    complaints += fresh_run.around_clean(_clean_step, after_hours=do_catchup, say=say)
 
     rotated = rotate_logs()
     if rotated:

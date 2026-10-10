@@ -178,11 +178,11 @@ def census_unchanged_by_labels(census: object) -> bool:
 
 def bars(symbol: str, interval: str, *, clean_root: Path | None = None,
          labels: Mapping[str, Label] | None = None,
-         labels_path: Path | None = None) -> pd.DataFrame:
+         labels_path: Path | None = None, since: date | None = None) -> pd.DataFrame:
     """Read clean bars for one name. THE way a strategy gets data.
 
     Reading the parquet files directly would skip the minute rule, so nothing
-    else may do it -- a test scans for that.
+    else may do it -- a test scans for that. ``since`` skips day files before it.
     """
     if interval == "1m":
         label = label_for(symbol, labels, labels_path)
@@ -196,7 +196,8 @@ def bars(symbol: str, interval: str, *, clean_root: Path | None = None,
                 "bars, or run the census again if you believe this has changed.")
 
     folder = (clean_root or CLEAN) / "bars" / interval / symbol
-    files = sorted(folder.glob("*.parquet"))
+    files = [f for f in sorted(folder.glob("*.parquet"))
+             if since is None or f.stem >= since.isoformat()]
     if not files:
         raise AccessRefused(
             f"no clean {interval} bars for {symbol} -- run the front door first")

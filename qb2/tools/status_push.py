@@ -34,6 +34,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from qb2.data import clean_step
+from qb2.ingest import t212_fresh, xcheck_shadow
 from qb2.tools import delay_count, run_times, sample_delay
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -113,7 +114,8 @@ def _market(market: str, name: str, rows: Sequence[dict[str, object]],
 
 
 def build_status(manifest: Path, log_dir: Path, now: datetime,
-                 clean_root: Path | None = None) -> str:
+                 clean_root: Path | None = None, fresh_samples: Path | None = None,
+                 xcheck_folder: Path | None = None) -> str:
     """The whole status file, in plain words. Reads; never writes."""
     raw, bad = delay_count.scan_samples(manifest)
     rows = [r for r in delay_count.countable(raw, verified_only=True)
@@ -125,6 +127,8 @@ def build_status(manifest: Path, log_dir: Path, now: datetime,
              f"- Last recorder run: {last_run(log_dir)}",
              *run_times.judge(run_times.starts_today(log_dir, now), now),
              f"- {clean_step.status_verdict(now, clean_root=clean_root).line()}",
+             f"- {t212_fresh.status_line(fresh_samples)}",
+             f"- {xcheck_shadow.status_line(xcheck_folder)}",
              f"- Target: {sample_delay.MIN_SAMPLES_PER_MARKET} counted samples per "
              f"market over {sample_delay.MIN_SESSIONS} full sessions. Counted = "
              "clock-checked, inside a full session, each bar once "

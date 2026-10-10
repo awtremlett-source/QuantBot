@@ -436,6 +436,22 @@ for"*. So:
 - What this does not change: the cross-check rule above is still built in S4, and
   buying an anchor arms nothing — the bot's sender stays disarmed.
 
+*Addendum, 2026-10-10 — the lines scaled for the measured delay (QT-14A).*
+STARTING FIGURES, applied under the STANDING GO of 2026-10-07. The warn and block lines above were written
+for a 1.6-minute feed delay; row o measured US 1.25 and London 16.66 minutes, so
+each market's lines are multiplied by √(delay ÷ 1.6), the ATR term included:
+
+| market | scale | warn | block |
+|---|---|---|---|
+| US | ×0.884 | over **0.221%** | over max(**0.442%**, 0.884 × 5-minute ATR ÷ price) |
+| London | ×3.227 | over **0.807%** | over max(**1.613%**, 3.227 × 5-minute ATR ÷ price) |
+
+The 5% single-name stop and the 3-names rule are **not** scaled: they bound a feed
+error, not a drift, so they stay on the strict side. Built in
+`qb2/execution/xcheck.py`, wired into the sender's chain (disarmed), and running
+in **SHADOW** in every in-session recorder run (`data/raw/xcheck/`) so the false
+alarm rate is measured before the check guards a trade.
+
 ---
 
 ## Carried from V2

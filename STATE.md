@@ -1,32 +1,35 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-10. History → docs/archive/STATE_2026-10-09.md (QT-13, QT-13-GO,
-verbatim) and earlier archives. Last box: QT-13b (2026-10-09/10) →
-docs/reports/QT-13b.md.
+Updated: 2026-10-10. History → docs/archive/STATE_2026-10-10.md (QT-13b state,
+verbatim) and earlier archives. Box in hand: QT-14 (S4) → docs/reports/QT-14.md.
 
-Phase: v2 BUILDING. **S0–S3 DONE** (S3 close = QT-13 + QT-13b; closed 2026-10-10,
-every PLAN_V3 exit item GREEN). The recorder's after-hours step now runs the front door
-(raw → clean), both censuses, the minute labels and a daily digest once per
-finished trading day; started through QB2-Recorder on 9 Oct 23:04 it cleaned
-7,217 files and the REAL-store 5m census read 217/221 = 98.2% (uk_etf 95.7,
-uk_share 97.0, us_liquid 100), fresh to 2026-10-09. S4 NOT started.
+Phase: v2 BUILDING. **S0–S3 DONE** (S3 close = QT-13 + QT-13b). **S4 IN PROGRESS (QT-14).** Part A (QT-14A,
+2026-10-10) is ARMED: the T212 London freshness meter and the P20 cross-check in
+SHADOW run inside every in-session recorder run; the sender carries the check and
+stays disarmed. Part B (firewall v2) follows in the same box.
+
+## QT-14 operator's words (verbatim, 2026-10-10)
+- *"write QT-14 (S4)"*
+
+## Applied under standing GO (2026-10-10, QT-14) — each a starting figure
+- Freshness polls: 10 per London-session run, 30 s apart, cap 5 min (starting figure).
+- Freshness counts only if the best lag (0–30 min) is 25% below the next-best and
+  the name is MINUTE_OK; a lag is judged only if 80% of polls have a bar (starting figure).
+- P20 lines scaled √(row-o delay ÷ 1.6): US warn 0.221% · block 0.442%; London warn
+  0.807% · block 1.613%; ATR term scaled the same (starting figure). 5% one-name stop
+  and the 3-names rule NOT scaled (strict side). Broker price max age 60 s (starting figure).
 
 ## NEXT, in order
-1. S4 box (mentor writes it). Its carried items are below, unchanged.
-2. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
-3. Mon 12 Oct: the status page should show runs on :00 (at most one named
-   "catch-up after switch-on"), no DRIFT, and "Clean store: … · OK". Tue 07:00
-   cleans Monday: up to 165 names get their 2nd pass on new data → MINUTE_OK.
-4. OPERATOR (optional, admin): switch on Task Scheduler's history log, from an
-   administrator PowerShell:
+1. Finish QT-14 Part B (firewall v2), then the S4 exit check.
+2. Mon 12 Oct: status page should show runs on :00, no DRIFT, "Clean store: … · OK",
+   and the two new lines "T212 London freshness: …" and "Cross-check (shadow): …".
+   Tue 07:00 cleans Monday → first freshness samples measured.
+3. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
+4. OPERATOR (optional, admin): Task Scheduler history log —
    `wevtutil set-log Microsoft-Windows-TaskScheduler/Operational /enabled:true`
 
 ## DECISION REQUESTED (open)
 - Backups on the university OneDrive? Default: keep (2026-10-06 archive).
-
-## Decided 2026-10-09 (QT-13-GO, operator words verbatim)
-- *"GO on recorder triggers: 14 fixed hourly"* → APPLIED same evening.
-- *"GO on S4 delay: (c), measure T212 freshness"* → written into PLAN_V3 S4.
 
 ## Standing GOs (operator words, verbatim)
 - 2026-10-07: *"STANDING GO: For routine settings and thresholds, go with the
@@ -34,54 +37,38 @@ uk_share 97.0, us_liquid 100), fresh to 2026-10-09. S4 NOT started.
   the bot on to trade, real money, and removing any safety fence."*
 - 2026-10-07: *"From now on, every box ends by saving its report in the repo and
   pushing, so the mentor can read it from GitHub."* → docs/reports/<BOX>.md.
-- Live anchors, 2026-10-05, operator chose "One GO until the £100 cap" — one GO
-  covers top-ups until the lifetime cap. Raising a cap (£3/order · £100 lifetime ·
-  50/UTC day) still needs its own GO. QT-12 CLOSED 06/10: 50/50 priced, £46.59.
-- Weekday anchor top-up TASK: not created — "that gets its own GO".
+- Live anchors, 2026-10-05: "One GO until the £100 cap". Raising a cap (£3/order ·
+  £100 lifetime · 50/UTC day) needs its own GO. QT-12 CLOSED: 50/50 priced.
+- 2026-10-09: *"GO on recorder triggers: 14 fixed hourly"* (applied) · *"GO on S4
+  delay: (c), measure T212 freshness"* (S4).
 
-## CARRIED INTO S4 (from QT-13)
-- GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot trades (same
-  company / same index fund); both still get an anchor.
-- P20 cross-check thresholds are built in S4; their 1.6-min premise is now US
-  1.25 / London 16.66 min (row o) — London's gap rule must allow for it.
-- S4 delay DECIDED (c): act only on bars seen complete, each market at its row-o
-  delay; S4 also measures T212 `currentPrice` freshness on anchored London names
-  (read-only, ≥20 over 3 sessions) so London can reopen on evidence. P19's 18
-  trials stay pre-registered as written.
-- FX: costs.py already charges 0.15% per leg on US names. Trading 212 (page read
-  2026-10-09): only the Invest account holds USD; the ISA does not, so in an ISA
-  every US trade converts. Can an API order choose USD? UNKNOWN.
-- Parked: which fund is D3 · the holdout period · advisor trial counting (S9) ·
-  v1 revive-or-retire.
+## CARRIED (unchanged from QT-13)
+- GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot trades (same company /
+  same index fund); both still get an anchor. Part B builds the bet groups.
+- FX: costs.py charges 0.15% per leg on US names; an ISA holds no USD, so every US
+  trade converts. Can an API order choose USD? UNKNOWN.
+- Parked: advisor trial counting (S9) · v1 revive-or-retire.
 
 ## Recorder facts
-QB2-Recorder (Mon–Fri, 14 fixed triggers 07:00…20:00 local, no repetition, wake,
-catch-up, IgnoreNew, 3h limit) writes RAW, then, once per finished day (marker
-data/clean/after_hours.json), runs qb2/data/clean_step.py AFTER sampling and
-fetches. RED = 5m census <95%, 1m census <50% (starting figure, standing GO), or
-a market's newest clean bar older than its last finished session (exchange
-calendars). Every run log and the status page carry "Clean store: fresh to … ·
-5m census …% · RED/OK"; the page counts a session only from 10:00 UK next
-weekday. Daily digest: logs/digest/digest-<date>.md. Status page (QB2-StatusPush,
-:50): run times on :00, one catch-up named, DRIFT on a repeated off-hour minute,
-missed :00 slots listed. Raw page: raw.githubusercontent.com/awtremlett-source/
-QuantBot/status/status/recorder_status.md. Labels: a pass counts only on NEW
-bars; 9 Oct: 0 MINUTE_OK, 165 on pass 1 of 2, 55 failing, 1 too new.
-Cleaning cost ≈0.4 s per new file (≈660 a day). Default test run is offline.
+QB2-Recorder (Mon–Fri, 14 fixed triggers 07:00…20:00 local, wake, catch-up,
+IgnoreNew, 3h limit). Run order: delay sample → hourly top-up → S4 measurements
+(qb2/ingest/fresh_run.py) → after-hours step (raw → clean, censuses, labels; once
+per finished day, marker data/clean/after_hours.json) → freshness measuring. RED =
+5m census <95%, 1m <50%, or clean store older than its last finished session.
+Status page (QB2-StatusPush, :50): raw.githubusercontent.com/awtremlett-source/
+QuantBot/status/status/recorder_status.md. Daily digest: logs/digest/.
 
 ## Open flags
-- anchors.py is 1,433 lines (pinned oversize): splitting = its own PROPOSE→GO;
-  test_qt12* files fold in then.
+- anchors.py 1,422 lines (pinned oversize): splitting = its own PROPOSE→GO.
 - v1 QuantBot-Daily has not run since 28 Jul (0x800710E0); revive-or-retire deferred.
-- Task Scheduler's history log is off (command in NEXT 4); run evidence = logs/recorder.
 - Recorder freshness prints RED for 15m (never recorded; nothing asks for 15m).
 - .env.example keeps the old T212 "to verify" note (inside the engine fingerprint).
 - No daily clock-sync task (admin). gh CLI absent → plain git.
 - Manual journal not migrated (MERGE_PLAN 3b). Two killswitch faces until stage 4.
+- Daily clean store ends 2026-10-01 (no scheduled daily top-up found).
 - Typing debt: 52 mypy errors silenced in 5 inherited modules (docs/merge/TYPING_DEBT.md).
-- Idea: a 15-minute sampler task (a new task = GO).
 
 ## Fingerprints
-v1 4add56ec…743b6 (must never move; re-verified 2026-10-10) · qb2 0dfd931e…92f0b
-after QT-13b, on this PC's working tree (how a087ffbf… was taken). It hashes
-bytes, so a fresh checkout (all CRLF) reads b21be477…89945 for the same code.
+v1 4add56ec…743b6 (must never move; re-verified 2026-10-10). qb2 hashes bytes on
+this PC's working tree (0dfd931e…92f0b after QT-13b; moved by QT-14 — new value
+in docs/reports/QT-14.md).

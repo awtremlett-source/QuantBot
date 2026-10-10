@@ -16,7 +16,9 @@ operator can read:
 1. not armed;
 2. the killswitch is on (buys only -- sells must always be possible);
 3. the market for that instrument is shut;
-4. there is already a pending bot order, or an unresolved intent, for that ticker.
+4. there is already a pending bot order, or an unresolved intent, for that ticker;
+5. the P20 price cross-check (qb2/execution/xcheck.py) blocks it, or never ran --
+   buys only. Wired in QT-14 so that arming at S10 is a switch, not new code.
 
 That last one exists because the order endpoints are **not idempotent**
 (docs/t212/FACTS.md row e): sending again because we are unsure is how one
@@ -29,7 +31,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from qb2.execution import safety
+from qb2.execution import safety, xcheck
 from qb2.execution.fill_recorder import FillRecorder
 
 # DISARMED. Nothing in qb2 may set this True; arming is S10, under its own box.
@@ -71,6 +73,7 @@ def send(request: OrderRequest, *,
          market_is_open: bool,
          pending_bot_tickers: Sequence[str] = (),
          recorder: FillRecorder | None = None,
+         price_check: xcheck.Rating | None = None,
          root: Path | None = None,
          place: Callable[[OrderRequest], str] = _not_built_yet) -> str:
     """Refuse for the right reason, or hand over to ``place``.
@@ -123,5 +126,13 @@ def send(request: OrderRequest, *,
                   f"reconcile with the broker, never resend")
         refuse(reason)
         raise safety.Blocked(reason)
+
+    # 5. P20: no cross-check, or a blocking one, refuses a buy (sells stay possible).
+    if request.side == BUY:
+        try:
+            xcheck.guard(request.ticker, price_check)
+        except safety.Blocked as blocked:
+            refuse(str(blocked))
+            raise
 
     return place(request)

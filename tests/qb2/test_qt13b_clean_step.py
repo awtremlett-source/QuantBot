@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 from qb2.data import access, census, clean_step, front_door
-from qb2.ingest import recorder
+from qb2.ingest import fresh_run, recorder
 from qb2.tools import record_now, sample_delay
 
 UTC = timezone.utc
@@ -312,6 +312,9 @@ def _planted_run(monkeypatch: pytest.MonkeyPatch, make_step: Callable[[list[str]
     monkeypatch.setattr(sample_delay, "verdict", lambda: "planted")
     monkeypatch.setattr(record_now, "rotate_logs", lambda: [])
     monkeypatch.setattr(record_now, "say", said.append)
+    # QT-14A's S4 measurements are planted out here; test_qt14a pins their order.
+    monkeypatch.setattr(fresh_run, "before_clean", lambda say: None)
+    monkeypatch.setattr(fresh_run, "after_clean", lambda say: None)
     args = argparse.Namespace(interval="1m", full=False)
     code = record_now._run(args, [], datetime(2026, 10, 9, 20, 30, tzinfo=UTC),
                            time.monotonic(), do_catchup)
