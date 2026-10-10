@@ -33,6 +33,7 @@ from pathlib import Path
 import pandas as pd
 
 from qb2.data.front_door import CLEAN, expected_minutes
+from qb2.ingest.recorder import EXCHANGE_TZ
 
 # A name passes if it holds at least this fraction of the bars its sessions should
 # contain. STARTING FIGURE, tested first: minute bars go missing legitimately when
@@ -146,15 +147,14 @@ def census_one(symbol: str, sleeve: str, market: str, interval: str,
     frames = _clean_frames(symbol, interval, clean_root)
     reasons: list[str] = []
 
-    bars_present = 0
-    bars_expected = 0
-    sessions_present = 0
+    bars_present = bars_expected = sessions_present = wrong_zone = 0
     last: pd.Timestamp | None = None
     for path in frames:
         frame = pd.read_parquet(path)
         if frame.empty:
             continue
         bars_present += len(frame)
+        wrong_zone += str(frame.index.tz) != EXCHANGE_TZ[market]     # QT-15 A2
         sessions_present += 1
         end = pd.Timestamp(frame.index.max())
         if last is None or end > last:
@@ -167,9 +167,7 @@ def census_one(symbol: str, sleeve: str, market: str, interval: str,
 
     quarantined = _quarantined(symbol, interval, clean_root)
 
-    stale: int | None = None
-    if last is not None:
-        stale = _weekdays_between(pd.Timestamp(last).date(), now)
+    stale = None if last is None else _weekdays_between(pd.Timestamp(last).date(), now)
 
     if not frames:
         reasons.append("no clean bars at all")
@@ -181,6 +179,8 @@ def census_one(symbol: str, sleeve: str, market: str, interval: str,
         reasons.append(f"last bar is {stale} weekdays old")
     if quarantined:
         reasons.append(f"{quarantined} row(s) in quarantine")
+    if wrong_zone:
+        reasons.append(f"{wrong_zone} day file(s) not stamped {EXCHANGE_TZ[market]}")
 
     return NameCensus(
         symbol=symbol, sleeve=sleeve, market=market,

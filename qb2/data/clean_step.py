@@ -1,7 +1,8 @@
 """The after-hours step: raw -> clean, the two censuses, the minute labels (QT-13b).
 
-**Why.** QT-13: nothing scheduled ran the front door, so the clean store stopped
-on 2 Oct and the 1m census printed 0.0% for three days with nothing going red.
+**Why.** QT-13: nothing scheduled ran the front door; the clean store stopped on
+2 Oct, the 1m census read 0.0% for three days, nothing went red. QT-15 A3: the
+daily store's top-up (daily_step.py) follows the front door on every call.
 
 **When.** Inside the recorder's run, AFTER sampling and fetches, on the first run
 once a trading day has finished (New York closes last, 21:00 UK): often the next
@@ -16,7 +17,7 @@ overdue (10:00 UK next weekday), so 21:50 cannot cry wolf about tonight.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -25,7 +26,7 @@ from zoneinfo import ZoneInfo
 import exchange_calendars as xcals  # type: ignore[import-untyped]
 import pandas as pd
 
-from qb2.data import access, census, front_door
+from qb2.data import access, census, daily_step, front_door
 from qb2.data.front_door import CLEAN, REPO_ROOT
 
 UK = ZoneInfo("Europe/London")
@@ -236,13 +237,14 @@ def run(now: datetime, *, clean_root: Path | None = None, raw_root: Path | None 
     return StepResult(verdict, tally.files_written, lines, complaints)
 
 
-def run_if_due(now: datetime, *, after_hours: bool,
-               clean_root: Path | None = None) -> StepResult | str:
-    """What record_now calls. Returns the result, or why it did not run."""
+def run_if_due(now: datetime, *, after_hours: bool, clean_root: Path | None = None,
+               daily: Callable[..., str] = daily_step.run_if_due) -> StepResult | str:
+    """What record_now calls. The result, or why it did not run; then the daily top-up."""
     marker = (clean_root or CLEAN) / MARKER
     due, why = is_due(now, marker, after_hours=after_hours)
-    if not due:
-        return why
-    result = run(now, clean_root=clean_root)
-    mark_done(now, marker, red=result.verdict.red)
-    return result
+    result = run(now, clean_root=clean_root) if due else why
+    if isinstance(result, StepResult):
+        mark_done(now, marker, red=result.verdict.red)
+        result.lines.append(daily(now, clean_root=clean_root))
+        return result
+    return f"{result} · {daily(now, clean_root=clean_root)}"

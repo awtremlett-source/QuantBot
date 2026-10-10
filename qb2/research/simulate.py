@@ -4,17 +4,19 @@ PORTED in part from v1's research/backtester.py (SHA-256 at copy time, 2026-10-1
 4ca72b809c37d1eab994ec6feda0b07aa9a4baeb8e1973ffb8d391407ad485ba): marking at the
 close, filling at the open, net and gross off the SAME decisions.
 
-What changed, and why. The bot sizes each order at a fixed stake (PLAN_V3: at most
-10% of its 30% pot), so returns are measured on that stake, per bar, and add up:
+What changed, and why (QT-15 A1: v1 compounded, QT-14's port added). The bot's
+pot is split equally per BET (bet_groups.combine), and each bet's slot is re-sized
+to the pot as it stands at every bar, so returns COMPOUND (stats.compounded):
 
-* a trade buys at the fill bar's OPEN; shares = stake / entry price;
-* each bar it is held earns (price change) / entry price -- the gap from the last
-  close to this open belongs to the position held before this bar's fill, the
-  move from open to close to the position held after it;
+* a trade buys at the fill bar's OPEN;
+* each bar it is held earns its price move on the slot as it stands at that bar's
+  start -- the gap from the last close to this open belongs to the position held
+  before this bar's fill, the move from open to close to the position held after
+  it; over one trade the bars multiply to exit / entry;
 * every fill pays the cost model's full leg cost (qb2/execution/costs.py: spread,
   slippage, FX 0.15% per leg on non-sterling lines, 0.5% stamp duty on UK share
-  buys, PTM levy), as a fraction of the stake. There is no way to ask for zero:
-  the stress multiplier is refused below 1.
+  buys, PTM levy) as a fraction of the slot. There is no way to ask for zero: the
+  stress multiplier is refused below 1.
 * the survivorship mark-down is charged per bar HELD on single shares.
 """
 
@@ -27,7 +29,9 @@ from numpy.typing import NDArray
 
 from qb2.execution import costs
 
-STAKE_GBP = 300.0          # STARTING FIGURE: 10% of a GBP 3,000 pot (safety.py)
+# STARTING FIGURE: 10% of a GBP 3,000 pot (safety.py). Used for the COST arithmetic
+# only (a fixed fee is a bigger share of a small order); returns are per slot.
+STAKE_GBP = 300.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,21 +63,18 @@ class Paths:
 def run(opens: NDArray[np.float64], closes: NDArray[np.float64],
         held: NDArray[np.float64], legs: LegFractions,
         drag_per_bar: float = 0.0) -> Paths:
-    """Per-bar returns on the stake for a 0/1 position path."""
+    """Per-bar returns on the slot, re-sized every bar, for a 0/1 position path."""
     held = np.asarray(held, dtype=float)
     before = np.r_[0.0, held[:-1]]
     entries = held > before
     exits = held < before
-    entry_px = np.where(entries, opens, np.nan)
-    known = np.where(np.isnan(entry_px), 0, np.arange(len(held)))
-    entry_px = entry_px[np.maximum.accumulate(known)]          # carried while held
-    entry_before = np.r_[np.nan, entry_px[:-1]]
     prev_close = np.r_[np.nan, closes[:-1]]
-    with np.errstate(invalid="ignore"):
-        gap = np.where(before > 0, (opens - prev_close) / entry_before, 0.0)
-        body = np.where(held > 0, (closes - opens) / entry_px, 0.0)
-    gross = np.nan_to_num(gap) + np.nan_to_num(body)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        gap = np.where(before > 0, opens / prev_close - 1.0, 0.0)
+        body = np.where(held > 0, closes / opens - 1.0, 0.0)
+    gross = (1.0 + np.nan_to_num(gap)) * (1.0 + np.nan_to_num(body)) - 1.0
     if len(held):
         exits[-1] = exits[-1] or held[-1] > 0       # still open at the end: sold there
-    net = gross - entries * legs.buy - exits * legs.sell
-    return Paths(gross=gross, net=net, marked=net - drag_per_bar * held, entries=entries)
+    net = (1.0 + gross) * (1.0 - entries * legs.buy) * (1.0 - exits * legs.sell) - 1.0
+    marked = (1.0 + net) * (1.0 - drag_per_bar * held) - 1.0
+    return Paths(gross=gross, net=net, marked=marked, entries=entries)

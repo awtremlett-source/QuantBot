@@ -9,7 +9,8 @@ The one scoring path a candidate goes through, in order:
    are one bet each) -- gross, net, and net after the survivorship mark-down;
 5. the coin-flip null through the IDENTICAL pipeline, same bars, same costs;
 6. the Deflated Sharpe over qb2's whole trial count (drills excluded);
-7. the benchmark (D3) over the same period; the verdict; ONE trial-log line.
+7. the benchmark (D3) over the same period, both compounded; the verdict; ONE
+   trial-log line.
 """
 
 from __future__ import annotations
@@ -162,7 +163,7 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
     result.verdict = verdict.judge(
         oos_trades=seen.trades, oos_bars=len(flat), p_value=result.p_value,
         dsr=result.deflated.get("dsr"),
-        strategy_return=float(flat.sum()),
+        strategy_return=stats.compute(flat, interval, market).total_return,  # compounded
         benchmark_return=result.benchmark.total_return if result.benchmark else np.inf)
     if log_path is not None:
         trial_log.log_trial({

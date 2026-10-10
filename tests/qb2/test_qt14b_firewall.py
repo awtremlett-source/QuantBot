@@ -236,17 +236,18 @@ def test_stamp_duty_on_uk_share_buys_and_fx_on_us_legs() -> None:
 
 
 def test_the_trade_arithmetic_by_hand() -> None:
+    """Re-sized every bar since QT-15 A1: each bar on the slot as it stands then."""
     opens = np.array([100.0, 101.0, 102.0, 104.0])
     closes = np.array([100.5, 101.5, 103.0, 104.5])
     held = np.array([0.0, 1.0, 1.0, 0.0])
     legs = simulate.LegFractions(0.001, 0.002)
     out = simulate.run(opens, closes, held, legs)
-    assert out.gross[1] == pytest.approx((101.5 - 101.0) / 101.0)
-    assert out.gross[2] == pytest.approx((102 - 101.5) / 101 + (103 - 102) / 101)
-    assert out.gross[3] == pytest.approx((104 - 103) / 101)          # gap, then sold
-    assert out.net[1] == pytest.approx(out.gross[1] - 0.001)
-    assert out.net[3] == pytest.approx(out.gross[3] - 0.002)
-    assert out.gross.sum() == pytest.approx((104 - 101) / 101)
+    assert out.gross[1] == pytest.approx(101.5 / 101.0 - 1)
+    assert out.gross[2] == pytest.approx(103 / 101.5 - 1)            # gap, then body
+    assert out.gross[3] == pytest.approx(104 / 103 - 1)              # gap, then sold
+    assert out.net[1] == pytest.approx((1 + out.gross[1]) * (1 - 0.001) - 1)
+    assert out.net[3] == pytest.approx((1 + out.gross[3]) * (1 - 0.002) - 1)
+    assert np.prod(1 + out.gross) - 1 == pytest.approx(104 / 101 - 1)
 
 
 def test_gross_and_net_both_reported_and_net_is_lower(register_repo: Path) -> None:

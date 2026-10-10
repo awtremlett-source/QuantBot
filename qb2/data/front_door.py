@@ -52,6 +52,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from qb2.ingest.recorder import EXCHANGE_TZ
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RAW_INTRADAY = REPO_ROOT / "data" / "raw" / "intraday"
 CLEAN = REPO_ROOT / "data" / "clean"
@@ -341,8 +343,7 @@ def ingest_file(path: Path, *, symbol: str, interval: str, market: str,
     try:
         frame = pd.read_parquet(path)
     except (OSError, ValueError) as exc:
-        # QT-13b: a raw file the recorder was killed while writing. Skipped and
-        # NAMED, never half-ingested; with no manifest line it is retried next run.
+        # QT-13b: half-written raw file. Skipped and NAMED; retried next run.
         tally.unreadable.append(f"{source} ({type(exc).__name__})")
         return
     tally.files_read += 1
@@ -350,8 +351,7 @@ def ingest_file(path: Path, *, symbol: str, interval: str, market: str,
 
     previous = known.get(source)
     if previous is not None and previous.get("sha256") == digest:
-        # Already ingested, byte for byte. Doing it again would be identical work,
-        # so the only honest thing is to count the rows and move on.
+        # Already ingested, byte for byte: count the rows and move on.
         tally.files_skipped_unchanged += 1
         tally.rows_already_present += len(frame)
         return
@@ -383,6 +383,9 @@ def ingest_file(path: Path, *, symbol: str, interval: str, market: str,
     out_currency = "GBP" if currency in PENCE else currency
     frame = frame.copy()
     frame["currency"] = out_currency
+    # QT-15 A2: stamped on the exchange's own clock whatever label raw carries -- a
+    # batched download mixing US and London names labels them all London.
+    frame.index = pd.DatetimeIndex(frame.index).tz_convert(EXCHANGE_TZ[market])
     frame.index.name = "ts"
     frame = frame.sort_index()
     duplicated = frame.index.duplicated(keep="first")
@@ -411,8 +414,7 @@ def ingest_file(path: Path, *, symbol: str, interval: str, market: str,
         "stored_currency": out_currency,
         "pence_to_pounds": converted,
     }, clean_root)
-    # Keep the in-memory index in step, so the same file appearing twice in one
-    # run is recognised rather than written twice.
+    # Keep the in-memory index in step: one file twice in a run is written once.
     if isinstance(known, dict):
         known[source] = {"source": source, "sha256": digest, "rows": len(frame)}
 
@@ -420,13 +422,14 @@ def ingest_file(path: Path, *, symbol: str, interval: str, market: str,
 def ingest(intervals: Sequence[str] = ("1m", "5m", "1h"),
            symbols: Sequence[str] | None = None,
            splits: Mapping[str, Mapping[str, float]] | None = None,
-           clean_root: Path | None = None,
-           raw_root: Path | None = None) -> Reconciliation:
+           clean_root: Path | None = None, raw_root: Path | None = None,
+           redo: Sequence[str] = ()) -> Reconciliation:
     """Walk RAW into CLEAN under the lock, then prove the arithmetic.
 
     Safe to run at the end of every recorder run: anything already ingested is
     recognised by its hash and skipped, so a catch-up run after a weekend does the
-    same work as a run that never stopped.
+    same work as a run that never stopped. ``redo`` names raw sources (manifest
+    ``source``) to take through the door again although unchanged: a re-clean.
     """
     from qb2.ingest import tickers
 
@@ -434,9 +437,10 @@ def ingest(intervals: Sequence[str] = ("1m", "5m", "1h"),
     tally = Reconciliation()
     all_splits = splits or {}
 
-    # Read the index ONCE. Re-reading it per file turned a 12,000-file run into
-    # quadratic work on a growing file.
+    # Read the index ONCE (per file made a 12,000-file run quadratic).
     known = read_manifest(clean_root)
+    for source in redo:
+        known.pop(source, None)
 
     with WriterLock(((clean_root or CLEAN) / "writer.lock")):
         for interval in intervals:
@@ -444,13 +448,9 @@ def ingest(intervals: Sequence[str] = ("1m", "5m", "1h"),
                 symbol = path.parent.name
                 market = markets.get(symbol)
                 if market is None:
-                    # Recorded under a name that has left the active list (AHT.L,
-                    # IEUR.L and friends). The data stays on disk untouched; it is
-                    # simply not promoted into the clean store.
-                    # Counted as excluded and NOT counted as rows_in: these rows
-                    # were never offered to the store, so they are not the store's
-                    # to account for. Subtracting them from rows_in instead drove
-                    # the total negative.
+                    # A name that left the active list (AHT.L, IEUR.L...): left on
+                    # disk, not promoted, counted as excluded and NOT as rows_in
+                    # (subtracting them from rows_in drove the total negative).
                     tally.files_excluded += 1
                     continue
                 currency = tickers.quote_currency(symbol) or (

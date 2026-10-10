@@ -74,17 +74,13 @@ def check_unsealed(index: pd.Index, interval: str, market: str,
                      f"{SEALED_FROM[interval]} -- only the single final run may read it")
 
 
-def _normalised(frame: pd.DataFrame, market: str) -> pd.DataFrame:
-    out = frame.copy()
-    out.index = local_index(frame.index, market)
-    out = out.sort_index()
-    return out[~out.index.duplicated(keep="first")]
-
-
 def research_bars(symbol: str, interval: str, market: str, *,
                   through: date | None = None, clean_root: Path | None = None,
                   holdout: HoldoutPass | None = None) -> pd.DataFrame:
-    """Unsealed bars for research, on the exchange clock (5m via the doorway)."""
+    """Unsealed bars for research, on the exchange clock (5m via the doorway).
+
+    QT-14 normalised mixed zone labels here; since QT-15 the store is stamped right
+    at the front door, so a wrong label is refused instead of quietly repaired."""
     seal = SEALED_FROM[interval]
     if through is not None and through >= seal and holdout is None:
         raise Sealed(f"asked for {interval} bars through {through}; sealed from {seal}")
@@ -97,7 +93,10 @@ def research_bars(symbol: str, interval: str, market: str, *,
         frame = loaded
     else:
         raise ValueError(f"no research interval {interval!r}")
-    frame = _normalised(frame, market)
+    if str(getattr(frame.index, "tz", None)) != EXCHANGE_TZ[market]:       # QT-15 A2
+        raise ValueError(f"{symbol} {interval} bars are stamped {frame.index.tz}, not "
+                         f"{EXCHANGE_TZ[market]}: the front door stamps every file on "
+                         "its exchange's clock -- re-clean it, never normalise here")
     days = pd.Series(frame.index.date, index=frame.index)
     if holdout is not None:
         return frame[days >= seal]
