@@ -545,7 +545,7 @@ shut when it was attempted).
 - Enforcer: the front-door ingest checks, the universe test, the census meter.
 - Built/Wired/Armed: universe files written · ingest wired to the scheduler with catch-up · census armed in the daily digest.
 
-### S4 — Firewall v2
+### S4 — Firewall v2 — **DONE 2026-10-10** (QT-14)
 The existing firewall pointed at the new universes, plus **pre-registration** (the
 candidate written down before it is tested), the benchmark (D3), and a
 **survivorship mark-down**: historic lists quietly omit companies that failed, so
@@ -554,6 +554,11 @@ marked down for it.
 - Exit gate: the known-null gate re-proved — a coin-flip strategy is REJECTED and a deliberately exploitable pattern PASSES; an unregistered candidate cannot be scored; the benchmark appears in every report; **costs inside the backtest — the cost model (qb2 S2b) applied to every simulated fill, gross AND net reported, 2× stress available**. (Carried from S2b, which built the cost model before any backtest existed to put it inside.) **AND the bot's universe is AGREED, not merely proposed: the versioned bot file says AGREED and carries the operator's own words granting it, with the date.** (Carried from S3b, which proposed a list of 50 names across three tagged sleeves and deliberately left it unagreed; S3's own gate requires both lists agreed, and a backtest run on a list nobody chose would have to be thrown away.)
 - Enforcer: the firewall tests, extended to the new universes, plus the pre-registration check.
 - Built/Wired/Armed: pre-registration format written · wired so every scoring path refuses unregistered candidates · trial logging armed on the search path.
+- **Built in QT-14 (2026-10-10)** — `qb2/research/`: firewall.py (the one scoring path), preregister.py (register `docs/research/preregistered.json`, committed `21b154b`: P19's 18 trials + 6 drills), holdout.py, fills.py (delay rule (c) + P4), simulate.py (costs.py on every fill; gross, net, 2× = `stress=2`), walk_forward.py, monte_carlo.py, deflation.py, trial_log.py (`data/qb2/trials.jsonl`, drills excluded; backed up with the anchor ledger, staleness checked after hours), bet_groups.py (`docs/research/bet_groups.json` v1), benchmark.py, verdict.py, report.py, known_null.py. Ported from v1's research/ (each header names its source and SHA-256); v1 untouched.
+- **Fixed under the STANDING GO, 2026-10-10 (starting figures):** holdout — daily sealed from 2025-10-10 (last 12 months to 2026-10-09), 5-minute sealed from 2026-09-21 (last 15 trading days to 2026-10-09) plus everything after 2026-10-10; D3 = VWRP; survivorship mark-down 1.0%/yr held on single shares, 0 on ETFs (published averages, not measured on these names); INSUFFICIENT under 30 out-of-sample trades or 30 bars; stake GBP 300 per order; walk-forward 252/63 daily bars, 10/5 sessions on 5-minute; coin-flip null 200 runs.
+- **Known-null gate, two halves, each seen RED on broken code first (real clean store, 2026-10-10):** Gate 1 (the worthless are rejected: coin-flip 5m and daily, an instant-only pattern) went RED with the delay removed; Gate 2 (a planted trend passes at 1× and 2×, the same trend shrunk below its costs is rejected) went RED with costs switched off. On honest code both GREEN — `docs/research/known_null_2026-10-10.md`.
+- Exit check (QT-14, 2026-10-10, each item on evidence): known-null re-proved GREEN · unregistered candidate cannot be scored GREEN · benchmark in every report GREEN · costs inside, gross and net, 2× stress GREEN · bot universe AGREED GREEN · delay rule (c) inside fills GREEN · pre-registration armed on every scoring path GREEN · trial logging armed GREEN
+- Reported, not holding S4 open: the T212 London freshness meter (row o2) is armed and counting; reopening London trading on its evidence is a later GO.
 - **Delay rule, decided 2026-10-09** (operator: *"GO on S4 delay: (c), measure T212 freshness"*; options in QT-13 §3). (c): the bot acts only on bars it can see complete, each market at its measured delay (row o: US 1.25 min, London 16.66 min). This is P17's own rule, now with numbers. Also in S4, read-only: measure how fresh Trading 212's own `currentPrice` is for anchored London names, so London can be reopened on evidence. Same bar as row o: 20 counted over 3 full sessions. Adds no trials to P19's list.
 
 ### S5 — The safety layer, before anything trades
@@ -708,6 +713,13 @@ at S7; until that is proven, the 1% rule stays as the ceiling.]
 all-world tracker available on Trading 212, chosen at S4 by proposal and
 agreement.] It has to be something he could genuinely have bought instead, or
 beating it means nothing.
+
+*D3 answered 2026-10-10 (QT-14), under the STANDING GO of 2026-10-07:* **Vanguard
+FTSE All-World, accumulating sterling line — VWRP** (Trading 212 `VWRPl_EQ`, ISIN
+IE00BK5BQT80, GBP), total return in pounds via `qb2/research/total_return.py`.
+Verified the way S3 verified every name (resolved on Trading 212's saved
+instrument list, pinned by ISIN). Fallback, if that ever fails: VWRL with its
+dividends added back; the report says which was used.
 
 ---
 

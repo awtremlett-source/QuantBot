@@ -9,7 +9,7 @@ run is fixed and tested:
    the rest of the freshness polls (every 30 s, at most 5 minutes);
 3. the after-hours step (raw -> clean, censuses, labels);
 4. :func:`after_clean` -- measure every polled day the clean store now covers,
-   and print the two status lines.
+   print the two status lines, and back up qb2's trial log if it has changed.
 
 Nothing here may stop or fail the recorder: every error is said in the run log
 and skipped. Both measurements are shadow and read-only -- they guard no trade.
@@ -25,6 +25,7 @@ from typing import Any
 
 from qb2.data import clean_step, universe
 from qb2.data.front_door import CLEAN
+from qb2.execution import ledger_backup
 from qb2.ingest import recorder, t212_fresh, xcheck_shadow
 
 Say = Callable[[str], None]
@@ -89,6 +90,7 @@ def after_clean(say: Say) -> None:
             say(f"  T212 freshness: measured {added} new samples")
     say(f"  {t212_fresh.status_line()}")
     say(f"  {xcheck_shadow.status_line()}")
+    say(f"  {ledger_backup.backup_trials_if_stale()}")      # QT-14 B3
 
 
 def around_clean(clean: Callable[..., list[str]], *, after_hours: bool,

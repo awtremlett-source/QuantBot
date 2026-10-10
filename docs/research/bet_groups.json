@@ -1,0 +1,10 @@
+{
+  "version": "v1",
+  "date": "2026-10-10",
+  "source": "STATE 'CARRIED INTO S4' (QT-13): GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot trades (same company / same index fund); both still get an anchor.",
+  "rule": "Wherever the firewall counts breadth (cross-name tests, effective N), the names in one group count as ONE bet: their returns are averaged into one series before the portfolio is formed. A changed list is a new version.",
+  "groups": [
+    {"name": "Alphabet", "members": ["GOOG", "GOOGL"], "why": "two share classes of the same company"},
+    {"name": "Vanguard S&P 500", "members": ["VUAG.L", "VUSA.L"], "why": "the accumulating and distributing lines of the same index fund"}
+  ]
+}

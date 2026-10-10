@@ -1,8 +1,11 @@
 # qb2 — QuantBot v2
 
-**Built:** data (front door, census), ingest (recorder, daily, dividends, earnings),
-research (total return), execution (costs, T212 client, anchor buyer — practice
-orders only). **Empty:** signals, model, sizing, ui. The plan is
+**Built:** data (front door, census, universe), ingest (recorder, daily, dividends,
+earnings, the S4 freshness meter and shadow cross-check), research (total return,
+**firewall v2**: pre-registration, holdout, delay-rule fills, costs, walk-forward,
+coin-flip null, Deflated Sharpe, benchmark, verdicts, known-null gate), execution
+(costs, T212 client, P20 cross-check, anchor buyer — practice orders only),
+signals (indicators only). **Empty:** model, sizing, ui. The plan is
 [docs/plan/PLAN_V3.md](../docs/plan/PLAN_V3.md).
 
 ## Why a separate package
@@ -36,7 +39,7 @@ to v1 and are frozen.
 | folder | holds |
 |---|---|
 | `data/` | prices, dividends, corporate actions, FX, the instrument universe |
-| `research/` | the validation firewall, pre-registration, the trial log |
+| `research/` | firewall v2 (S4): `firewall.py` scores one registered candidate; `known_null.py` proves it; `preregister.py`, `holdout.py`, `trial_log.py` (data/qb2/trials.jsonl), `benchmark.py` (D3 = VWRP) |
 | `signals/` | one small, testable signal per file |
 | `model/` | the combining model — many signals in, one calibrated probability out |
 | `sizing/` | position sizing, risk limits, the trailing-stop ledger |

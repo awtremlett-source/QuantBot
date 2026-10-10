@@ -58,14 +58,14 @@ def unrecorded(book: AnchorLedger, history: Sequence[Mapping[str, Any]],
 
 def backup(path: Path = LEDGER_PATH, dest: Path | None = None,
            now: datetime | None = None, environ: Mapping[str, str] = os.environ,
-           local_dest: Path = LOCAL_DEST) -> str:
+           local_dest: Path = LOCAL_DEST, folder: str = "anchors") -> str:
     """Copy, verify by hash, report. A missing ledger is reported, never created."""
     if not path.is_file():
         return f"ledger backup: no ledger at {path.name} -- nothing copied"
     chosen = environ.get(ENV_DEST, "").strip()
     target_root = dest or (Path(chosen) if chosen else local_dest)
     stamp = (now or datetime.now().astimezone()).strftime("%Y%m%dT%H%M%S%z")
-    target = target_root / "anchors" / f"ledger-{stamp}.jsonl"
+    target = target_root / folder / f"{path.stem}-{stamp}.jsonl"
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(path, target)
     if _sha256(target) != _sha256(path):
@@ -80,5 +80,36 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# QT-14 (B3): qb2's trial log rides the same backup -- losing it would lose the
+# trial count every Deflated Sharpe depends on.
+TRIALS_PATH = REPO_ROOT / "data" / "qb2" / "trials.jsonl"
+TRIALS_FOLDER = "qb2_trials"
+
+
+def stale(path: Path = TRIALS_PATH, dest: Path | None = None,
+          environ: Mapping[str, str] = os.environ, local_dest: Path = LOCAL_DEST,
+          folder: str = TRIALS_FOLDER) -> str:
+    """'' when the newest backup holds exactly today's file; else why it is stale."""
+    if not path.is_file():
+        return ""
+    chosen = environ.get(ENV_DEST, "").strip()
+    copies = sorted((dest or (Path(chosen) if chosen else local_dest)).joinpath(folder)
+                    .glob(f"{path.stem}-*.jsonl"))
+    if not copies:
+        return f"{path.name} has never been backed up"
+    if _sha256(copies[-1]) != _sha256(path):
+        return f"{path.name} has changed since its last backup ({copies[-1].name})"
+    return ""
+
+
+def backup_trials_if_stale() -> str:
+    """The after-hours step's call: back up only when the log has changed."""
+    why = stale()
+    if not why:
+        return "trial log backup: up to date"
+    return f"trial log was stale ({why}); " + backup(TRIALS_PATH, folder=TRIALS_FOLDER)
+
+
 if __name__ == "__main__":       # DEPLOY step 1: python -m qb2.execution.ledger_backup
     print(backup())
+    print(backup(TRIALS_PATH, folder=TRIALS_FOLDER))
