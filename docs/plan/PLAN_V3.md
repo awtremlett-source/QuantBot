@@ -362,6 +362,14 @@ S3b), so a rule that is right slightly more often than not can still lose money 
 turnover alone. If none of the 18 passes, they are not used and we say so (SCARS
 #21 — a loop stops on correct or exhausted, never on profit).
 
+*Result, 2026-10-11 (QT-15, batch 1 of 1, N = 18): **none survived.*** All 18 FAIL
+walk-forward at 2× costs, so no holdout was opened. 5-minute (bot, OOS 2026-07-21 →
+09-18): −23% to −95% net vs VWRP +2.65% — turnover, as said in advance. Daily
+(advisor, OOS 2024-10-07 → 2025-10-09): best +9.83% (EMA 9 × EMA 50) vs VWRP
++17.39%; highest Deflated Sharpe 0.872. No EMA or Keltner rule feeds the confidence
+score; none is a candidate for S6/S7. The advisor may still DRAW them (above), but
+not cite them. Detail: docs/research/P19_results_2026-10.md.
+
 *Enforcer:* the firewall's pre-registration check, a test that every indicator
 feeding the confidence score has a firewall result, and a trial count in
 `trials.jsonl` that includes every variant tried.
