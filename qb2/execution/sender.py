@@ -20,6 +20,16 @@ operator can read:
 5. the P20 price cross-check (qb2/execution/xcheck.py) blocks it, or never ran --
    buys only. Wired in QT-14 so that arming at S10 is a switch, not new code.
 
+QT-16 (S5), BUYS only, after those five -- each fails closed, each refusal recorded:
+
+6. the bot pot's brake (qb2/guard/brakes.py) is on, or was never measured;
+7. the bot's pot limit (qb2/guard/pots.py): 30% of the account at the check;
+8. the earnings window (qb2/guard/earnings_window.py), or the check never ran;
+9. no stop plan came with the order (qb2/guard/stops.py): no stop, no position.
+
+SELLS skip all four: getting out is never blocked. A crossed BOT stop becomes a
+SELL here through :func:`sell_crossed`; an advisor or manual crossing never does.
+
 That last one exists because the order endpoints are **not idempotent**
 (docs/t212/FACTS.md row e): sending again because we are unsure is how one
 intended trade becomes two real ones.
@@ -27,12 +37,13 @@ intended trade becomes two real ones.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from qb2.execution import safety, xcheck
 from qb2.execution.fill_recorder import FillRecorder
+from qb2.guard import brakes, earnings_window, pots, stops
 
 # DISARMED. Nothing in qb2 may set this True; arming is S10, under its own box.
 ARMED = False
@@ -61,6 +72,7 @@ class OrderRequest:
     expected_price: float
     quote_age_seconds: float
     extended_hours: bool = False
+    consideration_gbp: float | None = None    # what a buy spends, in pounds (check 7)
 
 
 def _not_built_yet(request: OrderRequest) -> str:
@@ -75,7 +87,11 @@ def send(request: OrderRequest, *,
          recorder: FillRecorder | None = None,
          price_check: xcheck.Rating | None = None,
          root: Path | None = None,
-         place: Callable[[OrderRequest], str] = _not_built_yet) -> str:
+         place: Callable[[OrderRequest], str] = _not_built_yet,
+         brake: brakes.State | None = None,
+         pot: pots.View | None = None,
+         earnings: earnings_window.Verdict | None = None,
+         stop_plan: stops.StopPlan | None = None) -> str:
     """Refuse for the right reason, or hand over to ``place``.
 
     Every refusal is recorded against its intent, so a blocked trade can never be
@@ -135,4 +151,42 @@ def send(request: OrderRequest, *,
             refuse(str(blocked))
             raise
 
+    # 6-9. S5: brake, pot limit, earnings window, a stop plan -- buys only.
+    if request.side == BUY:
+        try:
+            brakes.check_buy(brake, safety.BOT)
+            pots.check(safety.BOT, request.consideration_gbp, pot)
+            earnings_window.guard(request.ticker, earnings)
+            stops.check_plan(request.ticker, stop_plan, request.expected_price)
+        except safety.Blocked as blocked:
+            refuse(str(blocked))
+            raise
+
     return place(request)
+
+
+def sell_crossed(actions: Sequence[stops.Action], holdings: Sequence[safety.Holding], *,
+                 market_of: Mapping[str, str], recorder: FillRecorder | None = None,
+                 place: Callable[[OrderRequest], str] = _not_built_yet) -> list[str]:
+    """P10: a crossed BOT stop becomes a market SELL through :func:`send`.
+
+    Only ``bot`` positions, and only the bot's own quantity: an advisor or manual
+    crossing is an URGENT-EXIT alert (stops.py) and never reaches an order (P1).
+    Disarmed today, so each intent is refused and recorded -- nothing is sent.
+    """
+    said = []
+    for action in actions:
+        if action.kind != stops.SELL or action.pot != safety.BOT or action.price is None:
+            continue
+        quantity = sum(h.quantity for h in holdings
+                       if h.owner == safety.BOT and h.ticker == action.ticker)
+        if quantity <= 0:
+            said.append(f"{action.ticker}: no bot quantity held -- nothing to sell")
+            continue
+        request = OrderRequest(action.ticker, SELL, quantity, market_of[action.ticker],
+                               action.price, 0.0)
+        try:
+            said.append(send(request, market_is_open=True, recorder=recorder, place=place))
+        except NotArmed as why:
+            said.append(f"{action.ticker}: SELL intent refused -- {why}")
+    return said

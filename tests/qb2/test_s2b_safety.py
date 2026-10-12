@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from qb2.execution import costs, safety, sender, xcheck
+from qb2.guard import brakes, earnings_window, pots, stops
 from qb2.execution.costs import Instrument
 from qb2.execution.fill_recorder import FillRecorder
 from qb2.execution.safety import BOT, ADVISOR, MANUAL, Blocked, Holding
@@ -382,10 +383,14 @@ def test_even_armed_there_is_nothing_behind_the_door(
     """Belt and braces: arming it reaches a function that refuses to exist --
     even with a clean P20 cross-check in hand (QT-14 added that step)."""
     monkeypatch.setattr(sender, "ARMED", True)
-    request = OrderRequest("ISFl_EQ", "BUY", 10.0, "LSE", 7.0, 10.0)
+    request = OrderRequest("ISFl_EQ", "BUY", 10.0, "LSE", 7.0, 10.0, consideration_gbp=70.0)
     clean = xcheck.Rating("ISFl_EQ", "LSE", xcheck.OK, 0.0, 0.016, "planted")
-    with pytest.raises(NotImplementedError, match="S10"):
-        sender.send(request, market_is_open=True, price_check=clean)
+    with pytest.raises(NotImplementedError, match="S10"):     # QT-16: checks 6-9 all clean
+        sender.send(request, market_is_open=True, price_check=clean,
+                    brake=brakes.State("bot", 3000.0, 3000.0, brakes.OK, "2026-10-12"),
+                    pot=pots.View(10_000.0),
+                    earnings=earnings_window.Verdict("ISFl_EQ", False, "N/A (ETF)"),
+                    stop_plan=stops.plan("ISFl_EQ", 7.0, 0.1))
 
 
 def test_a_buy_is_refused_while_the_killswitch_is_armed(

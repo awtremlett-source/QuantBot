@@ -23,12 +23,17 @@ Three honesty rules, each of which cost something to learn elsewhere:
   the provider's doing, not ours. The DATE is what we use; the hour is recorded as
   given and marked unreliable rather than being "corrected" into something that
   looks precise.
+
+QT-16: each fetch is APPENDED to the name's file as a new snapshot (its own
+knowable_time), never written over the last one -- a date that moved stays on
+record as it was known then (data is quarantined, never deleted). Refreshed daily
+by the after-hours step (qb2/data/earnings_step.py).
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -94,9 +99,17 @@ def to_rows(symbol: str, frame: pd.DataFrame, knowable: datetime,
     return out.sort_values("earnings_at").reset_index(drop=True)
 
 
+def with_history(destination: Path, rows: pd.DataFrame) -> pd.DataFrame:
+    """Every snapshot kept: the old file's rows, then this fetch's."""
+    if not destination.is_file():
+        return rows
+    return pd.concat([pd.read_parquet(destination), rows], ignore_index=True)
+
+
 def collect(entries: Sequence[Mapping[str, object]], *,
             clean_root: Path | None = None,
-            now: datetime | None = None) -> list[Coverage]:
+            now: datetime | None = None,
+            fetch: Callable[[str], pd.DataFrame | None] = _fetch) -> list[Coverage]:
     """Fetch and store earnings dates for the given universe entries."""
     moment = now or datetime.now(timezone.utc)
     target = (clean_root or CLEAN) / "earnings"
@@ -115,7 +128,7 @@ def collect(entries: Sequence[Mapping[str, object]], *,
                 continue
 
             try:
-                frame = _fetch(symbol)
+                frame = fetch(symbol)
             except Exception as exc:                      # noqa: BLE001
                 found.append(Coverage(symbol, sleeve, kind, 0, 0, 0, "MISSING",
                                       f"{type(exc).__name__}: {exc}"))
@@ -127,7 +140,7 @@ def collect(entries: Sequence[Mapping[str, object]], *,
 
             rows = to_rows(symbol, frame, moment, moment)
             destination = target / f"{symbol}.parquet"
-            _write_parquet_atomically(rows, destination)
+            _write_parquet_atomically(with_history(destination, rows), destination)
             _append_manifest({
                 "event": "earnings",
                 "at": moment.isoformat(timespec="seconds"),

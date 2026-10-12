@@ -1,8 +1,8 @@
 """The after-hours step: raw -> clean, the two censuses, the minute labels (QT-13b).
 
 **Why.** QT-13: nothing scheduled ran the front door; the clean store stopped on
-2 Oct, the 1m census read 0.0% for three days, nothing went red. QT-15 A3: the
-daily store's top-up (daily_step.py) follows the front door on every call.
+2 Oct, the 1m census read 0.0% for three days, nothing went red. After the front
+door, every call: the daily top-up (QT-15) then earnings (earnings_step.py, QT-16).
 
 **When.** Inside the recorder's run, AFTER sampling and fetches, on the first run
 once a trading day has finished (New York closes last, 21:00 UK): often the next
@@ -26,7 +26,7 @@ from zoneinfo import ZoneInfo
 import exchange_calendars as xcals  # type: ignore[import-untyped]
 import pandas as pd
 
-from qb2.data import access, census, daily_step, front_door
+from qb2.data import access, census, earnings_step, front_door
 from qb2.data.front_door import CLEAN, REPO_ROOT
 
 UK = ZoneInfo("Europe/London")
@@ -238,7 +238,7 @@ def run(now: datetime, *, clean_root: Path | None = None, raw_root: Path | None 
 
 
 def run_if_due(now: datetime, *, after_hours: bool, clean_root: Path | None = None,
-               daily: Callable[..., str] = daily_step.run_if_due) -> StepResult | str:
+               daily: Callable[..., str] = earnings_step.after_daily) -> StepResult | str:
     """What record_now calls. The result, or why it did not run; then the daily top-up."""
     marker = (clean_root or CLEAN) / MARKER
     due, why = is_due(now, marker, after_hours=after_hours)

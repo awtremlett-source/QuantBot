@@ -33,7 +33,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from qb2.data import clean_step, daily_step
+from qb2.data import clean_step, daily_step, earnings_step
 from qb2.ingest import t212_fresh, xcheck_shadow
 from qb2.tools import delay_count, run_times, sample_delay
 
@@ -130,6 +130,7 @@ def build_status(manifest: Path, log_dir: Path, now: datetime,
              *([run_times.pushes_today(push_log, starts, now)] if push_log else []),
              f"- {clean_step.status_verdict(now, clean_root=clean_root).line()}",
              f"- {daily_step.status_line(now, clean_root=clean_root)}",
+             f"- {earnings_step.status_line(now, clean_root=clean_root)}",
              f"- {t212_fresh.status_line(fresh_samples)}",
              f"- {xcheck_shadow.status_line(xcheck_folder)}",
              f"- Target: {sample_delay.MIN_SAMPLES_PER_MARKET} counted samples per "
