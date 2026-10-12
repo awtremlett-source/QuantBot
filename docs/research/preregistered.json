@@ -497,6 +497,26 @@
    "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
    "date": "2026-10-10",
    "source": "QT-14 B6 known-null gate; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-LAZY-5m",
+   "kind": "drill",
+   "rule": "lazy_random",
+   "name": "random entries at low turnover: about one entry a session, each held 12 decisions. No edge by construction, and it trades far less than a coin-flip, so it must be REJECTED by the luck test itself (Gate 1), not only by the Deflated Sharpe or the benchmark",
+   "bar_size": "5m",
+   "universe": "bot-universe-v1: the agreed 50, unsealed bars of the REAL clean store (pattern drills: copies of them)",
+   "exit_rule": "hold 12 decisions from each entry, then flat. On 5-minute bars also flat by the open of the first bar starting 15 minutes before the close, nothing held overnight (P4).",
+   "parameters": {
+    "prob_entry": 0.0125,
+    "hold": 12,
+    "seed": 4243
+   },
+   "expect": "FAIL",
+   "expect_failed_check": "luck",
+   "side": "long-only",
+   "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
+   "date": "2026-10-12",
+   "source": "QT-16 A1: the coin-flip null churns, so a slow rule beats it on costs alone (QT-15 flag). Registered BEFORE the turnover-matched null exists; logged kind=drill, excluded from the trial count"
   }
  ]
 }
