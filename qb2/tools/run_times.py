@@ -10,7 +10,13 @@ with no repetition. So the rule for the status page is plain:
   re-based on a catch-up and every run landed at :53. That must not come back;
 * an hour whose run never started is listed, so a missing :00 run is visible.
 
-Reads the run logs' first lines only. Never writes, never takes a lock.
+QT-16: the status task's own record. QB2-StatusPush now has 14 fixed triggers at
+:50 (08:50 ... 21:50 UK, Mon-Fri), like the recorder; on 12 Oct its one repeating
+trigger skipped 18:50 and 19:50 with the PC awake, and nothing said so. A :50 slot
+with a recorder run on BOTH sides of it (the PC was awake) and no push near it is
+named as MISSED.
+
+Reads the run logs' first lines and push.log only. Never writes, never takes a lock.
 """
 
 from __future__ import annotations
@@ -25,6 +31,8 @@ UK = ZoneInfo("Europe/London")
 HOURS = range(7, 21)                       # the 14 fixed triggers, UK wall clock
 ON_TIME_MINUTES = 5                        # a wake from sleep can take a minute
 GRACE = timedelta(minutes=20)              # a slot is judged once its run is due
+PUSH_SLOTS = [time(h, 50) for h in range(8, 22)]   # QB2-StatusPush's 14 fixed triggers
+PUSH_NEAR = timedelta(minutes=10)
 
 
 def starts_today(log_dir: Path, now: datetime) -> list[datetime]:
@@ -62,3 +70,22 @@ def judge(starts: Sequence[datetime], now: datetime) -> list[str]:
             lines.append("- Missed runs today: " + ", ".join(f"{h:02d}:00" for h in missed)
                          + " (PC off or asleep?)")
     return lines
+
+
+def pushes_today(push_log: Path, starts: Sequence[datetime], now: datetime) -> str:
+    """Pushes made today, and any :50 slot missed while the PC was evidently awake."""
+    local = now.astimezone(UK)
+    lines = push_log.read_text(encoding="utf-8").splitlines() if push_log.is_file() else []
+    pushed = [moment for line in lines if " pushed " in line
+              if (moment := datetime.fromisoformat(line.split()[0]).astimezone(UK)).date()
+              == local.date()]
+    slots = ([datetime.combine(local.date(), at, UK) for at in PUSH_SLOTS]
+             if local.weekday() < 5 else [])
+    missed = [s for s in slots if s + PUSH_NEAR <= local
+              and any(r <= s for r in starts) and any(r >= s for r in starts)
+              and not any(abs(p - s) <= PUSH_NEAR for p in pushed)]
+    line = f"- Status pushes today: {len(pushed)}"
+    if missed:
+        line += (" -- MISSED while the PC was awake: " + ", ".join(f"{s:%H:%M}" for s in missed)
+                 + " (check QB2-StatusPush's triggers)")
+    return line

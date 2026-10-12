@@ -115,8 +115,9 @@ def _market(market: str, name: str, rows: Sequence[dict[str, object]],
 
 def build_status(manifest: Path, log_dir: Path, now: datetime,
                  clean_root: Path | None = None, fresh_samples: Path | None = None,
-                 xcheck_folder: Path | None = None) -> str:
+                 xcheck_folder: Path | None = None, push_log: Path | None = None) -> str:
     """The whole status file, in plain words. Reads; never writes."""
+    starts = run_times.starts_today(log_dir, now)
     raw, bad = delay_count.scan_samples(manifest)
     rows = [r for r in delay_count.countable(raw, verified_only=True)
             if str(r["at_utc"])[:10] >= SINCE.isoformat()]
@@ -125,7 +126,8 @@ def build_status(manifest: Path, log_dir: Path, now: datetime,
     lines = ["# QB2 recorder status", "",
              f"- Updated at: {_uk(now):%Y-%m-%d %H:%M} (UK)",
              f"- Last recorder run: {last_run(log_dir)}",
-             *run_times.judge(run_times.starts_today(log_dir, now), now),
+             *run_times.judge(starts, now),
+             *([run_times.pushes_today(push_log, starts, now)] if push_log else []),
              f"- {clean_step.status_verdict(now, clean_root=clean_root).line()}",
              f"- {daily_step.status_line(now, clean_root=clean_root)}",
              f"- {t212_fresh.status_line(fresh_samples)}",
@@ -216,7 +218,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     try:
         text = build_status(sample_delay.MANIFEST, RECORDER_LOGS,
-                            datetime.now(timezone.utc))
+                            datetime.now(timezone.utc), push_log=PUSH_LOG)
         STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
         STATUS_FILE.write_text(text, encoding="utf-8", newline="\n")
     except Exception as exc:        # logged, never silent (Scar #12)
