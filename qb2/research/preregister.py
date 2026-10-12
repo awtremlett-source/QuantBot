@@ -30,7 +30,7 @@ REGISTER_REL = "docs/research/preregistered.json"
 FIELDS = ("id", "kind", "rule", "bar_size", "universe", "exit_rule", "parameters",
           "holdout", "date")
 KINDS = frozenset({"trial", "drill"})
-BAR_SIZES = frozenset({"5m", "1d"})
+BAR_SIZES = frozenset({"5m", "1h", "1d"})       # 1h: QT-17 A3
 
 Git = Callable[[Path, list[str]], str]
 

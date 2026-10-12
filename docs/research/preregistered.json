@@ -517,6 +517,115 @@
    "holdout": "5-minute bars sealed from 2026-09-21 (the last 15 trading days to 2026-10-09) plus everything recorded after 2026-10-10; one final holdout run",
    "date": "2026-10-12",
    "source": "QT-16 A1: the coin-flip null churns, so a slow rule beats it on costs alone (QT-15 flag). Registered BEFORE the turnover-matched null exists; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-COIN-1h",
+   "kind": "drill",
+   "rule": "coin_flip",
+   "name": "a coin-flip on 1-hour bars, one coin per bet; must be REJECTED",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: the agreed 50, unsealed 1-hour bars of the REAL clean store (pattern drills: copies of them); P15's entry mask applies, exactly as the sender's check 8 (QT-17 A3)",
+   "exit_rule": "a fresh coin every bar. On 1-hour bars a bar is held only if it ends by 15 minutes before the close: sold at the open of the last bar starting by then (US 15:30, London 16:00; half days by the exchange calendar), nothing held overnight (P4). Fills: the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later.",
+   "parameters": {
+    "prob_long": 0.5,
+    "seed": 4242
+   },
+   "expect": "FAIL",
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 (the last 13 weeks to 2026-10-09) on, for ever; one final holdout run",
+   "date": "2026-10-12",
+   "source": "QT-17 A4: the known-null gate proven on the bar size it judges (P17); 1-hour copies of QT-14/16's drills, registered before any 1h run; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-INSTANT-1h",
+   "kind": "drill",
+   "rule": "planted_harvester",
+   "name": "a 1.5% move planted at the close of the hour after a marker and still there at the next open, then gone: only an instant fill could catch it, so with delay rule (c) it must be REJECTED (delay removed, it PASSES: Gate 1 red-first)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: the agreed 50, unsealed 1-hour bars of the REAL clean store (pattern drills: copies of them); P15's entry mask applies, exactly as the sender's check 8 (QT-17 A3)",
+   "exit_rule": "hold 1 decision from the marker, then flat. On 1-hour bars a bar is held only if it ends by 15 minutes before the close: sold at the open of the last bar starting by then (US 15:30, London 16:00; half days by the exchange calendar), nothing held overnight (P4). Fills: the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later.",
+   "parameters": {
+    "pattern": "instant",
+    "marker_bar": 0,
+    "delta": 0.015,
+    "hold": 1,
+    "block_bars_needed": 3
+   },
+   "expect": "FAIL",
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 (the last 13 weeks to 2026-10-09) on, for ever; one final holdout run",
+   "date": "2026-10-12",
+   "source": "QT-17 A4: the known-null gate proven on the bar size it judges (P17); 1-hour copies of QT-14/16's drills, registered before any 1h run; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-PLANT-1h",
+   "kind": "drill",
+   "rule": "planted_harvester",
+   "name": "a marker at each session's first hour, then +0.5% an hour for 4 hours from 3 hours later, then back down: the 4 steps a delayed fill can catch; must PASS at 1x and 2x costs",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: the agreed 50, unsealed 1-hour bars of the REAL clean store (pattern drills: copies of them); P15's entry mask applies, exactly as the sender's check 8 (QT-17 A3)",
+   "exit_rule": "hold 4 decisions from the marker, then flat. On 1-hour bars a bar is held only if it ends by 15 minutes before the close: sold at the open of the last bar starting by then (US 15:30, London 16:00; half days by the exchange calendar), nothing held overnight (P4). Fills: the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later.",
+   "parameters": {
+    "pattern": "trend",
+    "marker_bar": 0,
+    "up_start": 3,
+    "up_bars": 4,
+    "delta_per_bar": 0.005,
+    "hold": 4,
+    "block_bars_needed": 7
+   },
+   "expect": "PASS",
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 (the last 13 weeks to 2026-10-09) on, for ever; one final holdout run",
+   "date": "2026-10-12",
+   "source": "QT-17 A4: the known-null gate proven on the bar size it judges (P17); 1-hour copies of QT-14/16's drills, registered before any 1h run; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-PLANT-SMALL-1h",
+   "kind": "drill",
+   "rule": "planted_harvester",
+   "name": "the same hourly trend shrunk so the part caught is 0.7 of that name's own round-trip cost: an edge smaller than its costs must be REJECTED (costs off, it PASSES: Gate 2 red-first)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: the agreed 50, unsealed 1-hour bars of the REAL clean store (pattern drills: copies of them); P15's entry mask applies, exactly as the sender's check 8 (QT-17 A3)",
+   "exit_rule": "hold 4 decisions from the marker, then flat. On 1-hour bars a bar is held only if it ends by 15 minutes before the close: sold at the open of the last bar starting by then (US 15:30, London 16:00; half days by the exchange calendar), nothing held overnight (P4). Fills: the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later.",
+   "parameters": {
+    "pattern": "trend",
+    "marker_bar": 0,
+    "up_start": 3,
+    "up_bars": 4,
+    "edge_vs_round_trip": 0.7,
+    "steps_caught": {
+     "US": 4,
+     "LSE": 4
+    },
+    "hold": 4,
+    "block_bars_needed": 7
+   },
+   "expect": "FAIL",
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 (the last 13 weeks to 2026-10-09) on, for ever; one final holdout run",
+   "date": "2026-10-12",
+   "source": "QT-17 A4: the known-null gate proven on the bar size it judges (P17); 1-hour copies of QT-14/16's drills, registered before any 1h run; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "KN-LAZY-1h",
+   "kind": "drill",
+   "rule": "lazy_random",
+   "name": "random entries at low turnover on 1-hour bars: about one entry a session, each held 2 decisions. No edge by construction, so it must be REJECTED by the luck test itself (the matched null's p), not only by the Deflated Sharpe, the benchmark or a negative mean",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: the agreed 50, unsealed 1-hour bars of the REAL clean store (pattern drills: copies of them); P15's entry mask applies, exactly as the sender's check 8 (QT-17 A3)",
+   "exit_rule": "hold 2 decisions from each entry, then flat. On 1-hour bars a bar is held only if it ends by 15 minutes before the close: sold at the open of the last bar starting by then (US 15:30, London 16:00; half days by the exchange calendar), nothing held overnight (P4). Fills: the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later.",
+   "parameters": {
+    "prob_entry": 0.2,
+    "hold": 2,
+    "seed": 4243
+   },
+   "expect": "FAIL",
+   "expect_failed_check": "luck",
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 (the last 13 weeks to 2026-10-09) on, for ever; one final holdout run",
+   "date": "2026-10-12",
+   "source": "QT-17 A4: the known-null gate proven on the bar size it judges (P17); 1-hour copies of QT-14/16's drills, registered before any 1h run; logged kind=drill, excluded from the trial count"
   }
  ]
 }
