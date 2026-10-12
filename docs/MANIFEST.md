@@ -19,7 +19,7 @@ this logic leaves NVDA or this laptop.
 - tests/ mirrors tree; tests/museum/ = incident regression fixtures
 - docs/ SCARS.md, EDUCATION.md, FOUNDING_DIRECTIVE.md, sessions/
 - manual/ the operator's own app (walled off; two read-only doorways to v1)
-- qb2/ v2: data ingest research execution tools built; signals model sizing ui empty (-> qb2/README.md)
+- qb2/ v2: data ingest research execution guard tools built; signals model sizing ui empty (-> qb2/README.md)
   - qb2/ingest/ recorder.py (RAW capture) · tickers.py (T212<->yfinance spelling)
     verify_universe.py (resolve names against T212's OWN list; never constructs a
     ticker) · constituents.py (index membership, parsed from a saved page)
@@ -39,13 +39,19 @@ this logic leaves NVDA or this laptop.
     practice-only, buy-only, own key, capped; nothing in qb2 may import it) ·
     anchor_ledger.py (its append-only ledger, data/anchors/ledger.jsonl; the bot
     reads anchor quantities from here, never from anchors.py)
+  - qb2/guard/ (QT-16, S5) stops.py (stop ledger, raise-only) · brakes.py (10/15%)
+    · pots.py (30/70) · age.py (12 months) · earnings_window.py · suggestion.py
+    (the advisor's front door); sender.py runs checks 6–9 on every buy
+  - qb2/research/ (QT-16) matched_null.py (the luck test) · pounds.py (US in £) ·
+    brake_replay.py + brake_report.py · stop_description.py · data/earnings_step.py
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
     (which samples count: full calendar sessions, each bar once; the meter that
     goes red when a session has under 3 samples) · status_push.py (QB2-StatusPush
     task: hourly status file → orphan branch "status", secret scan first) · record_now.py (hourly top-up
     vs after-hours catch-up, under a single-writer lock, with a per-name ledger) ·
-    run_recorder.bat (one log per run, kept 30 days) · fingerprint.py
+    run_recorder.bat (one log per run, kept 30 days) · fingerprint.py · clear_pause.py
+    (his words clear the bot's 15% pause)
 - logs/recorder/ one log per recorder run, gitignored, rotated after 30 days
 - docs/universe/ the versioned universes + README (start here for what we trade)
 - reports/first_light/ the dated charts drawn from the clean store

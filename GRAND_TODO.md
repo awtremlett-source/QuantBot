@@ -52,10 +52,9 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [x] QT-13b (2026-10-10) **S3 DONE**: after-hours step runs front door + 5m/1m
       census + labels + digest; stale/below-gate = RED; label pass needs new bars;
       real-store 5m census 98.2% fresh to 9 Oct → docs/reports/QT-13b.md
-- [ ] S4 Firewall v2: pre-registration, known-null re-proved, benchmark (D3),
-      survivorship mark-down
-- [ ] S5 Safety layer FIRST: stops, brakes, pot limits, age + earnings checks,
-      crash replays (2008/2020/2022) + false-alarm counts
+- [x] S4 Firewall v2 (QT-14, 2026-10-10); P19's 18 trials none survived (QT-15)
+- [x] S5 Safety layer (QT-16, 2026-10-12): qb2/guard/ stops, brakes, pots, age,
+      earnings; sender checks 6–9; brake replays; luck test turnover-matched
 - [ ] S6 Bot signals, one at a time, each pre-registered + moving buys (P11)
 - [ ] S7 Bot combined model + calibration + sizing (D2) + inverse test; must beat
       best single signal, v1 AND the benchmark out-of-sample at 2× costs
