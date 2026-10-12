@@ -23,7 +23,7 @@ import pytest
 from qb2.execution import costs, ledger_backup
 from qb2.ingest import verify_universe
 from qb2.research import (backtest, bet_groups, benchmark, fills, firewall, holdout,
-                          known_null, monte_carlo, preregister, report, simulate,
+                          known_null, monte_carlo, pounds, preregister, report, simulate,
                           strategy, trial_log, verdict, walk_forward)
 
 REPO = Path(__file__).resolve().parents[2]
@@ -79,6 +79,12 @@ NAMES = [("AAPL", US_STOCK), ("GOOG", costs.Instrument("GOOG_US_EQ", "USD", "US"
          ("MSFT", costs.Instrument("MSFT_US_EQ", "USD", "US", "STOCK"))]
 
 
+def _flat_fx(n: int) -> pounds.Rates:
+    """GBPUSD stuck at 1.0: a dollar line's pound figure equals its dollar figure,
+    so these QT-14 tests keep their numbers while the pounds path is still taken."""
+    return pounds.Rates(np.ones(n), np.ones(n), np.zeros(n, dtype=bool))
+
+
 def _data(interval: str) -> list[firewall.NameData]:
     groups = bet_groups.load()
     bets = sorted({bet_groups.group_of(s, groups) for s, _ in NAMES})
@@ -89,7 +95,8 @@ def _data(interval: str) -> list[firewall.NameData]:
         bars = _bars(index, 100 + i, 0.001 if interval == "5m" else 0.012)
         out.append(firewall.NameData(symbol, inst.market, inst, bars,
                                      fills.schedule(bars.index, interval, inst.market),
-                                     bets.index(bet_groups.group_of(symbol, groups))))
+                                     bets.index(bet_groups.group_of(symbol, groups)),
+                                     _flat_fx(len(bars)) if inst.currency == "USD" else None))
     return out
 
 
@@ -302,7 +309,8 @@ def test_walk_forward_fast_path_equals_fold_by_fold_grading(register_repo: Path)
     bars = _bars(_sessions("US", 25), 5)
     token = _token(register_repo, "KN-COIN-5m")
     coin = monte_carlo.RandomStrategy(0.5, 7)
-    kw: dict[str, Any] = dict(instrument=US_STOCK, interval="5m", market="US", log_path=None)
+    kw: dict[str, Any] = dict(instrument=US_STOCK, interval="5m", market="US", log_path=None,
+                              fx=_flat_fx(len(bars)))
     fast = walk_forward.walk_forward(token, walk_forward.Fixed(coin), bars, **kw)
     slow = walk_forward.walk_forward(token, _Twice(coin), bars, **kw)
     assert len(fast.folds) == len(slow.folds) >= 2 and fast.total_trials == 1
@@ -422,7 +430,7 @@ def test_the_known_null_gate_is_green_on_honest_code(
     coin = runs["gate1"][0].result
     assert coin.verdict.outcome == verdict.FAIL                      # rejected, not "too few"
     logged = trial_log.read_trials(tmp_path / "trials.jsonl")
-    assert len(logged) == 8 and {r["kind"] for r in logged} == {"drill"}
+    assert len(logged) == 9 and {r["kind"] for r in logged} == {"drill"}     # QT-16: + KN-LAZY
     assert trial_log.count_selection_trials(tmp_path / "trials.jsonl")[0] == 0
 
 

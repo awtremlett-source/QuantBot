@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 
 from qb2.execution import costs
-from qb2.research import backtest, fills, preregister, stats, trial_log
+from qb2.research import backtest, fills, pounds, preregister, stats, trial_log
 from qb2.research.strategy import Strategy
 
 
@@ -91,16 +91,13 @@ class WalkForwardResult:
 
 
 def _frame(result: backtest.BacktestResult, lo: int, hi: int) -> pd.DataFrame:
-    p = result.paths
-    return pd.DataFrame({"gross": p.gross[lo:hi], "net": p.net[lo:hi],
-                         "marked": p.marked[lo:hi], "entries": p.entries[lo:hi]},
-                        index=result.index[lo:hi])
+    return backtest.frame(result, lo, hi)
 
 
 def walk_forward(token: preregister.Registered, tunable: Tunable, bars: pd.DataFrame, *,
                  instrument: costs.Instrument, interval: str, market: str,
                  stress: float = 1.0, sizes: tuple[int, int] | None = None,
-                 plan: fills.Schedule | None = None,
+                 plan: fills.Schedule | None = None, fx: pounds.Rates | None = None,
                  log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG) -> WalkForwardResult:
     registered = preregister.check(token)
     train, test = sizes or default_sizes(interval, market)
@@ -111,14 +108,16 @@ def walk_forward(token: preregister.Registered, tunable: Tunable, bars: pd.DataF
     kw: dict[str, Any] = dict(instrument=instrument, interval=interval, market=market,
                               stress=stress, log_path=None)
     if len(grid) == 1:
-        full = backtest.run(registered, tunable.build(grid[0]), bars, plan=plan, **kw)
+        full = backtest.run(registered, tunable.build(grid[0]), bars, plan=plan, fx=fx, **kw)
         oos = pd.concat([_frame(full, f.test_lo, f.test_hi) for f in windows])
         total, chosen = 1, [dict(grid[0])] * len(windows)
     else:
         parts, chosen = [], []
         for f in windows:
-            best = _fit(registered, tunable, grid, bars.iloc[f.train_lo:f.train_hi], kw)
-            graded = backtest.run(registered, tunable.build(best), bars.iloc[:f.test_hi], **kw)
+            best = _fit(registered, tunable, grid, bars.iloc[f.train_lo:f.train_hi],
+                        {**kw, "fx": _cut(fx, f.train_hi, f.train_lo)})
+            graded = backtest.run(registered, tunable.build(best), bars.iloc[:f.test_hi],
+                                  fx=_cut(fx, f.test_hi), **kw)
             parts.append(_frame(graded, f.test_lo, f.test_hi))
             chosen.append(best)
         oos, total = pd.concat(parts), len(grid) * len(windows)
@@ -134,6 +133,11 @@ def walk_forward(token: preregister.Registered, tunable: Tunable, bars: pd.DataF
             "metric_name": "oos_sharpe_per_bar_net", "metric_value": net.sharpe_per_bar,
             "n_bars": len(oos)}, path=log_path)
     return WalkForwardResult(windows, oos, total, chosen)
+
+
+def _cut(fx: pounds.Rates | None, hi: int, lo: int = 0) -> pounds.Rates | None:
+    return None if fx is None else pounds.Rates(fx.open[lo:hi], fx.close[lo:hi],
+                                                fx.stale[lo:hi])
 
 
 def _fit(token: preregister.Registered, tunable: Tunable, grid: Sequence[dict[str, Any]],
@@ -152,5 +156,6 @@ def _fit(token: preregister.Registered, tunable: Tunable, grid: Sequence[dict[st
 
 def _empty() -> pd.DataFrame:
     return pd.DataFrame({"gross": np.array([], float), "net": np.array([], float),
-                         "marked": np.array([], float), "entries": np.array([], bool)},
+                         "marked": np.array([], float), "entries": np.array([], bool),
+                         "fx_gap": np.array([], bool), "fx_stale": np.array([], bool)},
                         index=pd.DatetimeIndex([], tz="UTC"))

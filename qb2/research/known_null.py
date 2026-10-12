@@ -6,6 +6,9 @@ built so it goes RED on exactly the breakage it guards against:
 * **Gate 1 -- the worthless are rejected.** A coin-flip (5m and daily) must FAIL,
   and so must a pattern only an impossible instant fill could catch
   (KN-INSTANT-5m). Remove the delay rule and that drill passes: Gate 1 RED.
+  QT-16: random entries at LOW turnover (KN-LAZY-5m) must fail the luck test
+  itself -- against the churning coin-flip null it passes it (RED), against the
+  turnover-matched null it does not.
 * **Gate 2 -- the exploitable passes after costs.** A trend deliberately planted
   into copies of real bars must PASS at 1x and 2x costs (5m and daily), and the
   same trend shrunk to 0.7 of each name's round-trip cost must FAIL
@@ -48,6 +51,26 @@ class Harvester:
     def weights(self, bars: pd.DataFrame) -> pd.Series:
         marked = (bars["volume"] == SENTINEL_VOLUME).astype(float)
         return marked.rolling(self.hold, min_periods=1).max().fillna(0.0)
+
+
+class LazyRandom:
+    """Random entries at low turnover (KN-LAZY): while flat, each bar has a small
+    seeded chance to enter; once in, held ``hold`` decisions. One draw per bar, so
+    a shorter series replays the same prefix and the look-ahead check passes."""
+
+    def __init__(self, prob_entry: float, hold: int, seed: int) -> None:
+        self.prob_entry, self.hold, self.seed = float(prob_entry), int(hold), int(seed)
+        self.name = f"lazy_random(p={prob_entry:g},hold={hold},seed={seed})"
+
+    def weights(self, bars: pd.DataFrame) -> pd.Series:
+        draws = np.random.default_rng(self.seed).random(len(bars))
+        out, left = np.zeros(len(bars)), 0
+        for i, draw in enumerate(draws):
+            if left == 0 and draw < self.prob_entry:
+                left = self.hold
+            if left:
+                out[i], left = 1.0, left - 1
+        return pd.Series(out, index=bars.index)
 
 
 def positions_in_blocks(index: pd.DatetimeIndex, interval: str, market: str,
@@ -99,6 +122,10 @@ def strategy_for(entry: Mapping[str, Any]) -> Callable[[firewall.NameData], Stra
             int(np.random.SeedSequence([int(p["seed"]), name.bet]).generate_state(1)[0]))
     if entry["rule"] == "planted_harvester":
         return lambda name: Harvester(int(p["hold"]))
+    if entry["rule"] == "lazy_random":
+        return lambda name: LazyRandom(
+            float(p["prob_entry"]), int(p["hold"]),
+            int(np.random.SeedSequence([int(p["seed"]), name.bet]).generate_state(1)[0]))
     raise ValueError(f"{entry['id']}: rule {entry['rule']!r} is not a drill rule")
 
 
@@ -116,12 +143,17 @@ class DrillRun:
     expect: str
     result: firewall.FirewallResult
 
+    must_fail: str | None = None          # a check that must itself fail (KN-LAZY: luck)
+
     @property
     def green(self) -> bool:
-        return self.result.verdict.outcome == self.expect
+        verdict = self.result.verdict
+        return verdict.outcome == self.expect and (
+            self.must_fail is None or self.must_fail in verdict.failed)
 
 
-GATE1 = (("KN-COIN-5m", 1.0), ("KN-INSTANT-5m", 1.0), ("KN-COIN-1d", 1.0))
+GATE1 = (("KN-COIN-5m", 1.0), ("KN-INSTANT-5m", 1.0), ("KN-COIN-1d", 1.0),
+         ("KN-LAZY-5m", 1.0))
 GATE2 = (("KN-PLANT-5m", 1.0), ("KN-PLANT-5m", 2.0), ("KN-PLANT-1d", 1.0),
          ("KN-PLANT-1d", 2.0), ("KN-PLANT-SMALL-5m", 1.0))
 
@@ -143,7 +175,8 @@ def run_gate(*, base: Mapping[str, Sequence[firewall.NameData]],
                                     stress=stress, n_null=n_null,
                                     skipped=(skipped or {}).get(interval, ()),
                                     log_path=log_path, **kw)
-            out[gate].append(DrillRun(drill_id, stress, str(entry["expect"]), result))
+            out[gate].append(DrillRun(drill_id, stress, str(entry["expect"]), result,
+                                      entry.get("expect_failed_check")))
     return out
 
 
@@ -157,7 +190,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         base[interval], skipped[interval] = firewall.load(interval)
     runs = run_gate(base=base, skipped=skipped,
                     log_path=trial_log.DEFAULT_TRIAL_LOG)
-    lines = [f"# Known-null gate, {date.today().isoformat()} (QT-14, real clean store)", ""]
+    lines = [f"# Known-null gate, {date.today().isoformat()} (real clean store)", ""]
     for gate, title in (("gate1", "Gate 1 -- the worthless are rejected"),
                         ("gate2", "Gate 2 -- the exploitable passes after costs")):
         lines += [f"## {title}: {colour(runs[gate])}", ""]

@@ -19,7 +19,7 @@ import pytest
 from qb2.research import (benchmark, fills, firewall, holdout, p19_run, preregister,
                           strategy, trial_log, verdict)
 from qb2.signals import indicators, p19_rules
-from tests.qb2.test_qt14b_firewall import (NAMES, _bars, _bench, _sessions,  # noqa: F401
+from tests.qb2.test_qt14b_firewall import (NAMES, _bars, _bench, _flat_fx, _sessions,  # noqa: F401
                                            _token, register_repo)
 
 
@@ -180,7 +180,8 @@ def test_the_holdout_grades_only_the_sealed_bars(tmp_path: Path,
     index = _sessions("US", 25, start="2026-09-01")
     bars = _bars(index, 7)
     inst = NAMES[0][1]
-    name = firewall.NameData("AAPL", "US", inst, bars, fills.schedule(index, "5m", "US"), 0)
+    name = firewall.NameData("AAPL", "US", inst, bars, fills.schedule(index, "5m", "US"), 0,
+                             _flat_fx(len(bars)))
     make = (lambda e: lambda n: p19_rules.build(e))(token.entry)
     with pytest.raises(holdout.Sealed):
         firewall.score(token, make, [name], interval="5m", n_null=3, bench=_bench,

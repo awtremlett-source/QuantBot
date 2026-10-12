@@ -7,7 +7,8 @@ that cannot be judged.
 
 Every report shows gross and net (net = after the cost model; the stress level is
 stated), the survivorship mark-down before and after, the trades, the effective
-number of bets, the null, the Deflated Sharpe, and the verdict.
+number of bets, the luck test (QT-16: the turnover-matched null) with the coin-flip
+beside it as a description, the Deflated Sharpe, and the verdict.
 """
 
 from __future__ import annotations
@@ -61,8 +62,16 @@ def render(result: FirewallResult) -> str:
               f"{_pct(figures['marked'].total_return)} ({backtest.SURVIVORSHIP_LABEL})",
               f"- Out-of-sample trades: {seen.trades}; bars: {figures['marked'].bars}"]
     if result.p_value is not None:
-        lines.append(f"- Coin-flip null: p = {result.p_value:.4f} (null Sharpe/bar "
+        lines.append(f"- Luck test (turnover-matched null: the rule's own trades at random "
+                     f"times): p = {result.p_value:.4f} (null Sharpe/bar "
                      f"{result.null_mean:.4f} ± {result.null_std:.4f})")
+    if result.coin is not None:
+        lines.append(f"- Coin-flip null (description only -- it churns, so a slow rule beats "
+                     f"it on costs): p = {result.coin[0]:.4f} (null Sharpe/bar "
+                     f"{result.coin[1]:.4f} ± {result.coin[2]:.4f})")
+    if seen.count("fx_stale"):
+        lines.append(f"- Pounds: {seen.count('fx_stale')} held dollar bar(s) took the previous "
+                     "GBPUSD bar (within pounds.TOLERANCE)")
     if result.deflated:
         d = result.deflated
         lines.append(f"- Deflated Sharpe: {d['dsr']:.3f} over {d['n_trials']:.0f} trials "

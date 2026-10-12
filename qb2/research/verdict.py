@@ -3,8 +3,11 @@
 * INSUFFICIENT: too few out-of-sample trades (starting figure: 30) or too few
   out-of-sample bars (30, the minimum the Deflated Sharpe will accept). It is a
   third answer, never shown as PASS and never silently dropped.
+* INSUFFICIENT too when a figure cannot honestly be made: a held dollar bar with
+  no GBPUSD rate has no pound figure (P3; QT-16 A2).
 * PASS needs all three, on the marked-down NET record:
-  1. better than the coin-flip null on the same bars (p < 0.05);
+  1. the luck test: better than the turnover-matched null -- the candidate's own
+     trades at random times (QT-16 A1; it was the coin-flip null) -- p < 0.05;
   2. Deflated Sharpe >= 0.95 over qb2's whole trial count;
   3. a higher total return than the benchmark (D3) over the same period.
 * FAIL otherwise, naming every check that failed.
@@ -12,6 +15,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 PASS = "PASS"
@@ -28,6 +32,7 @@ class Verdict:
     outcome: str
     reasons: list[str] = field(default_factory=list)
     checks: dict[str, bool] = field(default_factory=dict)
+    failed: tuple[str, ...] = ()        # stable keys of the failed checks: luck, dsr, benchmark
 
     @property
     def passed(self) -> bool:
@@ -39,20 +44,23 @@ class Verdict:
 
 
 def judge(*, oos_trades: int, oos_bars: int, p_value: float | None,
-          dsr: float | None, strategy_return: float, benchmark_return: float) -> Verdict:
-    short = []
+          dsr: float | None, strategy_return: float, benchmark_return: float,
+          gaps: Sequence[str] = ()) -> Verdict:
+    short = list(gaps)
     if oos_trades < MIN_OOS_TRADES:
         short.append(f"only {oos_trades} out-of-sample trades (need {MIN_OOS_TRADES})")
     if oos_bars < MIN_OOS_BARS:
         short.append(f"only {oos_bars} out-of-sample bars (need {MIN_OOS_BARS})")
     if short or p_value is None or dsr is None:
         return Verdict(INSUFFICIENT, short or ["the statistics could not be computed"])
-    checks = {
-        f"beats the coin-flip null (p {p_value:.4f} < {ALPHA})": p_value < ALPHA,
-        f"Deflated Sharpe {dsr:.3f} >= {DSR_PASS}": dsr >= DSR_PASS,
-        (f"beats the benchmark ({strategy_return:+.2%} vs {benchmark_return:+.2%})"):
-            strategy_return > benchmark_return,
+    keyed = {
+        "luck": (f"beats the turnover-matched luck test (p {p_value:.4f} < {ALPHA})",
+                 p_value < ALPHA),
+        "dsr": (f"Deflated Sharpe {dsr:.3f} >= {DSR_PASS}", dsr >= DSR_PASS),
+        "benchmark": (f"beats the benchmark ({strategy_return:+.2%} vs "
+                      f"{benchmark_return:+.2%})", strategy_return > benchmark_return),
     }
-    failed = [name for name, ok in checks.items() if not ok]
+    checks = {label: ok for label, ok in keyed.values()}
+    failed = [key for key, (_, ok) in keyed.items() if not ok]
     return Verdict(FAIL if failed else PASS,
-                   [f"failed: {name}" for name in failed], checks)
+                   [f"failed: {keyed[key][0]}" for key in failed], checks, tuple(failed))

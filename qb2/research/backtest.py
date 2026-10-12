@@ -15,7 +15,11 @@ The checks every run makes before a number exists:
    (simulate.py) -- gross AND net are always both reported, 2x is ``stress=2``;
 5. single shares are marked down for survivorship before scoring: 1.0% a year
    held (ETFs 0). A STARTING FIGURE taken from published averages of how much
-   survivor-only share lists flatter back-tests -- NOT measured on these names.
+   survivor-only share lists flatter back-tests -- NOT measured on these names;
+6. QT-16: a dollar line's money is in POUNDS (pounds.py, P3). The strategy sees
+   dollar prices; the prices it is paid and charged on are divided by GBPUSD. A
+   dollar line with no rates supplied is refused; a held bar with a missing rate
+   is flagged (``fx_gap``) and the firewall calls the trial INSUFFICIENT.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ import numpy as np
 import pandas as pd
 
 from qb2.execution import costs
-from qb2.research import fills, holdout, preregister, simulate, stats, trial_log
+from qb2.research import fills, holdout, pounds, preregister, simulate, stats, trial_log
 from qb2.research.strategy import Strategy, checked_weights
 
 SURVIVORSHIP_DRAG_PER_YEAR = 0.01        # single shares; ETFs 0 -- starting figure
@@ -54,6 +58,11 @@ class BacktestResult:
     paths: simulate.Paths
     legs: simulate.LegFractions
     stress: float
+    opens: np.ndarray                  # the prices simulated -- in pounds
+    closes: np.ndarray
+    drag: float
+    fx_missing: np.ndarray             # no GBPUSD rate for this bar
+    fx_stale: np.ndarray               # an earlier FX bar's close stood in
 
     def series(self, which: str) -> pd.Series:
         return pd.Series(getattr(self.paths, which), index=self.index)
@@ -61,6 +70,18 @@ class BacktestResult:
     @property
     def trades(self) -> int:
         return int(self.paths.entries.sum())
+
+
+def frame(result: BacktestResult, lo: int, hi: int, paths: simulate.Paths | None = None,
+          held: np.ndarray | None = None) -> pd.DataFrame:
+    """Bars [lo, hi) of a run -- or of another path priced on the same bars."""
+    p = paths or result.paths
+    on = (result.held if held is None else held)[lo:hi] > 0
+    return pd.DataFrame({"gross": p.gross[lo:hi], "net": p.net[lo:hi],
+                         "marked": p.marked[lo:hi], "entries": p.entries[lo:hi],
+                         "fx_gap": on & result.fx_missing[lo:hi],
+                         "fx_stale": on & result.fx_stale[lo:hi]},
+                        index=result.index[lo:hi])
 
 
 def validate(bars: pd.DataFrame) -> None:
@@ -78,6 +99,7 @@ def validate(bars: pd.DataFrame) -> None:
 def run(token: preregister.Registered, strategy: Strategy, bars: pd.DataFrame, *,
         instrument: costs.Instrument, interval: str, market: str, stress: float = 1.0,
         final: holdout.HoldoutPass | None = None, plan: fills.Schedule | None = None,
+        fx: pounds.Rates | None = None,
         log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG) -> BacktestResult:
     """One name, one registered strategy. Logs ONE trial unless ``log_path`` is None
     (the firewall passes None and logs one summary for the whole candidate)."""
@@ -92,11 +114,19 @@ def run(token: preregister.Registered, strategy: Strategy, bars: pd.DataFrame, *
     schedule = plan or fills.schedule(bars.index, interval, market)
     held = fills.positions(schedule, weights)
     legs = simulate.leg_fractions(instrument, stress)
-    paths = simulate.run(bars["open"].to_numpy(dtype=float),
-                         bars["close"].to_numpy(dtype=float), held, legs,
-                         drag_per_bar(instrument, interval, market))
+    opens, closes = bars["open"].to_numpy(dtype=float), bars["close"].to_numpy(dtype=float)
+    missing = stale = np.zeros(len(bars), dtype=bool)
+    if pounds.needs_rate(instrument.currency):
+        if fx is None:
+            raise pounds.NoRate(f"{instrument.ticker}: a {instrument.currency} line needs "
+                                "GBPUSD rates -- refusing a silent dollar figure (P3)")
+        opens, closes = pounds.to_pounds(opens, closes, fx)
+        missing, stale = fx.missing, fx.stale
+    drag = drag_per_bar(instrument, interval, market)
+    paths = simulate.run(opens, closes, held, legs, drag)
     result = BacktestResult(registered.id, instrument.ticker, interval, market,
-                            pd.DatetimeIndex(bars.index), held, paths, legs, stress)
+                            pd.DatetimeIndex(bars.index), held, paths, legs, stress,
+                            opens, closes, drag, missing, stale)
     if log_path is not None:
         net = stats.compute(paths.net, interval, market)
         trial_log.log_trial({

@@ -29,6 +29,7 @@ import json
 import sys
 import time
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -37,7 +38,7 @@ import pandas as pd
 
 from qb2.data import access, universe
 from qb2.research import (benchmark, fills, firewall, holdout, monte_carlo, p19_results,
-                          preregister, trial_log)
+                          pounds, preregister, trial_log)
 from qb2.signals import p19_rules
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -99,9 +100,8 @@ def sealed_names(data: Sequence[firewall.NameData], interval: str,
         if len(sealed) < 2:
             continue
         bars = pd.concat([name.bars, sealed])
-        out.append(firewall.NameData(name.symbol, name.market, name.instrument, bars,
-                                     fills.schedule(bars.index, interval, name.market),
-                                     name.bet))
+        out.append(replace(name, bars=bars, plan=fills.schedule(bars.index, interval, name.market),
+                           fx=pounds.extend(name.fx, bars.index, interval, clean_root)))
     return out
 
 
