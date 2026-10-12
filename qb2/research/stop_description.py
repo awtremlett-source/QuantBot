@@ -5,10 +5,14 @@ looked best on these bars is fitted to them; it would have to be pre-registered,
 counted in the trial log and judged out of sample like any other candidate. So
 nothing here chooses anything: k stays 3, the starting figure (qb2/guard/stops.py).
 
-Method, fixed before the run. Every advisor name, the clean store's daily bars
-(about three years -- the box asked for three, so this READS THE SEALED YEAR from
-2025-10-10; it is description, never a trial, and any later choice of k must use
-unsealed bars only). An entry at every 21st close (monthly, so entries rarely
+QT-17 A1: the QT-16 version read the clean store's daily bars itself and so READ
+THE SEALED YEAR (from 2025-10-10): "sealed daily year viewed for the stop
+description, 2026-10-12, no parameter chosen" (SCARS #25, trial log). Its page is
+kept, marked superseded. This version reads through the holdout door: UNSEALED
+daily bars only (to 2025-10-09). Any future choice of stop k must not use the
+sealed year either.
+
+Method, fixed before the run. Every advisor name, its unsealed daily bars. An entry at every 21st close (monthly, so entries rarely
 overlap); the stop at entry - 3 x Wilder ATR(14) that day, trailed each day to
 max(old, close - 3 x ATR) and never lowered; watched for up to 63 trading days.
 Triggered: a day's LOW at or below the stop. Then the move from the stop level to
@@ -29,14 +33,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from qb2.data import universe
+from qb2.data import access, universe
 from qb2.guard import stops
-from qb2.ingest import daily
+from qb2.research import holdout
 from qb2.signals.indicators import atr_wilder
 
 EVERY, WATCH, AFTER = 21, 63, 20
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TARGET = REPO_ROOT / "docs" / "research" / "stop_description_2026-10.md"
+SUPERSEDED = REPO_ROOT / "docs" / "research" / "stop_description_2026-10_SUPERSEDED_sealed_year.md"
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,12 +92,15 @@ def run(entries: Sequence[Mapping[str, object]], clean_root: Path | None = None
     by_market: dict[str, list[Outcome]] = {"US": [], "LSE": []}
     skipped = []
     for entry in entries:
-        symbol = str(entry["yfinance"])
-        bars = daily.load(symbol, clean_root)
+        symbol, market = str(entry["yfinance"]), universe.market_of(entry)
+        try:
+            bars = holdout.research_bars(symbol, "1d", market, clean_root=clean_root)
+        except access.AccessRefused:
+            bars = None
         if bars is None or len(bars) < stops.ATR_PERIOD + AFTER:
             skipped.append(symbol)
             continue
-        by_market[universe.market_of(entry)] += walk(bars, symbol)
+        by_market[market] += walk(bars, symbol)
     return by_market, skipped
 
 
@@ -108,20 +116,23 @@ def report(by_market: Mapping[str, Sequence[Outcome]], skipped: Sequence[str],
                     f"{s['stopped']:.0%} | {s['days']:.0f} | {s['after']:+.1%} "
                     f"(of {s['measured_after']:,.0f}) | {s['came_back']:.0%} |")
     return "\n".join([
-        "# How a 3 × ATR stop would have behaved (QT-16 C2) — description only", "",
+        "# How a 3 × ATR stop would have behaved (QT-16 C2; re-run QT-17 A1, unsealed) — "
+        "description only", "",
         "**Choosing k from this table would be a trial.** It would have to be "
         "pre-registered, counted, and judged on bars it was not chosen on. k stays 3.", "",
-        f"Advisor list, daily bars {first} → {last} (this includes the sealed year from "
-        "2025-10-10: description, never a trial). Method: qb2/research/stop_description.py.",
+        f"Advisor list, UNSEALED daily bars {first} → {last}, read through the holdout "
+        "door (QT-17 A1; the QT-16 page read the sealed year and is kept, superseded, as "
+        f"{SUPERSEDED.name}). Method: qb2/research/stop_description.py.",
         "", *rows, "", f"Left out (too few bars): {', '.join(skipped) or 'none'}.", ""])
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     entries = universe.advisor_entries()
     by_market, skipped = run(entries)
-    spans = [daily.load(str(e["yfinance"])) for e in entries[:5]]
-    first = min(str(s.index.min().date()) for s in spans if s is not None)
-    last = max(str(s.index.max().date()) for s in spans if s is not None)
+    spans = [holdout.research_bars(str(e["yfinance"]), "1d", universe.market_of(e))
+             for e in entries[:5]]
+    first = min(str(s.index.min().date()) for s in spans)
+    last = max(str(s.index.max().date()) for s in spans)
     text = report(by_market, skipped, first, last)
     TARGET.write_text(text, encoding="utf-8")
     print(f"wrote {TARGET.name}")

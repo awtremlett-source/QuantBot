@@ -166,10 +166,14 @@ def test_p19s_eighteen_trials_are_registered_exactly_as_the_plan_lists_them() ->
 # ------------------------------------------------------------- B2: holdout --
 
 def test_the_holdout_dates_are_the_ones_fixed() -> None:
-    assert holdout.SEALED_FROM == {"1d": date(2025, 10, 10), "5m": date(2026, 9, 21)}
+    assert holdout.SEALED_FROM == {"1d": date(2025, 10, 10), "5m": date(2026, 9, 21),
+                                   "1h": date(2026, 7, 13)}          # QT-17 A3: 1h added
     for code in ("XNYS", "XLON"):
         sessions = xcals.get_calendar(code).sessions_in_range("2026-08-01", "2026-10-09")
         assert sessions[-15].date() == holdout.SEALED_FROM["5m"]
+        # 1h: the last 13 weeks to 2026-10-09 -- a Monday that is a session on both
+        assert xcals.get_calendar(code).is_session("2026-07-13")
+    assert (date(2026, 10, 12) - holdout.SEALED_FROM["1h"]).days == 13 * 7
 
 
 def test_any_read_of_sealed_data_is_refused(register_repo: Path, tmp_path: Path) -> None:
@@ -394,14 +398,14 @@ def test_a_report_without_the_benchmark_refuses_to_render(register_repo: Path) -
 # -------------------------------------------------------------- B6: verdicts --
 
 def test_insufficient_is_its_own_answer_and_never_pass() -> None:
-    few = verdict.judge(oos_trades=29, oos_bars=500, p_value=0.001, dsr=0.99,
+    few = verdict.judge(oos_trades=29, oos_bars=500, p_value=0.001, dsr=0.99, mean_per_bar=1e-4,
                         strategy_return=0.5, benchmark_return=0.0)
     assert few.outcome == verdict.INSUFFICIENT and not few.passed
     assert "29 out-of-sample trades" in few.line()
-    good = verdict.judge(oos_trades=30, oos_bars=500, p_value=0.001, dsr=0.99,
+    good = verdict.judge(oos_trades=30, oos_bars=500, p_value=0.001, dsr=0.99, mean_per_bar=1e-4,
                          strategy_return=0.5, benchmark_return=0.0)
     assert good.passed
-    behind = verdict.judge(oos_trades=30, oos_bars=500, p_value=0.001, dsr=0.99,
+    behind = verdict.judge(oos_trades=30, oos_bars=500, p_value=0.001, dsr=0.99, mean_per_bar=1e-4,
                            strategy_return=0.01, benchmark_return=0.02)
     assert behind.outcome == verdict.FAIL and "benchmark" in behind.line()
 

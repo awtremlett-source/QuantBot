@@ -14,7 +14,7 @@ The verdict uses the PER-BAR Sharpe (mean / standard deviation) of the simple
 per-bar returns, unchanged by QT-15, as is the Deflated Sharpe's input: the Monte Carlo
 null and the Deflated Sharpe are both in per-bar units. The annualised figure is
 for reading only: daily bars x sqrt(252); 5-minute bars x sqrt(252 x bars per
-session), 78 in New York and 102 in London.
+session), 78 in New York and 102 in London; 1-hour bars (QT-17 A3) 7 and 9.
 """
 
 from __future__ import annotations
@@ -26,15 +26,22 @@ import numpy as np
 import pandas as pd
 
 TRADING_DAYS = 252
-BARS_PER_SESSION = {"US": 78, "LSE": 102}
+BARS_PER_SESSION = {"US": 78, "LSE": 102}            # 5-minute bars
+HOURS_PER_SESSION = {"US": 7, "LSE": 9}             # 1-hour bars: 09:30-15:30, 08:00-16:00
+
+
+def bars_per_session(interval: str, market: str) -> int:
+    if interval == "5m":
+        return BARS_PER_SESSION[market]
+    if interval == "1h":
+        return HOURS_PER_SESSION[market]
+    raise ValueError(f"no session length for interval {interval!r}")
 
 
 def periods_per_year(interval: str, market: str = "US") -> float:
     if interval == "1d":
         return float(TRADING_DAYS)
-    if interval == "5m":
-        return float(TRADING_DAYS * BARS_PER_SESSION[market])
-    raise ValueError(f"no annualisation for interval {interval!r}")
+    return float(TRADING_DAYS * bars_per_session(interval, market))
 
 
 @dataclass(frozen=True, slots=True)

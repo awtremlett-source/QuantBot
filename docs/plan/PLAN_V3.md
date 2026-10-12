@@ -262,7 +262,8 @@ red-on-broken before being trusted.
 days are coin-flips with a spread, which is the opposite of a small repeatable
 edge. The advisor, which holds for months, instead warns him beforehand.
 *Enforcer:* an earnings-date check that blocks a bot entry into the window and
-raises an advisor warning before it.
+raises an advisor warning before it. Since QT-17 the same check runs inside every
+intraday back-test, asked exactly as the sender asks it (qb2/research/p15.py).
 
 **P16 — Practice account first, real ISA later, phone alerts last.** Trading 212
 demo until the graduation rubric passes; then a Stocks ISA (a UK account where
@@ -593,6 +594,8 @@ joining anything, plus the moving buys from P11. A recorded failure is a result.
 - Exit gate: at least one signal passes both gates and survives 2× costs; every attempt appears in the trial log; failures written up rather than discarded.
 - Enforcer: the firewall, plus the trial count feeding Deflated Sharpe.
 - Built/Wired/Armed: signals written · wired into the feature builder · armed only after their own firewall pass.
+- **QT-17 (2026-10-12): the 1h bench built; batch 1 NOT registered, not run.** Part A: the seal has one door (tests/wall/test_sealed_doors.py; two sealed reads found and logged, SCARS #25); Gate 1 also needs a positive net mean per bar; 1-hour bars testable; known-null on 1h (docs/research/known_null_2026-10-12_QT17_1h.md): both halves GREEN on honest code and Gate 1 seen RED with the delay removed, but Gate 2's red-first did NOT show (costs off, the below-cost drill still failed on the benchmark: P15 leaves 39 of 47 bets in cash). Batch 1 (8 same-day rules × 3 arms = 24) stopped before its register: run exactly as the sender runs it, P15 blocks EVERY share on every unsealed hour, because no earnings date in the store was knowable before 2026-10-02 — the US arm could not trade at all and London/Mix would be the same 9 ETFs. DECISION REQUESTED (STATE). No trial was added to the count (N stays 18). **S6 stays OPEN.**
+- **Fixed under the STANDING GO, 2026-10-12 (starting figures):** 1h bars sealed from 2026-07-13 (the last 13 weeks to 2026-10-09) for ever; a 1h fill = the open of the first bar starting at or after the deciding bar's close + the market's delay (two bars later); a bar held only if it ends by the P4 cut-off (1h: sold at the open of US 15:30 / London 16:00; half days by the exchange calendar); 1h walk-forward 63 / 21 sessions; 1h FX = the open of the latest FX hour started by the moment, 3 h tolerance; an intraday benchmark = VWRP's closes at the same bar size; brakes (P12) are a live layer, not applied inside back-tests — maximum drawdown is reported instead.
 
 ### S7 — The bot's combined model
 The surviving signals combined into one calibrated probability, with sizing (D2)

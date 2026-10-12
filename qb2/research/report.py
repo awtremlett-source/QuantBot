@@ -60,7 +60,11 @@ def render(result: FirewallResult) -> str:
               f"- Benchmark: {mark.why}",
               f"- Mark-down: before {_pct(figures['net'].total_return)}, after "
               f"{_pct(figures['marked'].total_return)} ({backtest.SURVIVORSHIP_LABEL})",
-              f"- Out-of-sample trades: {seen.trades}; bars: {figures['marked'].bars}"]
+              f"- Out-of-sample trades: {seen.trades}; bars: {figures['marked'].bars}; net "
+              f"mean per bar {seen.marked.mean() if len(seen.marked) else 0.0:+.5%} (Gate 1 "
+              "needs it above zero)",
+              "- Brakes (P12) are a live safety layer and are NOT applied inside back-tests "
+              "(QT-17 A3): the maximum drawdown above stands in for them"]
     if result.p_value is not None:
         lines.append(f"- Luck test (turnover-matched null: the rule's own trades at random "
                      f"times): p = {result.p_value:.4f} (null Sharpe/bar "

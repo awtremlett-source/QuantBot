@@ -1,0 +1,21 @@
+"""A planted wall violation (QT-17 A1): research reading bars past the seal.
+
+Written the way QT-16 C2 actually arrived: a description that "only needs the
+daily bars" calls the loader itself, and so reads the sealed year.
+"""
+
+import pandas as pd
+
+from qb2.data import access
+from qb2.data.access import bars
+from qb2.ingest import daily
+from qb2.ingest.daily import close_on
+
+
+def describe(symbol):
+    every_year = daily.load(symbol)                      # the QT-16 C2 route
+    last = close_on(symbol, "2026-10-09")
+    minutes = access.bars(symbol, "5m")
+    hours = bars(symbol, "1h")
+    raw = pd.read_parquet(f"data/clean/bars/1h/{symbol}/2026-09.parquet")
+    return every_year, last, minutes, hours, raw

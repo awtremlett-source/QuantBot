@@ -8,7 +8,8 @@ the out-of-sample (OOS) record.
 
 Adapted for qb2: every run needs a registered token; costs and the delay rule are
 inside each grading run (backtest.py); window sizes default per bar size --
-daily 252 / 63 bars, 5-minute 10 / 5 sessions of that market (starting figures).
+daily 252 / 63 bars, 5-minute 10 / 5 sessions of that market, 1-hour 63 / 21
+sessions (QT-17 A3: a quarter to warm up, a month graded) -- starting figures.
 
 P19's trials and the drills have FIXED parameters (a one-element grid). Nothing
 is chosen, so each fold's grade is exactly that bar range of one full run --
@@ -66,8 +67,8 @@ class Fold:
 def default_sizes(interval: str, market: str) -> tuple[int, int]:
     if interval == "1d":
         return 252, 63
-    per = stats.BARS_PER_SESSION[market]
-    return 10 * per, 5 * per
+    per = stats.bars_per_session(interval, market)
+    return (63 * per, 21 * per) if interval == "1h" else (10 * per, 5 * per)
 
 
 def folds(n: int, train_size: int, test_size: int) -> list[Fold]:

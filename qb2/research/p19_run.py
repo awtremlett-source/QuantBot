@@ -37,7 +37,7 @@ from typing import Any
 import pandas as pd
 
 from qb2.data import access, universe
-from qb2.research import (benchmark, fills, firewall, holdout, monte_carlo, p19_results,
+from qb2.research import (benchmark, firewall, holdout, monte_carlo, p15, p19_results,
                           pounds, preregister, trial_log)
 from qb2.signals import p19_rules
 
@@ -84,8 +84,7 @@ def state(run_dir: Path) -> tuple[int, int, set[str], set[str]]:
     return batch, int(batches[-1]["counted_before"]), done, started
 
 
-def sealed_names(data: Sequence[firewall.NameData], interval: str,
-                 final: holdout.HoldoutPass,
+def sealed_names(data: Sequence[firewall.NameData], interval: str, final: holdout.HoldoutPass,
                  clean_root: Path | None = None) -> list[firewall.NameData]:
     """Each name's unsealed bars (warm-up only) + its sealed bars to HOLDOUT_END."""
     out = []
@@ -100,8 +99,9 @@ def sealed_names(data: Sequence[firewall.NameData], interval: str,
         if len(sealed) < 2:
             continue
         bars = pd.concat([name.bars, sealed])
-        out.append(replace(name, bars=bars, plan=fills.schedule(bars.index, interval, name.market),
-                           fx=pounds.extend(name.fx, bars.index, interval, clean_root)))
+        out.append(replace(name, bars=bars, plan=p15.schedule(      # P15 on intraday bars
+            name.symbol, name.instrument.kind, bars.index, interval, name.market, clean_root),
+            fx=pounds.extend(name.fx, bars.index, interval, clean_root, final)))
     return out
 
 
@@ -111,7 +111,7 @@ def run(*, new_batch: str | None = None, run_dir: Path = RUN_DIR,
         load: Loader = firewall.load, score: Callable[..., firewall.FirewallResult]
         = firewall.score, open_final: Callable[..., holdout.HoldoutPass]
         = holdout.open_final_run, bench: Callable[[date, date], benchmark.Benchmark]
-        = benchmark.over, n_null: int = monte_carlo.DEFAULT_TRIALS,
+        | None = None, n_null: int = monte_carlo.DEFAULT_TRIALS,
         register_root: Path | None = None, clean_root: Path | None = None,
         say: Say = print) -> list[dict[str, Any]]:
     batch, counted_before, done, started = state(run_dir)
@@ -166,7 +166,7 @@ def run(*, new_batch: str | None = None, run_dir: Path = RUN_DIR,
 def _holdout(token: preregister.Registered, make: Callable[..., Any],
              data: Sequence[firewall.NameData], interval: str, n_null: int, n_full: int,
              open_final: Callable[..., holdout.HoldoutPass],
-             bench: Callable[[date, date], benchmark.Benchmark], log_path: Path,
+             bench: Callable[[date, date], benchmark.Benchmark] | None, log_path: Path,
              clean_root: Path | None,
              score: Callable[..., firewall.FirewallResult]) -> dict[str, Any]:
     """The ONE final run. Logged as kind "holdout" (never a selection trial)."""

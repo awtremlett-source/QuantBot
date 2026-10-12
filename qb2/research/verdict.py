@@ -5,9 +5,14 @@
   third answer, never shown as PASS and never silently dropped.
 * INSUFFICIENT too when a figure cannot honestly be made: a held dollar bar with
   no GBPUSD rate has no pound figure (P3; QT-16 A2).
-* PASS needs all three, on the marked-down NET record:
-  1. the luck test: better than the turnover-matched null -- the candidate's own
-     trades at random times (QT-16 A1; it was the coin-flip null) -- p < 0.05;
+* PASS needs all of these, on the marked-down NET record:
+  1. Gate 1, the luck gate, in two halves:
+     a. ``luck`` -- better than the turnover-matched null, the candidate's own
+        trades at random times (QT-16 A1; it was the coin-flip null): p < 0.05;
+     b. ``positive`` (QT-17 A2) -- a positive net mean return per bar. A negative
+        Sharpe reads BETTER when it is noisier, so a losing rule whose losses
+        cluster can beat random timing on p alone (KN-INSTANT-5m: p 0.005 at
+        -42.7%). Losing money is never "better than luck";
   2. Deflated Sharpe >= 0.95 over qb2's whole trial count;
   3. a higher total return than the benchmark (D3) over the same period.
 * FAIL otherwise, naming every check that failed.
@@ -44,18 +49,20 @@ class Verdict:
 
 
 def judge(*, oos_trades: int, oos_bars: int, p_value: float | None,
-          dsr: float | None, strategy_return: float, benchmark_return: float,
-          gaps: Sequence[str] = ()) -> Verdict:
+          mean_per_bar: float | None, dsr: float | None, strategy_return: float,
+          benchmark_return: float, gaps: Sequence[str] = ()) -> Verdict:
     short = list(gaps)
     if oos_trades < MIN_OOS_TRADES:
         short.append(f"only {oos_trades} out-of-sample trades (need {MIN_OOS_TRADES})")
     if oos_bars < MIN_OOS_BARS:
         short.append(f"only {oos_bars} out-of-sample bars (need {MIN_OOS_BARS})")
-    if short or p_value is None or dsr is None:
+    if short or p_value is None or dsr is None or mean_per_bar is None:
         return Verdict(INSUFFICIENT, short or ["the statistics could not be computed"])
     keyed = {
         "luck": (f"beats the turnover-matched luck test (p {p_value:.4f} < {ALPHA})",
                  p_value < ALPHA),
+        "positive": (f"a positive net mean per bar ({mean_per_bar:+.5%} > 0)",
+                     mean_per_bar > 0),
         "dsr": (f"Deflated Sharpe {dsr:.3f} >= {DSR_PASS}", dsr >= DSR_PASS),
         "benchmark": (f"beats the benchmark ({strategy_return:+.2%} vs "
                       f"{benchmark_return:+.2%})", strategy_return > benchmark_return),

@@ -9,6 +9,12 @@ Verified the way S3 verified every name: resolved against Trading 212's own save
 instrument list on short name + exchange, pinned by ISIN (qb2/ingest/
 verify_universe.py). If that ever fails, the distributing line VWRL is used with
 its dividends added back (qb2/research/total_return.py), and the report says so.
+
+QT-17 A1/A3: read through the holdout door like every bar in research. An
+intraday trial's benchmark is VWRP's own closes at the SAME bar size over the same
+dates: daily VWRP from 2025-10-10 is the DAILY sealed year, and QT-14..16's 5-minute
+benchmark read it (logged, kind seal_viewed). Its price is its total return, so an
+intraday figure needs the accumulating line: the distributing fallback is refused.
 """
 
 from __future__ import annotations
@@ -18,8 +24,10 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
+import pandas as pd
+
 from qb2.ingest import verify_universe
-from qb2.research import total_return
+from qb2.research import holdout, total_return
 
 D3 = "VWRP.L"
 D3_FALLBACK = "VWRL.L"
@@ -53,10 +61,25 @@ def choose(resolve: Resolver = verify_universe.resolve) -> tuple[str, str]:
 
 
 def over(start: date, end: date, *, clean_root: Path | None = None,
-         chosen: tuple[str, str] | None = None) -> Benchmark:
-    """From the close BEFORE ``start`` to the close of ``end`` -- the strategy's span."""
+         chosen: tuple[str, str] | None = None, interval: str = "1d",
+         final: holdout.HoldoutPass | None = None) -> Benchmark:
+    """From the close BEFORE ``start`` to the close of ``end`` -- the strategy's span.
+    ``final`` is the single final run's pass (dates inside the seal)."""
     symbol, why = chosen or choose()
+    if interval in ("5m", "1h"):
+        if symbol != D3:
+            raise MissingBenchmark(f"an intraday benchmark needs the accumulating {D3}, "
+                                   f"whose price is its total return; {symbol} is not it")
+        bars = holdout.bars_through(symbol, interval, "LSE", through=end, final=final,
+                                    clean_root=clean_root)
+        days = pd.Series(bars.index.date, index=bars.index)
+        before, upto = bars[(days < start).to_numpy()], bars[(days <= end).to_numpy()]
+        if before.empty or upto.empty:
+            raise MissingBenchmark(f"no {symbol} 1h close before {start} or by {end}")
+        return Benchmark(symbol=symbol, why=f"{why} ({interval} closes)", start=start, end=end,
+                         total_return=float(upto["close"].iloc[-1] / before["close"].iloc[-1]
+                                            - 1.0))
     held = total_return.holding_return(symbol, start - timedelta(days=1), end,
-                                       clean_root=clean_root)
+                                       clean_root=clean_root, final=final)
     return Benchmark(symbol=symbol, why=why, start=start, end=end,
                      total_return=held.total_return_gross)

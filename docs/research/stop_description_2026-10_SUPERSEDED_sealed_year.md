@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-10-12 (QT-17 A1).** This page read the SEALED daily year (2025-10-10 → 2026-10-09) — "sealed daily year viewed for the stop description, 2026-10-12, no parameter chosen" (SCARS #25; trial log, kind seal_viewed). Kept as it was, below. The current page, on unsealed bars only, is stop_description_2026-10.md. No choice of stop k may use the sealed year.
+
 # How a 3 × ATR stop would have behaved (QT-16 C2) — description only
 
 **Choosing k from this table would be a trial.** It would have to be pre-registered, counted, and judged on bars it was not chosen on. k stays 3.

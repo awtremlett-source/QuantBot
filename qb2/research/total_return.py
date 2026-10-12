@@ -21,6 +21,9 @@ that still looks plausible, so the test suite plants one and watches this go red
 September met different exchange rates. Converting the total at today's rate
 pretends otherwise, so each payment is converted at the rate on its own ex-date.
 
+QT-17 A1: prices and rates not handed in come through the holdout door (a sealed
+date only with the final run's pass) -- the benchmark cannot read the sealed year.
+
 Withholding tax is a stated assumption, not a buried constant: see
 :data:`WITHHOLDING`. Both figures are always reported -- gross, and net of it --
 because which one is right depends on paperwork we have not done yet.
@@ -35,6 +38,7 @@ from pathlib import Path
 import pandas as pd
 
 from qb2.ingest import daily, dividends
+from qb2.research import holdout
 
 # A NAMED ASSUMPTION, not a fact about this account yet.
 # * US 15% is the rate a UK resident pays on US dividends ONCE a W-8BEN form is on
@@ -141,26 +145,28 @@ def holding_return(symbol: str, start: object, end: object, *,
                    prices: pd.DataFrame | None = None,
                    payouts: pd.DataFrame | None = None,
                    fx: pd.DataFrame | None = None,
-                   knowable_at: datetime | None = None) -> Holding:
+                   knowable_at: datetime | None = None,
+                   final: holdout.HoldoutPass | None = None) -> Holding:
     """Total return for one holding between two dates, in pounds.
 
     ``knowable_at`` restricts the dividend table to what was publishable by that
     moment, so a back-test cannot be handed a payout that had not gone ex yet.
+    ``final``: the single final run's pass (an ``end`` inside the seal needs it).
     """
-    frame = prices if prices is not None else daily.load(symbol, clean_root)
+    market = "LSE" if symbol.endswith(".L") else "US"
+    through = pd.Timestamp(str(end)).date()
+    frame = prices if prices is not None else holdout.bars_through(
+        symbol, "1d", market, through=through, final=final, clean_root=clean_root)
     if frame is None or frame.empty:
         raise TotalReturnError(f"no daily prices for {symbol} in the clean store")
     refuse_adjusted_close(frame)
 
-    market = "LSE" if symbol.endswith(".L") else "US"
     currency = str(frame["currency"].iloc[0]) if "currency" in frame.columns \
         else ("GBP" if market == "LSE" else "USD")
     sterling = currency in STERLING
 
-    close_start = daily.close_on(symbol, start, clean_root) if prices is None \
-        else _close_from(frame, start)
-    close_end = daily.close_on(symbol, end, clean_root) if prices is None \
-        else _close_from(frame, end)
+    window = None if prices is not None else 5     # a store close: daily.close_on's rule
+    close_start, close_end = _close_from(frame, start, window), _close_from(frame, end, window)
     if close_start is None or close_end is None:
         raise TotalReturnError(
             f"{symbol}: no close on or near {start} / {end} -- refusing to guess")
@@ -169,8 +175,11 @@ def holding_return(symbol: str, start: object, end: object, *,
     if table is not None and knowable_at is not None:
         table = dividends.knowable_at(table, knowable_at)
 
-    rate_start = 1.0 if sterling else _rate_on(start, _fx(fx, clean_root))
-    rate_end = 1.0 if sterling else _rate_on(end, _fx(fx, clean_root))
+    if not sterling and fx is None:
+        fx = holdout.bars_through(daily.FX_PAIR, "1d", "LSE", through=through, final=final,
+                                  clean_root=clean_root)
+    rate_start = 1.0 if sterling else _rate_on(start, fx)
+    rate_end = 1.0 if sterling else _rate_on(end, fx)
 
     local_total = 0.0
     gross_gbp = 0.0
@@ -187,8 +196,7 @@ def holding_return(symbol: str, start: object, end: object, *,
             if str(row.get("verdict")) == "SUSPECT":
                 suspect += 1
             # Each payment meets the rate of ITS OWN ex-date, not today's.
-            rate = 1.0 if sterling else _rate_on(row["ex_date"],
-                                                 _fx(fx, clean_root))
+            rate = 1.0 if sterling else _rate_on(row["ex_date"], fx)
             gross_gbp += amount / rate
 
     net_gbp = gross_gbp * (1.0 - withheld)
@@ -206,7 +214,8 @@ def holding_return(symbol: str, start: object, end: object, *,
         payments=payments, suspect_payments=suspect)
 
 
-def _close_from(frame: pd.DataFrame, day: object) -> float | None:
+def _close_from(frame: pd.DataFrame, day: object, within_days: int | None = None,
+                ) -> float | None:
     wanted = pd.Timestamp(day)
     if wanted.tzinfo is not None:
         wanted = wanted.tz_convert(None)
@@ -215,19 +224,9 @@ def _close_from(frame: pd.DataFrame, day: object) -> float | None:
     earlier = naive[naive <= wanted]
     if len(earlier) == 0:
         return None
+    if within_days is not None and (wanted - earlier[-1]).days > within_days:
+        return None
     return float(frame["close"].to_numpy()[list(naive).index(earlier[-1])])
-
-
-_FX_CACHE: dict[str, pd.DataFrame | None] = {}
-
-
-def _fx(given: pd.DataFrame | None, clean_root: Path | None) -> pd.DataFrame | None:
-    if given is not None:
-        return given
-    key = str(clean_root)
-    if key not in _FX_CACHE:
-        _FX_CACHE[key] = daily.load(daily.FX_PAIR, clean_root)
-    return _FX_CACHE[key]
 
 
 def describe(holding: Holding) -> str:

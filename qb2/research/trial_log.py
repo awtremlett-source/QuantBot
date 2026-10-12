@@ -9,7 +9,10 @@ Adapted for qb2:
 * every record names the pre-registered ``candidate_id`` and the commit that
   registered it, so "written before tested" can be checked line by line;
 * ``kind="drill"`` marks a known-null drill: logged like any run, but never
-  counted as a trial (a measuring instrument is not a lottery ticket).
+  counted as a trial (a measuring instrument is not a lottery ticket);
+* ``kind="seal_viewed"`` (QT-17 A1) records that sealed data was LOOKED AT outside
+  the single final run -- a breach on record, counted 0, never a trial: e.g. the
+  QT-16 stop description's read of the sealed daily year.
 
 Append-only by construction ("a" mode, one JSON object per line). A failure to
 write is RE-RAISED (Scar #12): a silently lost trial would understate the count.
@@ -31,7 +34,9 @@ BACKTEST = "backtest"
 WALK_FORWARD = "walk_forward"
 MONTE_CARLO = "monte_carlo"
 HOLDOUT = "holdout"
-KINDS = frozenset({DRILL, FIREWALL, BACKTEST, WALK_FORWARD, MONTE_CARLO, HOLDOUT})
+SEAL_VIEWED = "seal_viewed"
+KINDS = frozenset({DRILL, FIREWALL, BACKTEST, WALK_FORWARD, MONTE_CARLO, HOLDOUT,
+                   SEAL_VIEWED})
 
 REQUIRED_KEYS = ("utc_time", "kind", "candidate_id", "register_commit",
                  "strategy_name", "params", "metric_name", "metric_value", "n_bars")
@@ -64,10 +69,12 @@ def count_selection_trials(path: Path | None = None) -> tuple[int, dict[str, int
 
     firewall and backtest records count 1 each; walk_forward counts its
     ``params.total_trials``; monte_carlo and holdout count 0 (a measuring stick
-    pointed at a result we already had); drills count 0 and are reported.
+    pointed at a result we already had); drills and seal_viewed records count 0
+    and are reported.
     """
     seen = {"firewall": 0, "backtest": 0, "walk_forward_trials": 0,
-            "monte_carlo_excluded": 0, "holdout_excluded": 0, "drills_excluded": 0}
+            "monte_carlo_excluded": 0, "holdout_excluded": 0, "drills_excluded": 0,
+            "seal_viewed_excluded": 0}
     for record in read_trials(path):
         kind = record.get("kind")
         if kind == DRILL:
@@ -82,6 +89,8 @@ def count_selection_trials(path: Path | None = None) -> tuple[int, dict[str, int
             seen["monte_carlo_excluded"] += 1
         elif kind == HOLDOUT:
             seen["holdout_excluded"] += 1
+        elif kind == SEAL_VIEWED:
+            seen["seal_viewed_excluded"] += 1
         else:
             raise ValueError(f"unknown trial kind {kind!r} in the qb2 trial log")
     return seen["firewall"] + seen["backtest"] + seen["walk_forward_trials"], seen

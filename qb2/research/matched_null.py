@@ -14,8 +14,9 @@ lengths, is then placed at random start times inside that same window:
 * never overlapping, with at least one flat bar between two trades, so the count
   of trades -- and so every cost leg -- is exactly the candidate's;
 * only on bars a real fill could hold (the delay and P4): daily from the second
-  bar; on 5-minute bars from the first bar a delayed fill reaches in a session to
-  the bar before the P4 cut-off, inside ONE session;
+  bar; on intraday bars from the first bar a delayed fill reaches in a session to
+  the last bar that ends by the P4 cut-off, inside ONE session -- and, with P15's
+  mask (QT-17 A3), only on bars an allowed entry could land on;
 * a trade that crosses the window's edge stays where it is (it was half graded);
 * seeded per bet, so both lines of one bet draw from the same seed, as the coin.
 
@@ -72,6 +73,10 @@ def legal(plan: fills.Schedule) -> tuple[NDArray[np.bool_], Ints]:
     ok = np.arange(plan.n) >= first.to_numpy()
     if plan.forced_flat is not None:
         ok &= ~plan.forced_flat
+    if plan.may_enter is not None:                    # P15: where an entry could land
+        entry = np.zeros(plan.n, dtype=bool)
+        entry[plan.fills[plan.usable & plan.may_enter]] = True
+        ok &= entry
     return ok, session
 
 

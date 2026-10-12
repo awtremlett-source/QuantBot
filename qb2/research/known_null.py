@@ -14,10 +14,14 @@ built so it goes RED on exactly the breakage it guards against:
   same trend shrunk to 0.7 of each name's round-trip cost must FAIL
   (KN-PLANT-SMALL-5m). Switch costs off and that drill passes: Gate 2 RED.
 
+QT-17 A4: the same two halves on 1-hour bars (KN-*-1h), because a firewall proven
+on 5-minute and daily bars has not been proven on hours (P17).
+
 Every drill is pre-registered (docs/research/preregistered.json, kind "drill")
 and logged with kind="drill", which the trial count excludes.
 
-CLI: ``python -m qb2.research.known_null`` -- runs the gate, writes the reports.
+CLI: ``python -m qb2.research.known_null [--interval 1h]`` -- runs the gate (5m and
+daily by default; the hourly gate with ``--interval 1h``), writes the report.
 """
 
 from __future__ import annotations
@@ -156,16 +160,21 @@ GATE1 = (("KN-COIN-5m", 1.0), ("KN-INSTANT-5m", 1.0), ("KN-COIN-1d", 1.0),
          ("KN-LAZY-5m", 1.0))
 GATE2 = (("KN-PLANT-5m", 1.0), ("KN-PLANT-5m", 2.0), ("KN-PLANT-1d", 1.0),
          ("KN-PLANT-1d", 2.0), ("KN-PLANT-SMALL-5m", 1.0))
+GATES = {"gate1": GATE1, "gate2": GATE2}
+GATES_1H = {"gate1": (("KN-COIN-1h", 1.0), ("KN-INSTANT-1h", 1.0), ("KN-LAZY-1h", 1.0)),
+            "gate2": (("KN-PLANT-1h", 1.0), ("KN-PLANT-1h", 2.0),
+                      ("KN-PLANT-SMALL-1h", 1.0))}
 
 
 def run_gate(*, base: Mapping[str, Sequence[firewall.NameData]],
              skipped: Mapping[str, Sequence[str]] | None = None,
              require: Callable[[str], preregister.Registered] = preregister.require,
              n_null: int = monte_carlo.DEFAULT_TRIALS, log_path: Path | None = None,
+             gates: Mapping[str, Sequence[tuple[str, float]]] = GATES,
              **kw: Any) -> dict[str, list[DrillRun]]:
     """Both gates. ``base`` holds each bar size's loaded names (loaded once)."""
     out: dict[str, list[DrillRun]] = {"gate1": [], "gate2": []}
-    for gate, drills in (("gate1", GATE1), ("gate2", GATE2)):
+    for gate, drills in gates.items():
         for drill_id, stress in drills:
             token = require(drill_id)
             entry = token.entry
@@ -185,12 +194,14 @@ def colour(runs: Sequence[DrillRun]) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    hourly = "--interval" in (args := list(argv or [])) and args[args.index("--interval") + 1] == "1h"
     base, skipped = {}, {}
-    for interval in ("5m", "1d"):
+    for interval in (("1h",) if hourly else ("5m", "1d")):
         base[interval], skipped[interval] = firewall.load(interval)
-    runs = run_gate(base=base, skipped=skipped,
+    runs = run_gate(base=base, skipped=skipped, gates=GATES_1H if hourly else GATES,
                     log_path=trial_log.DEFAULT_TRIAL_LOG)
-    lines = [f"# Known-null gate, {date.today().isoformat()} (real clean store)", ""]
+    lines = [f"# Known-null gate, {date.today().isoformat()} (real clean store"
+             f"{', 1-hour bars' if hourly else ''})", ""]
     for gate, title in (("gate1", "Gate 1 -- the worthless are rejected"),
                         ("gate2", "Gate 2 -- the exploitable passes after costs")):
         lines += [f"## {title}: {colour(runs[gate])}", ""]
@@ -198,7 +209,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             lines += [f"Expected {run.expect}, got {run.result.verdict.outcome} "
                       f"({'GREEN' if run.green else 'RED'}).", "",
                       report.render(run.result), ""]
-    target = REPORTS / f"known_null_{date.today().isoformat()}.md"
+    target = REPORTS / f"known_null_{date.today().isoformat()}{'_1h' if hourly else ''}.md"
     target.write_text("\n".join(lines), encoding="utf-8")
     print(f"Gate 1 {colour(runs['gate1'])} · Gate 2 {colour(runs['gate2'])} -> {target.name}")
     return 0 if colour(runs["gate1"]) == colour(runs["gate2"]) == "GREEN" else 1

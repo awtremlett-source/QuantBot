@@ -55,7 +55,7 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [x] S4 Firewall v2 (QT-14, 2026-10-10); P19's 18 trials none survived (QT-15)
 - [x] S5 Safety layer (QT-16, 2026-10-12): qb2/guard/ stops, brakes, pots, age,
       earnings; sender checks 6–9; brake replays; luck test turnover-matched
-- [ ] S6 Bot signals, one at a time, each pre-registered + moving buys (P11)
+- [ ] S6 Bot signals, one at a time, each pre-registered + moving buys (P11). QT-17: 1h bench built; batch 1 held (P15 history)
 - [ ] S7 Bot combined model + calibration + sizing (D2) + inverse test; must beat
       best single signal, v1 AND the benchmark out-of-sample at 2× costs
 - [ ] S8 Bot evolution: challengers in shadow + machine search (stops on

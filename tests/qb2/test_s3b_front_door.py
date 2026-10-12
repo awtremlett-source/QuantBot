@@ -428,7 +428,8 @@ def test_first_light_never_reads_the_raw_store() -> None:
 
     assert "RAW_INTRADAY" not in code, "first light must not reach for the raw store"
     assert "data/raw" not in code and 'data", "raw' not in code
-    assert "CLEAN" in code, "it must read the clean store"
+    # QT-17 A1: the clean store, through the holdout door (unsealed bars only)
+    assert "holdout.research_bars" in code, "it must read the clean store through the door"
 
 
 def test_the_manifest_records_the_unit_it_stored_so_a_rebuild_can_be_checked(

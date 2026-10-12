@@ -5,13 +5,20 @@ Fixed under the STANDING GO of 2026-10-07, before any trial is run:
 * daily bars -- the last 12 months to 2026-10-09 are sealed: from 2025-10-10 on;
 * 5-minute bars -- the last 15 trading days to 2026-10-09 are sealed (both
   exchanges' calendars put the 15th session back on 2026-09-21), plus everything
-  recorded after today: from 2026-09-21 on, for ever.
+  recorded after today: from 2026-09-21 on, for ever;
+* 1-hour bars (QT-17 A3, fixed 2026-10-12 before any 1h trial) -- the last 13
+  weeks to 2026-10-09: from 2026-07-13 on, for ever.
 
-Research reads bars only through :func:`research_bars`, which returns the
-unsealed part; asking for a date inside the seal is refused, and every scoring
-path re-checks the bars it is handed (:func:`check_unsealed`), so sealed rows
-cannot be slipped in from elsewhere. The one exception is :func:`open_final_run`:
+Research reads bars only through this file: :func:`research_bars` returns the
+unsealed part, and :func:`bars_through` joins the sealed part on only for the
+single final run's pass. Asking for a date inside the seal is refused, and every
+scoring path re-checks the bars it is handed (:func:`check_unsealed`), so sealed
+rows cannot be slipped in from elsewhere. The final run is :func:`open_final_run`:
 once per candidate, logged, never twice. A holdout looked at twice is not a holdout.
+
+QT-17 A1: QT-16's stop description read the sealed daily year by calling the
+daily loader itself. tests/wall/test_sealed_doors.py now makes any raw bar read
+under qb2/research or qb2/tools RED, so this file is the only door.
 
 Not research, so not sealed: the live shadow cross-check and the freshness meter
 read recent bars to watch the feed, and score nothing.
@@ -31,7 +38,8 @@ from qb2.ingest import daily
 from qb2.research import preregister, trial_log
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SEALED_FROM = {"1d": date(2025, 10, 10), "5m": date(2026, 9, 21)}
+SEALED_FROM = {"1d": date(2025, 10, 10), "5m": date(2026, 9, 21),
+               "1h": date(2026, 7, 13)}
 EXCHANGE_TZ = {"US": "America/New_York", "LSE": "Europe/London"}
 SPENT = REPO_ROOT / "data" / "qb2" / "holdout_spent.jsonl"
 
@@ -77,22 +85,22 @@ def check_unsealed(index: pd.Index, interval: str, market: str,
 def research_bars(symbol: str, interval: str, market: str, *,
                   through: date | None = None, clean_root: Path | None = None,
                   holdout: HoldoutPass | None = None) -> pd.DataFrame:
-    """Unsealed bars for research, on the exchange clock (5m via the doorway).
+    """Unsealed bars for research, on the exchange clock (5m and 1h via the doorway).
 
     QT-14 normalised mixed zone labels here; since QT-15 the store is stamped right
     at the front door, so a wrong label is refused instead of quietly repaired."""
+    if interval not in SEALED_FROM:
+        raise ValueError(f"no research interval {interval!r}")
     seal = SEALED_FROM[interval]
     if through is not None and through >= seal and holdout is None:
         raise Sealed(f"asked for {interval} bars through {through}; sealed from {seal}")
-    if interval == "5m":
-        frame = access.bars(symbol, "5m", clean_root=clean_root)
-    elif interval == "1d":
+    if interval in ("5m", "1h"):
+        frame = access.bars(symbol, interval, clean_root=clean_root)
+    else:
         loaded = daily.load(symbol, clean_root)
         if loaded is None or loaded.empty:
             raise access.AccessRefused(f"no clean daily bars for {symbol}")
         frame = loaded
-    else:
-        raise ValueError(f"no research interval {interval!r}")
     if str(getattr(frame.index, "tz", None)) != EXCHANGE_TZ[market]:       # QT-15 A2
         raise ValueError(f"{symbol} {interval} bars are stamped {frame.index.tz}, not "
                          f"{EXCHANGE_TZ[market]}: the front door stamps every file on "
@@ -102,6 +110,24 @@ def research_bars(symbol: str, interval: str, market: str, *,
         return frame[days >= seal]
     keep = days < seal if through is None else days <= through
     return frame[keep.to_numpy()]
+
+
+def bars_through(symbol: str, interval: str, market: str, *, through: date | None = None,
+                 final: HoldoutPass | None = None,
+                 clean_root: Path | None = None) -> pd.DataFrame:
+    """Bars up to ``through`` (or all of them): the unsealed part, plus the sealed part
+    only with the final run's pass. Without one, a date inside the seal is refused."""
+    if final is None:
+        return research_bars(symbol, interval, market, through=through,
+                             clean_root=clean_root)
+    if final.key is not _KEY:
+        raise Sealed("forged holdout pass")
+    frame = pd.concat([research_bars(symbol, interval, market, clean_root=clean_root),
+                       research_bars(symbol, interval, market, clean_root=clean_root,
+                                     holdout=final)])
+    if through is None:
+        return frame
+    return frame[pd.Series(frame.index.date, index=frame.index).le(through).to_numpy()]
 
 
 def open_final_run(token: preregister.Registered, *, spent: Path | None = None,

@@ -8,15 +8,23 @@ qb2 fills later, at the price we would really have had.
 **Delay rule (c), decided 2026-10-09** (operator: *"GO on S4 delay: (c), measure
 T212 freshness"*): a signal on a bar acts at the open of the first bar that
 STARTS at or after that bar's close plus the market's row-o delay (US 1.25 min,
-London 16.66 min). On 5-minute bars that is 2 bars later in the US and 5 bars
-later in London; on daily bars, the next session's open. Slippage and spread
-are charged on the fill by the cost model (qb2/execution/costs.py).
+London 16.66 min -- the "17 min" of QT-17's box). On 5-minute bars that is 2 bars
+later in the US and 5 bars later in London; on 1-hour bars 2 bars later in both
+(QT-17 A3: the next hour opens at the close itself, before the delay is up); on
+daily bars, the next session's open. Slippage and spread are charged on the fill
+by the cost model (qb2/execution/costs.py).
 
 **Flat by the close (PLAN_V3 P4), intraday only.** A decision whose fill would
-land in a later session is never acted on, a session starts flat, and every
-position is sold at the open of the first bar starting 15 minutes before the bell
-(starting figure) -- or the session's last bar if none does. Nothing is held
-overnight. Closes come from the exchange calendars, so a half day closes early.
+land in a later session is never acted on, a session starts flat, and a bar may be
+HELD only if it ENDS by the cut-off, 15 minutes before the bell (starting figure):
+every position is sold at the open of the last bar that starts at or before the
+cut-off -- on 5-minute bars the bar starting at the cut-off (15:45 New York), on
+1-hour bars US 15:30 and London 16:00 (QT-17 A3) -- and always by the session's
+last bar. Nothing is held overnight. Closes come from the exchange calendars, so
+a half day closes early.
+
+**P15 (QT-17 A3).** ``may_enter`` (from p15.py) marks the decisions a BUY may be
+sent on; a blocked buy never lands, so the position before it stands.
 """
 
 from __future__ import annotations
@@ -32,7 +40,7 @@ from numpy.typing import NDArray
 from qb2.execution import xcheck
 
 ROW_O_DELAY_MINUTES = xcheck.ROW_O_DELAY_MINUTES      # one copy of row o, not two
-BAR_MINUTES = {"5m": 5}
+BAR_MINUTES = {"5m": 5, "1h": 60}
 FLAT_BEFORE_CLOSE = timedelta(minutes=15)            # P4, starting figure
 CALENDARS = {"US": "XNYS", "LSE": "XLON"}
 EXCHANGE_TZ = {"US": "America/New_York", "LSE": "Europe/London"}
@@ -73,14 +81,18 @@ class Schedule:
     usable: NDArray[np.bool_]
     session_first: NDArray[np.bool_] | None
     forced_flat: NDArray[np.bool_] | None
+    may_enter: NDArray[np.bool_] | None = None        # P15: a BUY may be sent (None = all)
 
 
-def schedule(index: pd.DatetimeIndex, interval: str, market: str) -> Schedule:
+def schedule(index: pd.DatetimeIndex, interval: str, market: str,
+             may_enter: NDArray[np.bool_] | None = None) -> Schedule:
     n = len(index)
     fills = fill_index(index, interval, market)
     usable = fills < n
+    if may_enter is not None and len(may_enter) != n:
+        raise ValueError("may_enter and bars differ in length")
     if interval == "1d":
-        return Schedule(n, fills, usable, None, None)
+        return Schedule(n, fills, usable, None, None, may_enter)
     local = pd.DatetimeIndex(index).tz_convert(EXCHANGE_TZ[market])
     session = np.asarray(local.normalize().tz_localize(None).asi8)
     same = np.zeros(n, dtype=bool)
@@ -93,7 +105,8 @@ def schedule(index: pd.DatetimeIndex, interval: str, market: str) -> Schedule:
     cutoff = np.array([closes[d] for d in days], dtype=np.int64) - \
         int(FLAT_BEFORE_CLOSE.total_seconds() * 1e9)
     utc = pd.DatetimeIndex(index).tz_convert("UTC").as_unit("ns").asi8
-    return Schedule(n, fills, same, first, (utc >= cutoff) | last)
+    ends = utc + BAR_MINUTES[interval] * 60 * 10**9          # held only if it ends by the cut
+    return Schedule(n, fills, same, first, (ends > cutoff) | last, may_enter)
 
 
 def positions(plan: Schedule, weights: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -105,7 +118,9 @@ def positions(plan: Schedule, weights: NDArray[np.float64]) -> NDArray[np.float6
     target = np.asarray(weights, dtype=float)
     if len(target) != plan.n:
         raise ValueError("weights and bars differ in length")
-    chosen = np.flatnonzero(plan.usable)
+    allowed = plan.usable if plan.may_enter is None else plan.usable & (
+        plan.may_enter | (target <= 0))                       # P15 blocks buys, never sells
+    chosen = np.flatnonzero(allowed)
     landing = plan.fills[chosen]
     keep = np.r_[landing[1:] != landing[:-1], True] if len(landing) else landing.astype(bool)
     held = np.full(plan.n, np.nan)

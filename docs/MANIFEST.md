@@ -44,6 +44,8 @@ this logic leaves NVDA or this laptop.
     (the advisor's front door); sender.py runs checks 6–9 on every buy
   - qb2/research/ (QT-16) matched_null.py (the luck test) · pounds.py (US in £) ·
     brake_replay.py + brake_report.py · stop_description.py · data/earnings_step.py
+    · (QT-17) holdout.py is the ONE door to bars (tests/wall/test_sealed_doors.py) ·
+    p15.py (the sender's earnings check inside back-tests)
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
     (which samples count: full calendar sessions, each bar once; the meter that

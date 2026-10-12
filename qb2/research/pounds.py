@@ -13,14 +13,22 @@ exactly that product for the gap and for the body of every bar. The STRATEGY sti
 sees dollar prices (its signal is unchanged); only the money is in pounds. FX fees
 per leg are unchanged (costs.py).
 
-Rates are the clean store's GBPUSD=X bars of the same size. A bar takes the FX bar
-that starts at the same moment (5m) or on the same date (daily). If that one is
-missing it may take the latest earlier one within TOLERANCE, whose close stands for
-both open and close -- a STARTING FIGURE under the STANDING GO: 10 minutes on
-5-minute bars, 4 calendar days on daily bars (yfinance's daily GBPUSD skips the odd
-weekday). The FX move is then booked a bar late, never lost: the next real rate
-catches it up. No rate within the tolerance = MISSING, and a HELD bar with a
-missing rate makes the whole trial INSUFFICIENT -- never a silent dollar figure.
+Rates are the clean store's GBPUSD=X bars of the same size, read through the
+holdout door (QT-17 A1: sealed rates only with the final run's pass). A bar takes
+the FX bar that starts at the same moment (5m) or on the same date (daily). If that
+one is missing it may take the latest earlier one within TOLERANCE, whose close
+stands for both open and close -- a STARTING FIGURE under the STANDING GO: 10
+minutes on 5-minute bars, 4 calendar days on daily bars (yfinance's daily GBPUSD
+skips the odd weekday). The FX move is then booked a bar late, never lost: the next
+real rate catches it up. No rate within the tolerance = MISSING, and a HELD bar with
+a missing rate makes the whole trial INSUFFICIENT -- never a silent dollar figure.
+
+1-hour bars (QT-17 A3): US hours start at :30 and FX hours on the hour, so no FX
+bar starts with the share's. Each moment -- the bar's open, and its end an hour
+later -- takes the OPEN of the latest FX hour that started at or before it: the
+last rate known by then (at most an hour old; normally 30 minutes), never a later
+one. That FX hour missing, an earlier one within 3 hours stands in (stale); none =
+MISSING, as above. 3 hours is a STARTING FIGURE under the STANDING GO.
 
 Sterling lines (GBP, and GBX, which the front door stores in pounds) need nothing;
 any other quote currency has no rate in the store and is refused.
@@ -36,12 +44,15 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from qb2.data import access
-from qb2.ingest import daily
+from qb2.research import holdout
 
 FX_SYMBOL = "GBPUSD=X"                 # dollars per pound
 STERLING = frozenset({"GBP", "GBX", "GBp"})
 CONVERTED = frozenset({"USD"})
-TOLERANCE = {"5m": pd.Timedelta(minutes=10), "1d": pd.Timedelta(days=4)}   # starting figures
+TOLERANCE = {"5m": pd.Timedelta(minutes=10), "1h": pd.Timedelta(hours=3),
+             "1d": pd.Timedelta(days=4)}                       # starting figures
+FX_CLOCK = {"5m": "US", "1h": "US", "1d": "LSE"}     # the clock the store stamps FX on
+HOUR = pd.Timedelta(hours=1)
 
 
 class NoRate(ValueError):
@@ -70,11 +81,13 @@ def needs_rate(currency: str) -> bool:
                  "measured in pounds (P3)")
 
 
-def load_fx(interval: str, clean_root: Path | None = None) -> pd.DataFrame:
-    """The store's GBPUSD bars of this size, or an empty frame (every rate missing)."""
+def load_fx(interval: str, clean_root: Path | None = None,
+            final: holdout.HoldoutPass | None = None) -> pd.DataFrame:
+    """The store's GBPUSD bars of this size through the door (unsealed, or all of
+    them with the final run's pass), or an empty frame (every rate missing)."""
     try:
-        frame = (access.bars(FX_SYMBOL, "5m", clean_root=clean_root) if interval == "5m"
-                 else daily.load(FX_SYMBOL, clean_root))
+        frame = holdout.bars_through(FX_SYMBOL, interval, FX_CLOCK[interval],
+                                     final=final, clean_root=clean_root)
     except access.AccessRefused:
         frame = None
     if frame is None or frame.empty:
@@ -89,11 +102,31 @@ def _keys(index: pd.DatetimeIndex, interval: str) -> pd.Series:
     return pd.Series(pd.to_datetime(pd.DatetimeIndex(index).date))
 
 
+def _hourly(index: pd.DatetimeIndex, fx: pd.DataFrame) -> Rates:
+    """1h: each moment takes the open of the latest FX hour started at or before it."""
+    starts = pd.DatetimeIndex(fx.index).tz_convert("UTC").tz_localize(None)
+    right = pd.DataFrame({"at": starts.astype("datetime64[ns]"), "fx_at": starts
+                          .astype("datetime64[ns]"), "o": fx["open"].to_numpy(dtype=float)}
+                         ).drop_duplicates("at", keep="last").sort_values("at")
+    opens = pd.Series(pd.DatetimeIndex(index).tz_convert("UTC").tz_localize(None))
+    picked, stale = [], np.zeros(len(index), dtype=bool)
+    for moment in (opens, opens + HOUR):
+        left = pd.DataFrame({"at": moment.astype("datetime64[ns]"), "row": np.arange(len(index))})
+        joined = pd.merge_asof(left.sort_values("at"), right, on="at", direction="backward",
+                               tolerance=TOLERANCE["1h"]).sort_values("row")
+        picked.append(joined["o"].to_numpy(dtype=float))
+        late = (joined["at"] - joined["fx_at"]).to_numpy() >= HOUR.to_timedelta64()
+        stale |= late & np.isfinite(picked[-1])
+    return Rates(picked[0], picked[1], stale)
+
+
 def align(index: pd.DatetimeIndex, fx: pd.DataFrame, interval: str) -> Rates:
     n = len(index)
     if fx.empty or n == 0:
         nan = np.full(n, np.nan)
         return Rates(nan, nan.copy(), np.zeros(n, dtype=bool))
+    if interval == "1h":
+        return _hourly(index, fx)
     left = pd.DataFrame({"key": _keys(index, interval).astype("datetime64[ns]"),
                          "row": np.arange(n)})
     right = pd.DataFrame({"key": _keys(pd.DatetimeIndex(fx.index), interval)
@@ -112,9 +145,11 @@ def align(index: pd.DatetimeIndex, fx: pd.DataFrame, interval: str) -> Rates:
 
 
 def extend(rates: Rates | None, index: pd.DatetimeIndex, interval: str,
-           clean_root: Path | None = None) -> Rates | None:
+           clean_root: Path | None = None,
+           final: holdout.HoldoutPass | None = None) -> Rates | None:
     """Rates re-read for a longer run of the same name's bars (the holdout pass)."""
-    return None if rates is None else align(index, load_fx(interval, clean_root), interval)
+    return None if rates is None else align(index, load_fx(interval, clean_root, final),
+                                            interval)
 
 
 def to_pounds(opens: NDArray[np.float64], closes: NDArray[np.float64],

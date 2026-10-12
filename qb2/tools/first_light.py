@@ -29,7 +29,8 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from qb2.data.front_door import CLEAN
+from qb2.data import access
+from qb2.research import holdout
 
 if TYPE_CHECKING:                            # pragma: no cover - typing only
     from qb2.data.census import Census
@@ -55,14 +56,15 @@ def _pyplot() -> Any:
 
 def load_clean(symbol: str, interval: str = "5m",
                clean_root: Path | None = None) -> pd.DataFrame:
-    """Every clean bar for one name, in time order. Raises if there are none."""
-    folder = (clean_root or CLEAN) / "bars" / interval / symbol
-    files = sorted(folder.glob("*.parquet"))
-    if not files:
+    """One name's UNSEALED clean bars, in time order, through the holdout door (QT-17
+    A1: a picture of the sealed months is a look at them). Raises if there are none."""
+    market = "LSE" if symbol.endswith(".L") else "US"
+    try:
+        frame = holdout.research_bars(symbol, interval, market, clean_root=clean_root)
+    except access.AccessRefused as none:
         raise FileNotFoundError(
-            f"no clean {interval} bars for {symbol} in {folder} -- run the front "
-            "door (python -m qb2.data.front_door) before drawing charts")
-    frame = pd.concat([pd.read_parquet(f) for f in files]).sort_index()
+            f"no clean {interval} bars for {symbol} -- run the front door (python -m "
+            "qb2.data.front_door) before drawing charts") from none
     return frame[~frame.index.duplicated(keep="first")]
 
 
