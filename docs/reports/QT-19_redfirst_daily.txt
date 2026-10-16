@@ -1,0 +1,5 @@
+# QT-19 Step 0.2 red-first: test_qt19_daily_history.py on the OLD daily.py (period="3y"). RED.
+tests\qb2\test_qt19_daily_history.py:33: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/qb2/test_qt19_daily_history.py::test_the_routine_fetch_starts_at_2010
+1 failed in 0.51s

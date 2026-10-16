@@ -7,8 +7,8 @@ benchmark (D3) and the pound/dollar rate total_return needs.
 **When.** clean_step.run_if_due calls :func:`run_if_due` after the front door on
 every recorder run. It does the work once per finished trading day (the same
 ``target_session`` the clean step uses), with catch-up for free: each fetch takes
-daily.HISTORY of bars, so a day missed while the laptop was off is filled by the
-next run. A name whose fetch fails is NAMED in the marker and only those names are
+every bar from daily.HISTORY_START, so a day missed while the laptop was off is
+filled by the next run. A name whose fetch fails is NAMED in the marker and only those names are
 retried on the next run. Nothing here raises into the recorder.
 
 **What.** The bot universe, the advisor universe, VWRP (D3; VWRL, its fallback, is

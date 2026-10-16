@@ -35,9 +35,10 @@ from qb2.data.front_door import (CLEAN, PENCE, PENCE_PER_POUND, WriterLock,
 
 DAILY_DIR = CLEAN / "daily"
 FX_PAIR = "GBPUSD=X"
-# Three years covers the intraday history many times over and keeps one file per
-# name small. STARTING FIGURE, tested first.
-HISTORY = "3y"
+# QT-19: from 2010-01-01, so the advisor's slow rules have their lookback and a
+# walk-forward long enough to judge them. Every top-up re-fetches the whole span (one
+# consistent split adjustment); a shorter routine fetch would cut the history back.
+HISTORY_START = "2010-01-01"
 COLUMNS = ("open", "high", "low", "close", "volume")
 
 
@@ -55,7 +56,7 @@ class DailyOutcome:
         return [name for name in self.attempted if name not in seen]
 
 
-def fetch_daily(symbol: str, period: str = HISTORY) -> pd.DataFrame | None:
+def fetch_daily(symbol: str, start: str = HISTORY_START) -> pd.DataFrame | None:
     """The real provider. Injected in tests so the default run stays offline."""
     import warnings
 
@@ -63,8 +64,7 @@ def fetch_daily(symbol: str, period: str = HISTORY) -> pd.DataFrame | None:
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        frame = yf.Ticker(symbol).history(period=period, interval="1d",
-                                          auto_adjust=False)
+        frame = yf.Ticker(symbol).history(start=start, interval="1d", auto_adjust=False)
     if frame is None or frame.empty:
         return None
     frame = frame.rename(columns=str.lower)
