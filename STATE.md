@@ -1,50 +1,50 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-16. History → docs/archive/STATE_2026-10-16_QT18.md (QT-18 state,
-verbatim). Box in hand: QT-19 → docs/reports/QT-19.md.
+Updated: 2026-10-16. History → docs/archive/STATE_2026-10-16_QT19.md (QT-19 state,
+verbatim). Box in hand: QT-20 → docs/reports/QT-20.md.
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN (paused); S9 OPEN** (S3 close = QT-13 + QT-13b).
 P19: none of 18 survived (QT-15). S6 batch 1: none of 24 (QT-18). S9 batch 1:
-registered + built, NOT run (QT-19 STOP). Trial count N = 42. Sender disarmed (S10).
+registered + built, NOT run (QT-19 STOP, QT-20 STOP). Trial count N = 42. Sender disarmed.
 
-## QT-19 operator's words (verbatim, 2026-10-16 14:04)
-- *"lets go with option 1."* — option 1 = "Build the advisor next. It manages the 70%
-  pot and holds for weeks or months, so costs hardly matter. The bot's stage stays
-  open and nothing is lost." S6 stays OPEN (paused, not closed).
+## Operator's words (verbatim)
+- 2026-10-16 19:28: *"QT-19 done"*. 2026-10-16 14:04: *"lets go with option 1."* =
+  the advisor next; S6 stays OPEN (paused, not closed).
 
-## QT-19 in one screen — STOPPED at the known-null gate (box rule)
-- A: earnings guard ignores dates outside the calendar (ULVR.L's 2004 rows); fixed.
-- Step 0: daily store now from 2010-01-01 (routine fetch changed; median first date
-  2023-10-16 → 2010-01-04; 108,840 old rows reconciled, 0 differ). Dividends re-checked
-  for the advisor list (5,243 OK since 2013, 8 SUSPECT). ^VIX daily added (NY clock).
-- B1: register 6332880 (alone): A-01..A-06, one arm (171 names), monthly book, OOS
-  2014-03-31 → 2025-10-09; drills KN-A-RANDOM/GAP/PLANT; v2 plant (accc44b).
-- B2: code 1adf545 (after the register; ancestry test). Bench extended, each
-  fail-first: slot weights (1/k, not 1/n), dividends credited, D3 = VWRL+dividends
-  before VWRP's first close, daily fingerprints. 24/24 mutants RED.
-- **Known-null on this book: Gate 1 GREEN (red-first NOT shown), Gate 2 RED.** A
-  planted +33,655% after 2× costs (D3 +265%) FAILED on the Deflated Sharpe only
-  (0.000). Cause measured: the coin-flip null's per-bar Sharpe spread is 0.071 (1×) /
-  0.151 (2×) vs ~0.013 sampling noise, so SR0 = 0.16 / 0.34 — above any edge. No
-  trial run, no holdout opened, N stays 42.
+## QT-20 in one screen — STOPPED in Part A: a DATA DEFECT (box rule)
+- Step 0 green; the register untouched (10 entries hashed = their register commits).
+- Why the luck bar was 5–10× too wide: NOT cost noise (cost bills < 1% of the spread).
+  The coin-flip null ignores the book's eligibility, and SMEA.L's stored open on
+  2023-11-27 is ×114.6 its previous close (a unit break). 102 of 200 coins held it into
+  that open (+344% of the pot in one bar): that one fact = 99.9% of the spread. The book
+  can never hold SMEA.L then (its 90% coverage fails at every 2023 month-end).
+- The box's fix (i), random-rank books built by advisor_book (measured as a
+  description): none touched SMEA.L; spread 0.005 (1× and 2×) on raw and patched data alike →
+  SR0 ≈ 0.012 at N=48, far below the planted book (0.237 / 0.212). Coin on clean data:
+  SR0 0.006 / 0.009. Analytic (ii) ≈ 0.031 / 0.036: differs > 2× as expected (one book's own luck,
+  already in the PSR).
+- STOP because the census found broken rows a real book CAN hold: EDV.L's 848 rows
+  before its 2021-06-14 London listing (619 flat zero-volume, then a fake −41% day; three
+  QT-19 drill books held it into that day). Also FWRG.L's first 7 rows (warm-up only),
+  IITU.L's 2 launch rows. B–D not done: no code changed, nothing run or logged.
 
-## Decided while operator away (QT-19) — starting figures
-- OOS from 2014-04 (D3 measurable: VWRP from 2019-07-25, VWRL's dividends from
-  2014-03-19); D3 chained VWRL → VWRP. Dividends credited (P3), OK rows only, US 15%.
-- Book rules (in the register's "book" field): month-end decision bar on the
-  exchange's last session; coverage ≥ 90%; no month-end bar → sold next bar; P13
-  re-justify = no trade, fresh stop; k_s = 2 when VIX (day before) > 30 or missing;
-  1% ceiling bar by bar from the previous bar's 3×ATR; one-line bets only.
-- Plant re-sized to v2 (0.3%/bar) before any gate run: the P10 stop closes about half
-  of all buys within a month (turnover ~10×/yr on random picks).
+## Book rules in force (QT-19 register, unchanged)
+Month-end decision bar on the exchange's last session; coverage ≥ 90%; no month-end bar
+→ sold next bar; P13 re-justify = no trade, fresh stop; k_s = 2 when VIX (day before)
+> 30 or missing; 1% ceiling bar by bar; OOS 2014-03-31 → 2025-10-09; D3 VWRL → VWRP.
 
 ## NEXT
-1. **Mentor writes QT-20: fix the Deflated Sharpe's skill-free variance for the
-   slot book** (why do coin books' Sharpes spread 5–10× the noise? measure, PROPOSE,
-   test on the drills), re-prove the gate, THEN run A-01..A-06 as registered.
-2. Flag for QT-20: the 3×ATR daily stop sells ~half of buys within a month (P10
-   starting figure) — any change = PROPOSE→GO (loosens a fence? it is a stop).
-3. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
+1. **Mentor writes QT-21: data first**, then the box's fix (i) as QT-20 specified it,
+   re-prove both gates both ways, THEN A-01..A-06 as registered. Proposed (QT-20 report):
+   front-door daily check — a bar opening ≥ 3× or ≤ ⅓ its previous close = unit break; flat
+   zero-volume rows before a line's first trade = filler; the wrong side quarantined,
+   never corrected (starting figures, standing GO). Re-measure with
+   docs/reports/QT-20_partA_scripts.py.txt. Bench guard: one bar carrying > 25% of a
+   result's variance = INSUFFICIENT.
+2. For the mentor: the Deflated Sharpe centres its luck bar on 0; long-only books earn
+   the market's Sharpe without skill — centre on the null's mean? (firewall change).
+3. Flag: the 3×ATR stop sells ~half of buys within a month — change = PROPOSE→GO.
+4. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
 
 ## DECISION REQUESTED (open)
 - **D1 advisor risk rule.** Default: the 1% rule stays the ceiling (stricter). GO
@@ -77,9 +77,9 @@ registered + built, NOT run (QT-19 STOP). Trial count N = 42. Sender disarmed (S
 - Parked: v1 revive-or-retire. 5m known-null to re-prove before any 5m trial.
 
 ## Open flags
-- Deflated Sharpe on the advisor slot book (above): DEFECT, not fixed.
-- Survivorship: the advisor list was chosen in 2026 (today's big, liquid names);
-  1%/yr mark-down is a starting figure — momentum will look better than real life.
+- DATA DEFECT (above), not fixed. A line priced in the wrong currency throughout shows
+  no jump (SMEA.L's later rows look like € on a GBX line): needs a scale check vs T212.
+- Survivorship: the advisor list was chosen in 2026; 1%/yr mark-down is a starting figure.
 - anchors.py 1,422 lines (pinned): splitting = PROPOSE→GO. 52 mypy errors silenced in
   5 inherited modules. No clock-sync task. Recorder missed 08:00 on 16 Oct.
 

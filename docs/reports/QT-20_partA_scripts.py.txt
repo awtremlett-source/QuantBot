@@ -1,0 +1,368 @@
+# ==================== partA_measure.py ====================
+"""QT-20 Part A: why do the skill-free books' Sharpes spread so widely on the slot book?
+
+Description only; nothing is logged, nothing is written to the store.
+  python partA_measure.py DATASET NULL N OUT
+DATASET raw     = advisor_data.load() exactly (the store as it is)
+        patched = the same, with four broken stretches cut IN MEMORY (census, QT-20):
+                  SMEA.L from 2023-11-27 (x114.6 unit break, then flat zero-volume rows),
+                  FWRG.L before 2023-07-11 (flat zero-volume rows at x1/76.8),
+                  EDV.L before 2021-06-14 (flat zero-volume filler before its LSE listing),
+                  IITU.L before 2015-11-24 (two flat zero-volume rows at x1.5)
+NULL    coin    = firewall._coin (fresh 50% coin per bet per bar), the QT-19 DSR input
+        ranks   = advisor_book.build on KN-A-RANDOM-1d's settings with uniform ranks seeded
+                  by (seed, bet, month) -- the structure-matched book of QT-20 B1(i)
+Weights: KN-A-RANDOM-1d's book (real bars, its slots). Seeds monte_carlo.trial_seeds(0, N).
+"""
+from __future__ import annotations
+
+import json
+import sys
+import time
+from dataclasses import replace
+from datetime import date
+
+import numpy as np
+import pandas as pd
+
+from qb2.research import (advisor_book, advisor_data, advisor_run, benchmark, firewall,
+                          monte_carlo, preregister)
+from qb2.signals import a_rules
+
+CUTS = {"SMEAl_EQ": ("to", date(2023, 11, 27)), "FWRGl_EQ": ("from", date(2023, 7, 11)),
+        "EDVl_EQ": ("from", date(2021, 6, 14)), "IITU_EQ": ("from", date(2015, 11, 24))}
+
+
+def patch(bars, instrument, market):
+    bars = advisor_data.trim(bars)
+    cut = CUTS.get(instrument.ticker)
+    if cut is None:
+        return bars
+    days = pd.DatetimeIndex(bars.index).date
+    return bars[days < cut[1]] if cut[0] == "to" else bars[days >= cut[1]]
+
+
+def load(dataset):
+    if dataset == "raw":
+        return advisor_data.load()[:2]
+    data, skipped = firewall.load("1d", entries=advisor_data.entries(), transform=patch)
+    return [replace(n, income=advisor_data.income(n.symbol, n.market, n.bars)[0]) for n in data], skipped
+
+
+def d3_daily() -> pd.Series:
+    def daily(s: pd.Series) -> pd.Series:
+        s = s.copy(); s.index = pd.DatetimeIndex(s.index).tz_convert("Europe/London").date
+        return s.pct_change()
+    a = daily(advisor_data.closes(benchmark.D3_FALLBACK, "LSE"))
+    b = daily(advisor_data.closes(benchmark.D3, "LSE"))
+    first = b.dropna().index.min()
+    return pd.concat([a[a.index < first], b[b.index >= first]]).dropna()
+
+
+def to_daily(r: pd.Series) -> pd.Series:
+    idx = pd.DatetimeIndex(r.index).tz_convert("Europe/London").date
+    return (1.0 + r).groupby(idx).prod() - 1.0
+
+
+def measure(p, w, market, d3, stress, seed, null):
+    m, g = p.marked.to_numpy(float), p.gross.to_numpy(float)
+    idx = pd.DatetimeIndex(p.marked.index)
+    years = (idx[-1] - idx[0]).days / 365.25
+    hold = pd.DataFrame({s: pd.Series(gr.full.held[gr.lo:gr.hi], index=p.parts[s].index)
+                         for s, gr in p.graded.items()}).reindex(idx).fillna(0.0)
+    wts = pd.DataFrame({s: w[s] for s in hold.columns}).reindex(idx).fillna(0.0)
+    ent = pd.DataFrame({s: p.parts[s]["entries"].astype(float) for s in hold.columns}).reindex(idx).fillna(0.0)
+    names = exposure = 0.0
+    for mk in ("US", "LSE"):
+        cols = [s for s in hold.columns if market[s] == mk]
+        on = hold[cols].sum(axis=1) > 0
+        names += float(hold[cols].sum(axis=1)[on].mean())
+        exposure += float((hold[cols] * wts[cols]).sum(axis=1)[on].mean())
+    dd = to_daily(p.marked)
+    al = pd.concat([dd.rename("p"), d3.rename("m"), d3.shift(-1).rename("m1")], axis=1, join="inner").dropna()
+    coef = np.linalg.lstsq(np.c_[np.ones(len(al)), al["m"], al["m1"]], al["p"].to_numpy(float), rcond=None)[0]
+    top = np.sort(np.abs(m - m.mean()))[::-1]
+    return {"null": null, "stress": stress, "seed": int(seed),
+            "sharpe": float(m.mean() / m.std(ddof=1)), "sharpe_gross": float(g.mean() / g.std(ddof=1)),
+            "mean_marked": float(m.mean()), "mean_gross": float(g.mean()),
+            "std_marked": float(m.std(ddof=1)), "cost_per_bar": float(g.mean() - m.mean()),
+            "cost_per_year": float((g - m).sum() / years),
+            "turnover_per_year": float((ent * wts).sum().sum() / years),
+            "names_held": names, "exposure": exposure, "beta": float(coef[1] + coef[2]),
+            "kurt": float(((m - m.mean()) ** 4).mean() / m.var() ** 2),
+            "top_bar_share": float(top[0] ** 2 / ((m - m.mean()) ** 2).sum()),
+            "max_bar": float(m[np.argmax(np.abs(m))]), "max_bar_at": str(idx[np.argmax(np.abs(m))])[:10],
+            "T": len(m)}
+
+
+def main() -> None:
+    dataset, null, n, out = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+    data, _ = load(dataset)
+    tok = preregister.require("KN-A-RANDOM-1d")
+    book, weighted = advisor_run.book_for(tok.entry, data)
+    w = {d.symbol: d.weight for d in weighted}
+    market = {d.symbol: d.market for d in weighted}
+    d3 = d3_daily()
+    rule = a_rules.of(tok.entry)
+    s = advisor_book.Settings.of(tok.entry["parameters"], rule.lookback, rule.ascending)
+    vix = advisor_data.vix()
+    months = {d.symbol: np.array([advisor_book.month_of(x) for x in pd.DatetimeIndex(d.bars.index).date])
+              for d in weighted}
+    rows, t0 = [], time.monotonic()
+    for j, seed in enumerate(monte_carlo.trial_seeds(0, n)):
+        if null == "coin":
+            make, names = firewall._coin(seed), weighted
+        else:
+            values = {d.symbol: np.array([np.random.default_rng(np.random.SeedSequence([seed, d.bet, int(m)])).random()
+                                          for m in months[d.symbol]]) for d in weighted}
+            b = advisor_book.build(s, weighted, values, vix=vix)
+            names = [replace(d, weight=b.weights[d.symbol]) for d in weighted]
+            idx = {d.symbol: pd.DatetimeIndex(d.bars.index) for d in names}
+            make = (lambda bk, ix: lambda nm: advisor_run.Held(nm.symbol, ix[nm.symbol], bk.decisions[nm.symbol]))(b, idx)
+            w = {d.symbol: d.weight for d in names}
+        for stress in (1.0, 2.0):
+            p = firewall.portfolio(tok, make, names, "1d", stress)
+            rows.append({"dataset": dataset, **measure(p, w, market, d3, stress, seed, null)})
+        if j % 10 == 0:
+            print(dataset, null, j, round(time.monotonic() - t0), round(rows[-2]["sharpe"], 4),
+                  round(rows[-1]["sharpe"], 4), flush=True)
+        json.dump(rows, open(out, "w"), indent=0)
+
+
+if __name__ == "__main__":
+    main()
+
+# ==================== partA_analyse.py ====================
+"""QT-20 Part A: the table and the spread decomposition from the measurement JSONs."""
+import json, math, sys
+from datetime import date
+import numpy as np, pandas as pd
+sys.path.insert(0, sys.argv[1])
+import partA_measure as pm
+from qb2.research import deflation, monte_carlo
+
+D = sys.argv[1]
+rows = []
+for ds in ("raw", "patched"):
+    for nl in ("coin", "ranks"):
+        try:
+            rows += json.load(open(f"{D}/partA_{ds}_{nl}.json"))
+        except FileNotFoundError:
+            pass
+df = pd.DataFrame(rows)
+an = pd.DataFrame(json.load(open(f"{D}/partA_analytic.json")))
+
+# which coins held SMEA.L / FWRG.L into the broken open (raw data): reconstructed from the seeds
+data, _ = pm.load("raw")
+by = {d.symbol: d for d in data}
+def held_into(seed, sym, day):
+    n = by[sym]; t = int((pd.DatetimeIndex(n.bars.index).date < day).sum())
+    s = int(np.random.SeedSequence([seed, n.bet]).generate_state(1)[0])
+    draws = np.random.default_rng(s).random(len(n.bars)) < 0.5
+    return bool(draws[t - 2])          # decided at close t-2, held during bar t-1, into open t
+caught = {s: (held_into(s, "SMEA.L", date(2023, 11, 27)), held_into(s, "FWRG.L", date(2023, 7, 11)))
+          for s in df["seed"].unique()}
+
+def r2(y, cols):
+    X = np.c_[np.ones(len(y)), *cols] if cols else np.ones((len(y), 1))
+    resid = y - X @ np.linalg.lstsq(X, y, rcond=None)[0]
+    return 1 - resid.var() / y.var()
+
+print("| data | null | cost | books | Sharpe/bar mean | Sharpe spread (sd) | analytic sd (own moments) | turnover/yr (× pot) | names held | exposure (× pot) | cost drag/yr | beta to D3 | kurtosis | top bar's share of variance |")
+print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+table = []
+for (ds, nl, st), g in df.groupby(["dataset", "null", "stress"], sort=False):
+    a = an[(an.dataset == ds) & (an.stress == st)]
+    asd = f"{a.analytic_sd.mean():.3f}" if nl == "coin" and len(a) else "—"
+    table.append(dict(ds=ds, nl=nl, st=st, n=len(g), mean=g.sharpe.mean(), sd=g.sharpe.std(ddof=1)))
+    print(f"| {ds} | {nl} | {st:g}× | {len(g)} | {g.sharpe.mean():+.3f} | **{g.sharpe.std(ddof=1):.3f}** | {asd} | "
+          f"{g.turnover_per_year.mean():.1f} | {g.names_held.mean():.1f} | {g.exposure.mean():.2f} | "
+          f"{g.cost_per_year.mean():.1%} (sd {g.cost_per_year.std(ddof=1):.2%}) | {g.beta.mean():.2f} (sd {g.beta.std(ddof=1):.3f}) | "
+          f"{g["kurt"].median():,.0f} | {g.top_bar_share.median():.0%} |")
+print()
+print("Decomposition of the spread (share of the variance of per-bar Sharpe across books), least squares R^2:")
+for (ds, nl, st), g in df.groupby(["dataset", "null", "stress"], sort=False):
+    y = g.sharpe.to_numpy(float)
+    A = [g.cost_per_bar.to_numpy(float), g.turnover_per_year.to_numpy(float)]
+    B = [g.beta.to_numpy(float), g.exposure.to_numpy(float)]
+    a, b, ab = r2(y, A), r2(y, B), r2(y, A + B)
+    line = f"- {ds} {nl} {st:g}x (sd {y.std(ddof=1):.4f}): (a) cost bill/turnover alone {a:.1%} | (b) market exposure alone {b:.1%} | (a)+(b) {ab:.1%} | (c) the rest {1 - ab:.1%}"
+    if nl == "coin" and ds == "raw":
+        sm = np.array([caught[s][0] for s in g.seed], float); fw = np.array([caught[s][1] for s in g.seed], float)
+        line += (f"\n    SMEA.L held into its broken open: {sm.mean():.0%} of coins; that one fact alone {r2(y, [sm]):.1%}; "
+                 f"(a)+(b) added after it {r2(y, [sm] + A + B) - r2(y, [sm]):.2%}; FWRG.L (break in warm-up, not graded) alone {r2(y, [fw]):.1%}")
+        for k in (0, 1):
+            sel = sm == k
+            line += f"\n    SMEA.L held {k}: {int(sel.sum())} coins, Sharpe {y[sel].mean():+.4f} (sd {y[sel].std(ddof=1):.4f}), std/bar {g.std_marked[sel].mean():.4f}, beta {g.beta[sel].mean():.2f}"
+    print(line)
+print("Analytic noise of ONE coin book's Sharpe (own moments, 10 coins):")
+for (ds, st), a_ in an.groupby(["dataset", "stress"]):
+    print(f"- {ds} {st:g}x: SR {a_["sr"].mean():+.3f}, skew {a_["skew"].median():.1f}, kurt {a_["kurt"].median():,.0f}, analytic sd {a_.analytic_sd.mean():.4f}")
+print()
+# SR0 at N = 48 from each null's spread; planted Sharpes from QT-19 (0.237 at 1x, 0.212 at 2x)
+for t in table:
+    sr0 = deflation.expected_max_sharpe(48, t["sd"] ** 2)
+    print(f"SR0(N=48) {t['ds']} {t['nl']} {t['st']:g}×: {sr0:.3f}  (spread {t['sd']:.4f}, {t['n']} books)")
+
+# ==================== analytic.py ====================
+"""QT-20 A: the analytic noise of one coin book's per-bar Sharpe (Bailey & Lopez de Prado:
+var = (1 - skew*SR + (kurt-1)/4*SR^2)/(T-1)), from each coin's own moments, raw vs patched.
+Description only."""
+import json, sys, math
+import numpy as np
+sys.path.insert(0, sys.argv[1])
+import partA_measure as pm
+from qb2.research import advisor_run, deflation, firewall, monte_carlo, preregister
+out = []
+for dataset in ("raw", "patched"):
+    data, _ = pm.load(dataset)
+    tok = preregister.require("KN-A-RANDOM-1d")
+    _, weighted = advisor_run.book_for(tok.entry, data)
+    for seed in monte_carlo.trial_seeds(0, 10):
+        for stress in (1.0, 2.0):
+            p = firewall.portfolio(tok, firewall._coin(seed), weighted, "1d", stress)
+            sr, skew, kurt, t = deflation.moments(p.marked.to_numpy(float))
+            sd = math.sqrt((1 - skew * sr + (kurt - 1) / 4 * sr * sr) / (t - 1))
+            out.append({"dataset": dataset, "stress": stress, "seed": seed, "sr": sr, "skew": skew,
+                        "kurt": kurt, "T": t, "analytic_sd": sd})
+            print(out[-1], flush=True)
+json.dump(out, open(sys.argv[2], "w"), indent=0)
+
+# ==================== census.py ====================
+"""Census of suspect bars in what the advisor trials read (description only)."""
+import numpy as np, pandas as pd
+from qb2.research import advisor_data, benchmark, holdout
+from qb2.data import data_fingerprint
+data, skipped, _ = advisor_data.load()
+print("skipped:", skipped)
+rows = []
+for d in data:
+    b = d.bars
+    o, c, v = b["open"].to_numpy(float), b["close"].to_numpy(float), b["volume"].to_numpy(float)
+    flat = (b["open"] == b["high"]) & (b["high"] == b["low"]) & (b["low"] == b["close"])
+    dead = (flat & (v == 0)).to_numpy()
+    pc = np.r_[np.nan, c[:-1]]
+    jump = np.abs(np.log(o / pc))
+    big = np.flatnonzero(jump > np.log(1.5))
+    rows.append((d.symbol, d.instrument.kind, len(b), int(dead.sum()), round(float(dead.mean()), 3),
+                 [(str(b.index[t].date()), round(float(o[t] / pc[t]), 3), int(v[t - 1]), int(v[t])) for t in big]))
+for r in sorted(rows, key=lambda r: -r[3])[:25]:
+    print(r)
+print("names with any >1.5x / <0.67x open-vs-prev-close jump:")
+for r in rows:
+    if r[5]:
+        print(" ", r[0], r[1], r[5])
+# the other inputs
+for sym, mkt in ((benchmark.D3, "LSE"), (benchmark.D3_FALLBACK, "LSE"), ("^VIX", "US")):
+    s = advisor_data.closes(sym, mkt)
+    r = np.abs(np.log(s / s.shift(1))).dropna()
+    print(sym, len(s), "max |log close move|", round(float(r.max()), 3), str(r.idxmax())[:10])
+
+# ==================== stale.py ====================
+"""Stale-price census for the advisor list (description only): zero-volume flat bars and
+the longest run of an unchanged close, per name."""
+import numpy as np, pandas as pd
+from qb2.research import advisor_data
+data, _, _ = advisor_data.load()
+rows = []
+for d in data:
+    b = d.bars
+    c, v = b["close"].to_numpy(float), b["volume"].to_numpy(float)
+    flat = ((b["open"] == b["high"]) & (b["high"] == b["low"]) & (b["low"] == b["close"])).to_numpy()
+    same = np.r_[False, c[1:] == c[:-1]]
+    run = best = 0
+    for x in same:
+        run = run + 1 if x else 0
+        best = max(best, run)
+    rows.append((d.symbol, d.instrument.kind, len(b), round(float((flat & (v == 0)).mean()), 3),
+                 round(float(same.mean()), 3), best))
+print("symbol kind bars dead_share unchanged_close_share longest_unchanged_run")
+for r in sorted(rows, key=lambda r: (-r[4], -r[3]))[:15]:
+    print(r)
+
+# ==================== smea.py ====================
+import numpy as np, pandas as pd
+from datetime import date
+from qb2.research import advisor_data
+data, _, _ = advisor_data.load()
+n = next(d for d in data if d.symbol == "SMEA.L")
+b = n.bars
+days = pd.DatetimeIndex(b.index).date
+post = b[days >= date(2023, 11, 27)]
+pre = b[(days >= date(2022, 11, 27)) & (days < date(2023, 11, 27))]
+dead = lambda x: ((x.open == x.high) & (x.high == x.low) & (x.low == x.close) & (x.volume == 0))
+print("post-break bars", len(post), "dead", int(dead(post).sum()), "first live after break:",
+      post[~dead(post)].index[:3].tolist())
+print("post close range", round(post.close.min(), 3), round(post.close.max(), 3))
+print("pre-break year bars", len(pre), "dead", int(dead(pre).sum()), "close range", round(pre.close.min(), 4), round(pre.close.max(), 4))
+print(post[~dead(post)].head(5)[["open", "high", "low", "close", "volume"]].to_string())
+
+# ==================== values.py ====================
+"""Do the broken rows bend the rules' VALUES (inputs, not results)? FWRG.L's 12-1 momentum at
+its first month-end decision bars; EDV.L's 252-bar volatility vs the list's median. Description."""
+import numpy as np, pandas as pd
+from qb2.research import advisor_book, advisor_data, preregister
+from qb2.signals import a_rules
+data, _, _ = advisor_data.load()
+by = {d.symbol: d for d in data}
+mom = a_rules.of(preregister.require("A-01").entry)
+vol = a_rules.of(preregister.require("A-05").entry)
+def ends(n):
+    d = pd.DatetimeIndex(n.bars.index).date
+    e = advisor_book.last_sessions(advisor_book.sessions(n.market, d[0], d[-1]))
+    return [t for t, x in enumerate(d) if e.get(advisor_book.month_of(x)) == x]
+n = by["FWRG.L"]; months = np.array([advisor_book.month_of(x) for x in pd.DatetimeIndex(n.bars.index).date])
+v = mom.values(n.bars, n.bet, months)
+for t in [t for t in ends(n) if t >= 252][:3]:
+    print("FWRG.L 12-1 momentum at", n.bars.index[t].date(), f"{v[t]:+.1%}", "(uses close of", n.bars.index[t - 252].date(), ")")
+allv = {}
+for d in data:
+    m = np.array([advisor_book.month_of(x) for x in pd.DatetimeIndex(d.bars.index).date])
+    allv[d.symbol] = pd.Series(vol.values(d.bars, d.bet, m), index=pd.DatetimeIndex(d.bars.index).date)
+frame = pd.DataFrame(allv)
+e = by["EDV.L"]; 
+for t in [t for t in ends(e) if t >= 252][::6][:6]:
+    day = e.bars.index[t].date(); row = frame.loc[day].dropna()
+    print("EDV.L vol at", day, f"{row['EDV.L']:.4f}", "rank (lowest first)", int((row < row["EDV.L"]).sum()) + 1, "of", len(row), "median", f"{row.median():.4f}")
+s = by["SMEA.L"]; ms = np.array([advisor_book.month_of(x) for x in pd.DatetimeIndex(s.bars.index).date])
+vs = mom.values(s.bars, s.bet, ms)
+hits = [(s.bars.index[t].date(), vs[t]) for t in ends(s) if np.isfinite(vs[t]) and vs[t] > 5]
+print("SMEA.L month-ends with 12-1 momentum above +500%:", len(hits), "first", hits[0][0] if hits else None,
+      "last", hits[-1][0] if hits else None, "value e.g.", f"{hits[0][1]:+.0%}" if hits else "")
+d = pd.DatetimeIndex(s.bars.index).date
+cal = advisor_book.sessions("LSE", d[0], d[-1])
+ok = []
+for t in ends(s):
+    if t < 252 or not (np.isfinite(vs[t]) and vs[t] > 5):
+        continue
+    lo = int(np.searchsorted(cal, np.datetime64(d[t - 252]), "left")); hi = int(np.searchsorted(cal, np.datetime64(d[t]), "right"))
+    ok.append((str(d[t]), round(253 / (hi - lo), 3)))
+print("SMEA.L coverage at those month-ends (eligible if >= 0.9):", ok)
+
+# ==================== drill_exposure.py ====================
+"""Did the QT-19 drill books (instruments, not trials) hold SMEA.L into 2023-11-27, or
+EDV.L into 2021-06-14? Description only: books built, nothing scored or logged."""
+import numpy as np, pandas as pd
+from datetime import date
+from qb2.research import advisor_book, advisor_data, advisor_drills, preregister
+from qb2.signals import a_rules
+data, _, _ = advisor_data.load()
+vix = advisor_data.vix()
+for did in ("KN-A-RANDOM-1d", "KN-A-GAP-1d", "KN-A-PLANT-v2-1d", "KN-A-PLANT-1d"):
+    tok = preregister.require(did)
+    planted = advisor_drills.plant(data, tok.entry["parameters"])
+    rule = a_rules.of(tok.entry)
+    s = advisor_book.Settings.of(tok.entry["parameters"], rule.lookback, rule.ascending)
+    values = {n.symbol: rule.values(n.bars, n.bet, np.array([advisor_book.month_of(d) for d in pd.DatetimeIndex(n.bars.index).date])) for n in planted}
+    book = advisor_book.build(s, planted, values, vix=vix)
+    out = []
+    for sym, day in (("SMEA.L", date(2023, 11, 27)), ("EDV.L", date(2021, 6, 14)), ("FWRG.L", date(2023, 7, 11)), ("IITU.L", date(2015, 11, 24))):
+        n = next(x for x in planted if x.symbol == sym)
+        days = pd.DatetimeIndex(n.bars.index).date
+        t = int((days < day).sum())
+        dec = book.decisions[sym]
+        # position held INTO the open of bar t = target decided at the close of t-1
+        held_into = bool(dec[t - 2] > 0) if t >= 2 else False  # held[t-1]: decided at close t-2, filled at open t-1
+        out.append(f"{sym} held into {day}: {held_into} (slot {float(book.weights[sym].iloc[t]):.4f})")
+    print(did, "|", " · ".join(out), flush=True)
+
