@@ -39,7 +39,7 @@ to v1 and are frozen.
 | folder | holds |
 |---|---|
 | `data/` | prices, dividends, corporate actions, FX, the instrument universe (bot + advisor loaders); `daily_step.py` tops the daily store up after hours |
-| `research/` | firewall v2 (S4): `firewall.py` scores one registered candidate; `known_null.py` proves it; `preregister.py`, `holdout.py`, `trial_log.py` (data/qb2/trials.jsonl), `benchmark.py` (D3 = VWRP); `p19_run.py` runs P19's 18 trials (resumable), `p19_results.py` writes the page |
+| `research/` | firewall v2 (S4): `firewall.py` scores one registered candidate; `known_null.py` proves it; `preregister.py`, `holdout.py`, `trial_log.py` (data/qb2/trials.jsonl), `benchmark.py` (D3 = VWRP); `p19_run.py` runs P19's 18 trials (resumable), `p19_results.py` writes the page; `p15.py` + `p15_history.py` (QT-18: P15 history, back-tests only) |
 | `signals/` | one small, testable signal per file |
 | `model/` | the combining model — many signals in, one calibrated probability out |
 | `sizing/` | position sizing, risk limits, the trailing-stop ledger |

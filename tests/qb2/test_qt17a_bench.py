@@ -296,8 +296,10 @@ def test_hourly_walk_forward_is_a_quarter_then_months() -> None:
 
 def test_the_firewall_loads_hourly_bars_with_the_p15_mask(tmp_path: Path) -> None:
     """Wired at the loader: a share whose earnings dates were first recorded AFTER the
-    bars (the real store's case: every snapshot is from 2026-10-02 on) is blocked on
-    every bar -- fail closed, exactly as the sender would be; an ETF is not."""
+    bars (the real store's case: every snapshot is from 2026-10-02 on). QT-17: blocked
+    on every bar. QT-18 A1 (operator GO, 2026-10-16): the history rule -- 4 June is
+    the first date on record, never known early, so blocked through its window (to
+    5 June); 3 Sep is known from 4 June's close, so 8-9 June may trade. An ETF: N/A."""
     index = _hours("US", SESSIONS)
     _store(tmp_path, "MSFT", index, np.linspace(100, 101, len(index)))
     _store(tmp_path, "ISF.L", _hours("LSE", SESSIONS), np.linspace(5, 5.1, 9 * 7))
@@ -310,6 +312,10 @@ def test_the_firewall_loads_hourly_bars_with_the_p15_mask(tmp_path: Path) -> Non
     data, skipped = firewall.load("1h", entries=entries, clean_root=tmp_path)
     assert skipped == [] and [d.symbol for d in data] == ["MSFT", "ISF.L"]
     share, fund = data
-    assert share.plan.may_enter is not None and not share.plan.may_enter.any()
+    assert share.plan.may_enter is not None
+    day = pd.DatetimeIndex(index).date
+    assert not share.plan.may_enter[day <= date(2026, 6, 5)].any()
+    assert share.plan.may_enter[day >= date(2026, 6, 8)].all()
     assert fund.plan.may_enter is not None and fund.plan.may_enter.all()
-    assert not fills.positions(share.plan, np.ones(len(index))).any()
+    held = fills.positions(share.plan, np.ones(len(index)))
+    assert not held[day <= date(2026, 6, 5)].any() and held[day >= date(2026, 6, 8)].any()

@@ -1,0 +1,10 @@
+"""A planted violation (QT-18 A1): a live guard module that "just borrows" the
+back-test's earnings mask. It never names p15_history -- it arrives through
+qb2.research.p15 -- which is exactly how a back-test-only rule would leak into the
+sender. tests/wall/test_p15_history_wall.py must go RED on it."""
+
+from qb2.research import p15
+
+
+def may_buy(symbol, kind, index, market, frame):
+    return p15.mask(symbol, kind, index, "1h", market, frame)

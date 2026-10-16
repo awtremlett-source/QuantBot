@@ -18,6 +18,11 @@ Intraday (bot) bars only: on daily bars, the advisor's, P15 warns and never bloc
 
 Asked once per (session, newest snapshot) pair: the verdict depends on nothing
 else, so the cache is exact.
+
+QT-18 A1 (operator GO, 2026-10-16): every intraday back-test (5m and 1h) hands
+``bot_verdict`` the HISTORY frame of p15_history.py -- past results dates known
+from the close of the date before them -- instead of the stored file, and also
+blocks the missing-quarter spans that frame cannot express.
 """
 
 from __future__ import annotations
@@ -30,13 +35,14 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from qb2.guard import earnings_window
-from qb2.ingest import earnings
-from qb2.research import fills
+from qb2.research import fills, p15_history
 
 
 def mask(symbol: str, kind: str, index: pd.DatetimeIndex, interval: str, market: str,
-         frame: pd.DataFrame | None) -> NDArray[np.bool_]:
-    """For each bar: may a BUY decided at its close be sent? (``frame``: the earnings file)"""
+         frame: pd.DataFrame | None,
+         history: p15_history.History | None = None) -> NDArray[np.bool_]:
+    """For each bar: may a BUY decided at its close be sent? (``frame``: the earnings
+    frame; ``history``: its missing-quarter spans, blocked too)"""
     n = len(index)
     if kind == earnings_window.ETF:
         return np.ones(n, dtype=bool)
@@ -54,7 +60,8 @@ def mask(symbol: str, kind: str, index: pd.DatetimeIndex, interval: str, market:
         if key not in asked:
             moment: datetime = sent[i].to_pydatetime()
             asked[key] = not earnings_window.bot_verdict(symbol, kind, market, moment,
-                                                         frame).blocked
+                                                         frame).blocked and not (
+                history is not None and history.blocked(days[i]))
         out[i] = asked[key]
     return out
 
@@ -64,5 +71,8 @@ def schedule(symbol: str, kind: str, index: pd.DatetimeIndex, interval: str, mar
     """The fill schedule, with P15's entry mask on intraday bars."""
     if interval == "1d":
         return fills.schedule(index, interval, market)
-    allowed = mask(symbol, kind, index, interval, market, earnings.load(symbol, clean_root))
+    if kind == earnings_window.ETF:
+        return fills.schedule(index, interval, market, may_enter=np.ones(len(index), dtype=bool))
+    history = p15_history.load(symbol, market, clean_root)
+    allowed = mask(symbol, kind, index, interval, market, history.frame, history)
     return fills.schedule(index, interval, market, may_enter=allowed)

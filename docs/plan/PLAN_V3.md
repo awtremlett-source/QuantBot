@@ -264,6 +264,13 @@ edge. The advisor, which holds for months, instead warns him beforehand.
 *Enforcer:* an earnings-date check that blocks a bot entry into the window and
 raises an advisor warning before it. Since QT-17 the same check runs inside every
 intraday back-test, asked exactly as the sender asks it (qb2/research/p15.py).
+*P15 history, operator GO 2026-10-16 (verbatim):* "GO on P15 history: in back-tests
+only, a results date counts as known from the results date before it, if that
+earlier date is before 2026-10-02; from 2026-10-02 only knowable_time counts; a share
+with no date on record stays blocked." Built in QT-18 A1 (qb2/research/p15_history.py,
+research only; the live path cannot reach it): known from the CLOSE of the date
+before; snapshots cumulative; the first date on record never known early; a gap over
+1.5 × the share's median (capped at 182 days) blocks as a missing quarter.
 
 **P16 — Practice account first, real ISA later, phone alerts last.** Trading 212
 demo until the graduation rubric passes; then a Stocks ISA (a UK account where

@@ -37,17 +37,13 @@ Trial count N = 18. Bot sender still disarmed (S10).
   FX = open of the latest FX hour, ≤ 3 h; intraday benchmark = VWRP same bars.
 
 ## NEXT
-1. **Mentor writes the next box** once the P15 DECISION below is made: S6 batch
-   1 (8 rules × 3 arms) is designed in QT-17's box and NOT yet registered.
+1. **QT-18 in progress** (docs/reports/QT-18_progress.md): Part A, then S6
+   batch 1 (8 rules × 3 arms) registered and run.
 2. Tue 13 Oct 07:00: after-hours step cleans Mon 12 Oct; status page should show
    "Earnings: fresh to 2026-10-12 · … · OK" and no MISSED push.
 3. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
 
 ## DECISION REQUESTED (open)
-- **P15 history in back-tests.** Default: S6 waits. GO words: "GO on P15
-  history: in back-tests only, a past results date counts as known from the
-  results date before it; from 2026-10-02 only knowable_time counts; a share with
-  no date on record stays blocked." (RR, GLEN, RIO, AAL.L have ≤4 past dates.)
 - **Bot's brake** (the mentor's words, no GO yet). Default: as built. GO words:
   "GO on the bot's brake: the 10% brake clears itself after 5 sessions and
   restarts from there; the 15% pause stays measured from the true peak and only
@@ -55,6 +51,12 @@ Trial count N = 18. Bot sender still disarmed (S10).
 - Backups on the university OneDrive? Default: keep (2026-10-06 archive).
 
 ## Standing GOs (operator words, verbatim)
+- 2026-10-16: *"GO on P15 history: in back-tests only, a results date counts as
+  known from the results date before it, if that earlier date is before
+  2026-10-02; from 2026-10-02 only knowable_time counts; a share with no date on
+  record stays blocked."* (QT-18 A1, qb2/research/p15_history.py.)
+- 2026-10-16 08:07 (QT-18, away): any choice → the recommended option, logged as
+  "decided while operator away"; only the box's own STOPs stop the run.
 - 2026-10-07: *"STANDING GO: For routine settings and thresholds, go with the
   recommended default and log it. Three things always need my own words: switching
   the bot on to trade, real money, and removing any safety fence."*

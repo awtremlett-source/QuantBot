@@ -1,0 +1,71 @@
+"""QT-18 A3: the 1h known-null gate re-proved with P15 history (kept as .txt: a record,
+not code). Run from the repo root under .venv-qb2:
+
+    python -I docs/reports/QT-18_a3_known_null.py.txt   (copied to a .py first)
+
+1. Honest: qb2.research.known_null --interval 1h -- the six QT-17-registered 1h
+   drill runs, logged kind=drill (counted 0), report docs/research/known_null_<day>_1h.md.
+2. Red first, on deliberately broken code, NOTHING logged:
+   a. delay removed (row-o delay 0, schedules rebuilt): KN-INSTANT-1h must PASS;
+   b. costs off (each leg 1e-12): KN-PLANT-SMALL-1h must PASS.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import time
+from dataclasses import replace
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+
+from qb2.research import (fills, firewall, known_null, p15, preregister, simulate,  # noqa: E402
+                          stats)
+
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("qt18_a3.json")
+t0 = time.monotonic()
+honest_exit = known_null.main(["--interval", "1h"])
+print(f"honest gate exit {honest_exit} ({time.monotonic() - t0:.0f}s)", flush=True)
+
+base, skipped = firewall.load("1h")
+
+
+def one(drill: str, data: list[firewall.NameData]) -> dict[str, object]:
+    token = preregister.require(drill)
+    entry = token.entry
+    patterned = known_null.with_pattern(data, "1h", entry["parameters"])
+    r = firewall.score(token, known_null.strategy_for(entry), patterned, interval="1h",
+                       skipped=skipped, log_path=None)
+    return {"drill": drill, "verdict": r.verdict.outcome, "failed": list(r.verdict.failed),
+            "p": r.p_value, "dsr": r.deflated.get("dsr"), "trades": r.observed.trades,
+            "mean_per_bar": float(r.observed.marked.mean()),
+            "net": stats.compute(r.observed.marked, "1h").total_return,
+            "vwrp": r.benchmark.total_return if r.benchmark else None,
+            "start": str(r.start), "end": str(r.end)}
+
+
+results = {}
+saved = dict(fills.ROW_O_DELAY_MINUTES)
+try:                                                     # a. delay removed
+    fills.ROW_O_DELAY_MINUTES.update({"US": 0.0, "LSE": 0.0})
+    rebuilt = [replace(d, plan=p15.schedule(d.symbol, d.instrument.kind, d.bars.index, "1h",
+                                            d.market)) for d in base]
+    results["delay_removed"] = one("KN-INSTANT-1h", rebuilt)
+finally:
+    fills.ROW_O_DELAY_MINUTES.clear()
+    fills.ROW_O_DELAY_MINUTES.update(saved)
+print("delay removed:", results["delay_removed"], flush=True)
+
+real_legs = simulate.leg_fractions
+try:                                                     # b. costs off
+    simulate.leg_fractions = lambda inst, stress: simulate.LegFractions(1e-12, 1e-12)
+    results["costs_off"] = one("KN-PLANT-SMALL-1h", base)
+finally:
+    simulate.leg_fractions = real_legs
+print("costs off:", results["costs_off"], flush=True)
+results["seconds"] = round(time.monotonic() - t0)
+OUT.write_text(json.dumps(results, indent=1, default=str), encoding="utf-8")
+ok = (honest_exit == 0 and results["delay_removed"]["verdict"] == "PASS"
+      and results["costs_off"]["verdict"] == "PASS")
+print("A3", "GREEN" if ok else "RED -- STOP", flush=True)

@@ -1,0 +1,65 @@
+"""Red-first for QT-18 A1: each mutant must turn its named test RED. Files restored."""
+import subprocess
+import sys
+from pathlib import Path
+
+H = Path("qb2/research/p15_history.py")
+P = Path("qb2/research/p15.py")
+T = "tests/qb2/test_qt18a_p15_history.py"
+LOOP = "    for j in range(1, len(dates)):        # every D(j-1) is before REAL_FROM (_dates)\n"
+EARLY = ("    rows += [{'symbol': symbol, 'earnings_date': d.isoformat(), 'knowable_time': "
+         "pd.Timestamp('2000-01-01', tz='UTC'), 'source': SOURCE} for d in dates[:1]]\n")
+M = [
+    ("known 7 hours before D(j-1)'s close", H,
+     "        known = close_of(cal, dates[j - 1], market)\n",
+     "        known = close_of(cal, dates[j - 1], market) - pd.Timedelta(hours=7)\n",
+     "test_a_date_counts_as_known_from_the_close"),
+    ("non-cumulative snapshots (newest date only)", H,
+     "for d in dates[:j + 1]]", "for d in dates[j:j + 1]]", "test_every_snapshot_lists_every_date"),
+    ("D1 known from the start of data", H, LOOP, EARLY + LOOP,
+     "test_the_first_date_on_record_is_never_known_early"),
+    ("strict wording: first date after 2026-10-02 not covered", H,
+     "    return past + first[:1], real", "    return past, real",
+     "test_the_first_date_after_2026_10_02_is_known"),
+    ("every date on record enters the chain", H,
+     "    return past + first[:1], real", "    return sorted(set(days)), real",
+     "test_a_date_whose_predecessor_is_after"),
+    ("real rows all stamped with the first real time", H,
+     '    real = real.assign(knowable_time=pd.to_datetime(real["knowable_time"], utc=True))',
+     '    real = real.assign(knowable_time=pd.to_datetime(real["knowable_time"], utc=True).min())',
+     "test_from_2026_10_02_real_rows_win"),
+    ("missing-quarter rule removed", H,
+     "                gaps.append(", "                0 and gaps.append(",
+     "test_a_missing_quarter_blocks"),
+    ("p15.mask ignores the spans", P,
+     "history is not None and history.blocked(days[i]))", "False)",
+     "test_a_missing_quarter_blocks"),
+    ("no half-year cap on the median", H,
+     "        usual = min(median, MEDIAN_CAP_DAYS)", "        usual = median",
+     "test_one_stale_date_cannot_be_its_own_median"),
+    ("no input cutoff", H,
+     "    real = raw[knowable <= pd.Timestamp(CUTOFF)].copy()", "    real = raw.copy()",
+     "test_a_refresh_after_the_cutoff_changes_nothing"),
+    ("out-of-calendar dates kept", H,
+     "    frame = frame[keep].reset_index(drop=True)", "    frame = frame.reset_index(drop=True)",
+     "test_dates_before_the_exchange_calendar"),
+    ("schedule reads the stored file (the QT-17 way)", P,
+     "    allowed = mask(symbol, kind, index, interval, market, history.frame, history)",
+     "    allowed = mask(symbol, kind, index, interval, market, "
+     "p15_history.earnings.load(symbol, clean_root))",
+     "test_the_backtest_schedule_uses_the_history_rule"),
+]
+ok = True
+for label, path, old, new, test in M:
+    src = path.read_text(encoding="utf-8")
+    assert src.count(old) == 1, (label, "pattern not unique/found")
+    try:
+        path.write_text(src.replace(old, new), encoding="utf-8")
+        r = subprocess.run([sys.executable, "-m", "pytest", T, "-q", "-p", "no:cacheprovider",
+                            "-k", test], capture_output=True, text=True)
+        red = r.returncode != 0
+        print(("RED   " if red else "GREEN!") + f" {label} -> {test}")
+        ok &= red
+    finally:
+        path.write_text(src, encoding="utf-8")
+print("ALL RED" if ok else "SOME MUTANT SURVIVED")

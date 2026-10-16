@@ -16,6 +16,7 @@ the scanner has rotted — fix the scanner, never the fixture.
 | `installer_with_ui.ps1.txt` | `test_engine_install_is_headless.py` |
 | `forbidden_token.py.txt` | `test_forbidden_paths.py` |
 | `research_reads_sealed_bars.py.txt` | `test_sealed_doors.py` (QT-17 A1) |
+| `live_imports_p15_history.py.txt` | `test_p15_history_wall.py` (QT-18 A1) |
 
 The violations are real ones, written the way they would actually arrive: a
 convenience import, a "quick fix" straight into the bot's database, a pip
