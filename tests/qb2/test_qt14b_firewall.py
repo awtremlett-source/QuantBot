@@ -145,8 +145,8 @@ def test_registered_but_uncommitted_is_refused(tmp_path: Path) -> None:
 
 def test_p19s_eighteen_trials_are_registered_exactly_as_the_plan_lists_them() -> None:
     entries = preregister.entries()
-    trials = [e for e in entries.values() if e["kind"] == "trial"]
-    assert len(trials) == 18
+    trials = [e for e in entries.values() if e["kind"] == "trial" and e["id"].startswith("P19-")]
+    assert len(trials) == 18                          # QT-18: S6's 24 are registered too
     assert {(e["bar_size"]) for e in trials} == {"5m", "1d"}
     table = [line for line in PLAN.read_text(encoding="utf-8").splitlines()
              if line.startswith("| ") and line.split("|")[1].strip().isdigit()]

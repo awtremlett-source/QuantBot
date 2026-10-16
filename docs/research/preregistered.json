@@ -626,6 +626,651 @@
    "holdout": "1-hour bars sealed from 2026-07-13 (the last 13 weeks to 2026-10-09) on, for ever; one final holdout run",
    "date": "2026-10-12",
    "source": "QT-17 A4: the known-null gate proven on the bar size it judges (P17); 1-hour copies of QT-14/16's drills, registered before any 1h run; logged kind=drill, excluded from the trial count"
+  },
+  {
+   "id": "S6-01-US",
+   "kind": "trial",
+   "rule": "s6_intraday_mom",
+   "name": "INTRADAY-MOM: return from the prior close to the close of the day's first bar > 0 -> enter at the open of bar E-1 (decided at the bar whose next allowed open is E-1, US 12:30 / London 13:00 on a full day), exit at E's open (one bar held)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "signal": "close(bar 1) / prior close - 1",
+    "threshold": 0.0,
+    "entry": "open of E-1",
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-01-LON",
+   "kind": "trial",
+   "rule": "s6_intraday_mom",
+   "name": "INTRADAY-MOM: return from the prior close to the close of the day's first bar > 0 -> enter at the open of bar E-1 (decided at the bar whose next allowed open is E-1, US 12:30 / London 13:00 on a full day), exit at E's open (one bar held)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "signal": "close(bar 1) / prior close - 1",
+    "threshold": 0.0,
+    "entry": "open of E-1",
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-01-MIX",
+   "kind": "trial",
+   "rule": "s6_intraday_mom",
+   "name": "INTRADAY-MOM: return from the prior close to the close of the day's first bar > 0 -> enter at the open of bar E-1 (decided at the bar whose next allowed open is E-1, US 12:30 / London 13:00 on a full day), exit at E's open (one bar held)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "signal": "close(bar 1) / prior close - 1",
+    "threshold": 0.0,
+    "entry": "open of E-1",
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-02-US",
+   "kind": "trial",
+   "rule": "s6_gap_fade",
+   "name": "GAP-FADE: first bar open <= -1.0% vs the prior close -> enter at the next allowed open after the first bar's close (bar 3; the gap is seen at bar 1's open but a decision is taken at a bar's close, and the box defines 'next allowed open' from the decision close)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "gap": "open(bar 1) / prior close - 1",
+    "gap_max": -0.01,
+    "decide_at_bar": 1,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-02-LON",
+   "kind": "trial",
+   "rule": "s6_gap_fade",
+   "name": "GAP-FADE: first bar open <= -1.0% vs the prior close -> enter at the next allowed open after the first bar's close (bar 3; the gap is seen at bar 1's open but a decision is taken at a bar's close, and the box defines 'next allowed open' from the decision close)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "gap": "open(bar 1) / prior close - 1",
+    "gap_max": -0.01,
+    "decide_at_bar": 1,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-02-MIX",
+   "kind": "trial",
+   "rule": "s6_gap_fade",
+   "name": "GAP-FADE: first bar open <= -1.0% vs the prior close -> enter at the next allowed open after the first bar's close (bar 3; the gap is seen at bar 1's open but a decision is taken at a bar's close, and the box defines 'next allowed open' from the decision close)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "gap": "open(bar 1) / prior close - 1",
+    "gap_max": -0.01,
+    "decide_at_bar": 1,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-03-US",
+   "kind": "trial",
+   "rule": "s6_gap_go",
+   "name": "GAP-GO: first bar open >= +1.0% vs the prior close AND the first bar closes above its open -> enter at the next allowed open (bar 3)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "gap": "open(bar 1) / prior close - 1",
+    "gap_min": 0.01,
+    "first_bar_up": true,
+    "decide_at_bar": 1,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-03-LON",
+   "kind": "trial",
+   "rule": "s6_gap_go",
+   "name": "GAP-GO: first bar open >= +1.0% vs the prior close AND the first bar closes above its open -> enter at the next allowed open (bar 3)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "gap": "open(bar 1) / prior close - 1",
+    "gap_min": 0.01,
+    "first_bar_up": true,
+    "decide_at_bar": 1,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-03-MIX",
+   "kind": "trial",
+   "rule": "s6_gap_go",
+   "name": "GAP-GO: first bar open >= +1.0% vs the prior close AND the first bar closes above its open -> enter at the next allowed open (bar 3)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "gap": "open(bar 1) / prior close - 1",
+    "gap_min": 0.01,
+    "first_bar_up": true,
+    "decide_at_bar": 1,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-04-US",
+   "kind": "trial",
+   "rule": "s6_range_breakout",
+   "name": "RANGE-BREAKOUT (P11 moving buy): a later bar (bar 2 or after, before E-1) closes above the first bar's high -> enter at the next allowed open; the first such bar of the day only",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "level": "high(bar 1)",
+    "trigger_from_bar": 2,
+    "trigger_before": "E-1",
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": true
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-04-LON",
+   "kind": "trial",
+   "rule": "s6_range_breakout",
+   "name": "RANGE-BREAKOUT (P11 moving buy): a later bar (bar 2 or after, before E-1) closes above the first bar's high -> enter at the next allowed open; the first such bar of the day only",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "level": "high(bar 1)",
+    "trigger_from_bar": 2,
+    "trigger_before": "E-1",
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": true
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-04-MIX",
+   "kind": "trial",
+   "rule": "s6_range_breakout",
+   "name": "RANGE-BREAKOUT (P11 moving buy): a later bar (bar 2 or after, before E-1) closes above the first bar's high -> enter at the next allowed open; the first such bar of the day only",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "level": "high(bar 1)",
+    "trigger_from_bar": 2,
+    "trigger_before": "E-1",
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": true
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-05-US",
+   "kind": "trial",
+   "rule": "s6_trailing_buy",
+   "name": "TRAILING-BUY (P11): after the first bar, a bar (bar 2 or after) closes >= the day's running low (the lowest low of bars 1..that bar, inclusive) + 1 x Wilder ATR(14, 1h) at that bar's close -> enter at the next allowed open; the first such bar of the day only",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "trigger_from_bar": 2,
+    "atr_mult_above_running_low": 1.0,
+    "atr_period": 14,
+    "stop_k": 3.0,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": true
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-05-LON",
+   "kind": "trial",
+   "rule": "s6_trailing_buy",
+   "name": "TRAILING-BUY (P11): after the first bar, a bar (bar 2 or after) closes >= the day's running low (the lowest low of bars 1..that bar, inclusive) + 1 x Wilder ATR(14, 1h) at that bar's close -> enter at the next allowed open; the first such bar of the day only",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "trigger_from_bar": 2,
+    "atr_mult_above_running_low": 1.0,
+    "atr_period": 14,
+    "stop_k": 3.0,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": true
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-05-MIX",
+   "kind": "trial",
+   "rule": "s6_trailing_buy",
+   "name": "TRAILING-BUY (P11): after the first bar, a bar (bar 2 or after) closes >= the day's running low (the lowest low of bars 1..that bar, inclusive) + 1 x Wilder ATR(14, 1h) at that bar's close -> enter at the next allowed open; the first such bar of the day only",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "trigger_from_bar": 2,
+    "atr_mult_above_running_low": 1.0,
+    "atr_period": 14,
+    "stop_k": 3.0,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": true
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day).",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-06-US",
+   "kind": "trial",
+   "rule": "s6_xs_reversal",
+   "name": "XS-REVERSAL: at the close of bar 2, buy the bottom quintile of the arm by return from the prior close to bar 2's close -> enter at the next allowed open (bar 4)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_at_bar": 2,
+    "rank_by": "close(bar 2) / prior close - 1",
+    "side": "bottom",
+    "quantile": 0.2,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-06-LON",
+   "kind": "trial",
+   "rule": "s6_xs_reversal",
+   "name": "XS-REVERSAL: at the close of bar 2, buy the bottom quintile of the arm by return from the prior close to bar 2's close -> enter at the next allowed open (bar 4)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_at_bar": 2,
+    "rank_by": "close(bar 2) / prior close - 1",
+    "side": "bottom",
+    "quantile": 0.2,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-06-MIX",
+   "kind": "trial",
+   "rule": "s6_xs_reversal",
+   "name": "XS-REVERSAL: at the close of bar 2, buy the bottom quintile of the arm by return from the prior close to bar 2's close -> enter at the next allowed open (bar 4)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_at_bar": 2,
+    "rank_by": "close(bar 2) / prior close - 1",
+    "side": "bottom",
+    "quantile": 0.2,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-07-US",
+   "kind": "trial",
+   "rule": "s6_xs_momentum",
+   "name": "XS-MOMENTUM: at the close of bar 2, buy the top quintile of the arm by the same ranking -> enter at the next allowed open (bar 4)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_at_bar": 2,
+    "rank_by": "close(bar 2) / prior close - 1",
+    "side": "top",
+    "quantile": 0.2,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-07-LON",
+   "kind": "trial",
+   "rule": "s6_xs_momentum",
+   "name": "XS-MOMENTUM: at the close of bar 2, buy the top quintile of the arm by the same ranking -> enter at the next allowed open (bar 4)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_at_bar": 2,
+    "rank_by": "close(bar 2) / prior close - 1",
+    "side": "top",
+    "quantile": 0.2,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-07-MIX",
+   "kind": "trial",
+   "rule": "s6_xs_momentum",
+   "name": "XS-MOMENTUM: at the close of bar 2, buy the top quintile of the arm by the same ranking -> enter at the next allowed open (bar 4)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_at_bar": 2,
+    "rank_by": "close(bar 2) / prior close - 1",
+    "side": "top",
+    "quantile": 0.2,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-08-US",
+   "kind": "trial",
+   "rule": "s6_prior_day_reversal",
+   "name": "PRIOR-DAY-REVERSAL: bottom quintile of the arm by the prior day's close-to-close return -> 'enter at the first bar's open' cannot be reached: no decision close exists before it in the session, and P4 forbids a buy decided in a closed market. Decided at the first bar's close (the day's first decision; the signal uses only the two previous closes), entered at the next allowed open (bar 3)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_by": "prior close / the close before it - 1",
+    "side": "bottom",
+    "quantile": 0.2,
+    "decide_at_bar": 1,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-08-LON",
+   "kind": "trial",
+   "rule": "s6_prior_day_reversal",
+   "name": "PRIOR-DAY-REVERSAL: bottom quintile of the arm by the prior day's close-to-close return -> 'enter at the first bar's open' cannot be reached: no decision close exists before it in the session, and P4 forbids a buy decided in a closed market. Decided at the first bar's close (the day's first decision; the signal uses only the two previous closes), entered at the next allowed open (bar 3)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_by": "prior close / the close before it - 1",
+    "side": "bottom",
+    "quantile": 0.2,
+    "decide_at_bar": 1,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
+  },
+  {
+   "id": "S6-08-MIX",
+   "kind": "trial",
+   "rule": "s6_prior_day_reversal",
+   "name": "PRIOR-DAY-REVERSAL: bottom quintile of the arm by the prior day's close-to-close return -> 'enter at the first bar's open' cannot be reached: no decision close exists before it in the session, and P4 forbids a buy decided in a closed market. Decided at the first bar's close (the day's first decision; the signal uses only the two previous closes), entered at the next allowed open (bar 3)",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash).",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open').",
+   "parameters": {
+    "rank_by": "prior close / the close before it - 1",
+    "side": "bottom",
+    "quantile": 0.2,
+    "decide_at_bar": 1,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ],
+    "stop": false
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES (bars from 2026-10-10 stay sealed for S12)",
+   "judged": "Judged as registered (QT-18 B2): net after 2x costs with the survivorship mark-down, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (18 + 24 = 42); beats VWRP 1h over the same dates; INSUFFICIENT under 30 out-of-sample trades. Walk-forward 63 / 21 sessions, 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Clarifications fixed before any rule code (box B1; decided while operator away, QT-18): bars are numbered from 1 within each session ('first bar' = bar 1, US 09:30 / London 08:00; 'bar 2' = the second); decisions are taken at bar CLOSES, as the engine's Strategy contract and the fill rule require; 'prior close' = the close of the name's last bar of its previous session in the store. A day is SKIPPED (no entry) when: the name has no previous session in its bars; a bar the rule needs is missing that day; the entry would land at or after E; or P15 refuses the BUY at the decision bar (no retry later that day). Ranking (S6-06/07/08): BETS are ranked (GOOG/GOOGL, VUAG/VUSA: the mean of the lines' returns), only names with the needed bars that day; the quintile = round(0.2 x n) bets, at least 1; ties by bet name; a chosen bet buys all its lines. A P15-blocked name is ranked but not bought (no replacement). Mix arm: S6-06/07 rank each market on its own at its own bar-2 close (the US bar 2 closes about 6 hours after London's, so one ranking across both would read the future for London); S6-08 ranks the whole Mix arm, every prior-session return being known before either market opens.",
+   "date": "2026-10-16",
+   "source": "S6 batch 1 as designed in QT-17's box; registered in QT-18 B1 before any rule code exists"
   }
  ]
 }

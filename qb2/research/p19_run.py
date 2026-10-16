@@ -50,8 +50,8 @@ Loader = Callable[..., tuple[list[firewall.NameData], list[str]]]
 
 
 def trials(root: Path | None = None) -> list[dict[str, Any]]:
-    """The 18 registered trials, in register order."""
-    return [e for e in preregister.entries(root).values() if e["kind"] == "trial"]
+    """P19's 18 registered trials, in register order (QT-18: S6's trials are not P19's)."""
+    return [e for e in preregister.entries(root).values() if e["kind"] == "trial" and str(e["id"]).startswith("P19-")]
 
 
 def _now() -> str:

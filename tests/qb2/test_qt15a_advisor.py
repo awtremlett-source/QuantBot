@@ -19,8 +19,9 @@ from qb2.research import bet_groups, firewall, preregister
 
 
 def test_each_of_the_18_trials_resolves_to_the_universe_it_names() -> None:
-    trials = [e for e in preregister.entries().values() if e["kind"] == "trial"]
-    assert len(trials) == 18
+    trials = [e for e in preregister.entries().values()
+              if e["kind"] == "trial" and e["id"].startswith("P19-")]
+    assert len(trials) == 18                          # QT-18: S6's 24 are registered too
     bot = [e["yfinance"] for e in universe.bot_entries()]
     advisor = [e["yfinance"] for e in universe.advisor_entries()]
     assert len(bot) == 50 and len(advisor) == 171 and not set(bot) & set(advisor)
