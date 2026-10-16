@@ -1,0 +1,9 @@
+{"at": "2026-10-16T09:02:27+00:00", "code_commit": "343cff313bcadf1ceb1708d2fd6a51f39c1518c2", "counted_before": 18, "event": "start", "fp_a": "bf58b2595eb5c62aa36738b6cfacb8e819bfbcad999fc121934eb80499c8b959", "fp_b": "b49e7dcb5b67765222e90017bc9ec136490d47c29d635c51b48ec163351cac87", "reason": "first run", "run": 1}
+{"at": "2026-10-16T09:02:27+00:00", "event": "started", "id": "S6-01-US", "run": 1}
+{"at": "2026-10-16T09:08:16+00:00", "event": "done", "id": "S6-01-US", "run": 1, "seconds": 349.3, "verdict": "FAIL"}
+{"at": "2026-10-16T09:08:16+00:00", "event": "started", "id": "S6-01-LON", "run": 1}
+{"at": "2026-10-16T09:10:50+00:00", "event": "done", "id": "S6-01-LON", "run": 1, "seconds": 153.9, "verdict": "FAIL"}
+{"at": "2026-10-16T09:10:50+00:00", "event": "started", "id": "S6-01-MIX", "run": 1}
+{"at": "2026-10-16T09:19:45+00:00", "event": "done", "id": "S6-01-MIX", "run": 1, "seconds": 534.3, "verdict": "FAIL"}
+{"at": "2026-10-16T09:19:45+00:00", "event": "started", "id": "S6-02-US", "run": 1}
+{"at": "2026-10-16T09:22:05+00:00", "event": "done", "id": "S6-02-US", "run": 1, "seconds": 140.2, "verdict": "FAIL"}

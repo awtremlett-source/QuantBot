@@ -18,8 +18,14 @@ a finished step; never re-run a finished trial (docs/research/S6_batch1_runs/).
 | A3 known-null 1h | done | QT-18A | 08:30–09:40 | honest Gate 1 GREEN · Gate 2 GREEN; red-first: delay removed → KN-INSTANT-1h PASS, costs off → KN-PLANT-SMALL-1h PASS (+343% vs VWRP +50.7%) — both RED as required |
 | B1 register | done | QT-18 register | 09:45 | 24 entries S6-01-US … S6-08-MIX; clarifications in each entry (decided while operator away) |
 | B1 rule code | done | QT-18 rule code | 10:20 | s6_rules.py (8 rules), s6_run.py (resumable runner), s6_results.py, data_fingerprint.py; 16 rule/fingerprint + 6 runner mutants all RED |
-| B2 trials | pending | | | |
+| B2 trials | running |  | 10:02– | 4 of 24 finished (FAIL 4) |
 | B3 holdout | pending | | | |
 | B4–B5 results, end | pending | | | |
 
-Data fingerprints (taken at the start of B): (a) trial data — · (b) holdout data — .
+Run 1 started 2026-10-16 09:02:27 UTC (10:02 UK), code commit 343cff3 (s6_run's code paths),
+18 selection trials counted before. Data fingerprints taken at the start of B:
+- (a) trial data: `bf58b2595eb5c62aa36738b6cfacb8e819bfbcad999fc121934eb80499c8b959`
+- (b) holdout data: `b49e7dcb5b67765222e90017bc9ec136490d47c29d635c51b48ec163351cac87`
+
+Resume B: `python -m qb2.research.s6_run --max 4` (it re-checks the commit and both
+fingerprints first, skips finished trials, re-runs an interrupted one from scratch).
