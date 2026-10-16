@@ -1,0 +1,45 @@
+{
+ "id": "S6-07-US",
+ "bars": "1h",
+ "names": 30,
+ "effective_n": 29,
+ "skipped": [],
+ "oos_start": "2024-02-01",
+ "oos_end": "2026-07-10",
+ "n_bars": 4249,
+ "trades": 3263,
+ "marked_2x": -0.5907318899681686,
+ "marked_1x": -0.365000319513095,
+ "net_2x": -0.5899680760064506,
+ "gross": -0.013087550201248077,
+ "max_dd_2x": -0.5907358921068548,
+ "sharpe": -0.28583944859941096,
+ "vwrp": 0.5069965141439925,
+ "vwrp_symbol": "VWRP.L",
+ "p": 0.5373134328358209,
+ "dsr": 0.0,
+ "n_trials": 42.0,
+ "null_mean": -0.28399846310682775,
+ "null_std": 0.020409324400688773,
+ "verdict": "FAIL",
+ "reasons": [
+  "failed: beats the turnover-matched luck test (p 0.5373 < 0.05)",
+  "failed: a positive net mean per bar (-0.02100% > 0)",
+  "failed: Deflated Sharpe 0.000 >= 0.95",
+  "failed: beats the benchmark (-59.07% vs +50.70%)"
+ ],
+ "sleeves": {
+  "us_liquid": {
+   "names": 30,
+   "trades": 3263,
+   "marked_2x": -0.5907318899681686
+  }
+ },
+ "report_md": "### S6-07-US -- FAIL\n\n- Registered in commit `c89f2fd7202c`; bars: 1h; costs at 2x; out-of-sample 2024-02-01 to 2026-07-10\n- Names: 30 (29 independent bets; 0 left out)\n\n| | total return | Sharpe / bar | annualised | max drawdown |\n|---|---|---|---|---|\n| strategy, gross (no costs) | -1.31% | -0.0043 | -0.18 | -5.76% |\n| strategy, net at 2x costs | -59.00% | -0.2853 | -11.98 | -59.00% |\n| strategy, net after survivorship mark-down | -59.07% | -0.2858 | -12.01 | -59.07% |\n| strategy, net at 1x costs | -36.38% | -0.1561 | -6.56 | -36.38% |\n| **benchmark VWRP.L** (same period) | **+50.70%** | | | |\n\n- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)\n- Mark-down: before -59.00%, after -59.07% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)\n- Out-of-sample trades: 3263; bars: 4249; net mean per bar -0.02100% (Gate 1 needs it above zero)\n- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them\n- Luck test (turnover-matched null: the rule's own trades at random times): p = 0.5373 (null Sharpe/bar -0.2840 \u00b1 0.0204)\n- Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar -0.6979 \u00b1 0.0137)\n- Deflated Sharpe: 0.000 over 42 trials (luck ceiling 0.0303 per bar)\n- Verdict: FAIL -- failed: beats the turnover-matched luck test (p 0.5373 < 0.05); failed: a positive net mean per bar (-0.02100% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-59.07% vs +50.70%)\n",
+ "arm": "US",
+ "code_commit": "343cff313bcadf1ceb1708d2fd6a51f39c1518c2",
+ "fp_a": "bf58b2595eb5c62aa36738b6cfacb8e819bfbcad999fc121934eb80499c8b959",
+ "register_commit": "c89f2fd7202ca2269efba59f87cf7c777deec128",
+ "run": 1,
+ "seconds": 302.0
+}

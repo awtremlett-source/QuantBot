@@ -31,3 +31,11 @@
 {"at": "2026-10-16T10:17:20+00:00", "event": "done", "id": "S6-05-MIX", "run": 1, "seconds": 567.6, "verdict": "FAIL"}
 {"at": "2026-10-16T10:17:20+00:00", "event": "started", "id": "S6-06-US", "run": 1}
 {"at": "2026-10-16T10:19:49+00:00", "event": "done", "id": "S6-06-US", "run": 1, "seconds": 148.4, "verdict": "FAIL"}
+{"at": "2026-10-16T10:20:06+00:00", "event": "started", "id": "S6-06-LON", "run": 1}
+{"at": "2026-10-16T10:22:13+00:00", "event": "done", "id": "S6-06-LON", "run": 1, "seconds": 126.9, "verdict": "FAIL"}
+{"at": "2026-10-16T10:22:13+00:00", "event": "started", "id": "S6-06-MIX", "run": 1}
+{"at": "2026-10-16T10:29:55+00:00", "event": "done", "id": "S6-06-MIX", "run": 1, "seconds": 462.4, "verdict": "FAIL"}
+{"at": "2026-10-16T10:29:55+00:00", "event": "started", "id": "S6-07-US", "run": 1}
+{"at": "2026-10-16T10:34:57+00:00", "event": "done", "id": "S6-07-US", "run": 1, "seconds": 302.0, "verdict": "FAIL"}
+{"at": "2026-10-16T10:34:57+00:00", "event": "started", "id": "S6-07-LON", "run": 1}
+{"at": "2026-10-16T10:36:25+00:00", "event": "done", "id": "S6-07-LON", "run": 1, "seconds": 87.6, "verdict": "FAIL"}
