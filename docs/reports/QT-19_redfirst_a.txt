@@ -1,0 +1,16 @@
+# QT-19 A red-first: tests/qb2/test_qt19a_earnings_old_dates.py on the OLD earnings_window.py (before the fix). All 4 RED.
+    
+        if raise_oob:
+            if calendar is None:
+                raise ValueError("`calendar` must be passed if `raise_oob` is True.")
+            if calendar._date_oob(ts):  # noqa: SLF001
+>               raise errors.DateOutOfBounds(calendar, ts, param_name)
+E               exchange_calendars.errors.DateOutOfBounds: Parameter `date` receieved as '2040-01-02 00:00:00' although cannot be later than the last session of calendar 'XLON' ('2027-10-15 00:00:00').
+
+.venv-qb2\Lib\site-packages\exchange_calendars\calendar_helpers.py:389: DateOutOfBounds
+=========================== short test summary info ===========================
+FAILED tests/qb2/test_qt19a_earnings_old_dates.py::test_ulvr_real_file_answers_instead_of_raising
+FAILED tests/qb2/test_qt19a_earnings_old_dates.py::test_in_calendar_window_still_blocks_beside_old_dates
+FAILED tests/qb2/test_qt19a_earnings_old_dates.py::test_only_pre_2006_dates_stays_blocked
+FAILED tests/qb2/test_qt19a_earnings_old_dates.py::test_only_dates_past_the_calendar_end_stays_blocked
+4 failed in 1.22s

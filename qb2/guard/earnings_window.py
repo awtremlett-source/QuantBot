@@ -70,18 +70,25 @@ def _window(cal: xcals.ExchangeCalendar, day: date) -> tuple[date, date]:
     return pd.Timestamp(before).date(), pd.Timestamp(after).date()
 
 
+def _inside(cal: xcals.ExchangeCalendar, days: list[date]) -> list[date]:
+    """QT-19 A: dates outside the calendar (ULVR.L's 2004 rows) play no part."""
+    lo, hi = pd.Timestamp(cal.first_session).date(), pd.Timestamp(cal.last_session).date()
+    return [d for d in days if lo < d < hi]
+
+
 def bot_verdict(ticker: str, kind: str, market: str, moment: datetime,
                 frame: pd.DataFrame | None) -> Verdict:
     if kind == ETF:
         return Verdict(ticker, False, "N/A (ETF): a basket does not report results")
     cal = _sessions(market)
     today = _today(cal, moment, market)
-    for day in latest_known(frame, moment):
+    known = _inside(cal, latest_known(frame, moment))
+    for day in known:
         first, last = _window(cal, day)
         if first <= today <= last:
             return Verdict(ticker, True, f"{ticker} reports on {day}: no entry from the "
                            f"session before ({first}) through the session after ({last})")
-    upcoming = [d for d in latest_known(frame, moment) if _window(cal, d)[1] >= today]
+    upcoming = [d for d in known if _window(cal, d)[1] >= today]
     if not upcoming:
         return Verdict(ticker, True, f"{ticker}'s next earnings date is unknown -- no entry "
                        "(fail closed)")

@@ -11,7 +11,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from qb2.guard import earnings_window
 from qb2.research import fills, p15, p15_history
@@ -151,12 +150,11 @@ def test_a_refresh_after_the_cutoff_changes_nothing() -> None:
 
 
 def test_dates_before_the_exchange_calendar_are_dropped_not_crashed_on() -> None:
-    """bot_verdict raises on a date before 2006-10-16 (ULVR.L's 2004 rows): a live
-    defect flagged in QT-18, not fixed here. The copy drops such dates."""
+    """bot_verdict raised on a date before 2006-10-16 (ULVR.L's 2004 rows), flagged in
+    QT-18 and fixed in QT-19 A (such dates are ignored). The copy still drops them."""
     raw = _raw(["2004-07-28", "2004-10-28"] + PAST + [NEXT])
     moment = datetime(2026, 10, 6, 15, tzinfo=UTC)
-    with pytest.raises(Exception, match="cannot be earlier than the first session"):
-        earnings_window.bot_verdict("AAPL", "STOCK", "US", moment, raw)
+    assert not earnings_window.bot_verdict("AAPL", "STOCK", "US", moment, raw).blocked
     h = p15_history.build("AAPL", "US", raw)
     assert not earnings_window.bot_verdict("AAPL", "STOCK", "US", moment, h.frame).blocked
     assert "2004-07-28" not in set(h.frame["earnings_date"])
