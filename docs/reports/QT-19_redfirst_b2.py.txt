@@ -1,0 +1,87 @@
+"""Red-first for QT-19 B2 (rules, book, runner, data, bench extensions): each mutant must
+turn its named test RED; every file is restored. Run from the repo root under .venv-qb2
+(copied to a .py first):  python -I <copy>.py  -- results go to stdout."""
+import subprocess
+import sys
+from pathlib import Path
+
+R = Path("qb2/signals/a_rules.py")
+B = Path("qb2/research/advisor_book.py")
+D = Path("qb2/research/advisor_data.py")
+RUN = Path("qb2/research/advisor_run.py")
+DR = Path("qb2/research/advisor_drills.py")
+F = Path("qb2/research/fills.py")
+G = Path("qb2/research/bet_groups.py")
+S = Path("qb2/research/simulate.py")
+BM = Path("qb2/research/benchmark.py")
+FP = Path("qb2/data/data_fingerprint.py")
+TA = "tests/qb2/test_qt19b_advisor.py"
+TR = "tests/qb2/test_qt19b_run.py"
+TB = "tests/qb2/test_qt19b_bench.py"
+M = [
+    ("momentum skips no month", R, "out = close.shift(SKIP) / close.shift(self.lookback) - 1.0",
+     "out = close / close.shift(self.lookback) - 1.0", TA, "each_registered_value"),
+    ("near-high on closes, not highs", R, 'high = bars["high"].astype(float)',
+     'high = bars["close"].astype(float)', TA, "each_registered_value"),
+    ("low volatility ranked highest first", R, 'known[1] == "lowest first"',
+     'known[1] != "lowest first"', TA, "each_registered_value"),
+    ("rule accepts a changed lookback", R,
+     "if known is None or (int(p[\"lookback\"]), str(p[\"order\"])) != known:",
+     "if known is None:", TA, "refuse_anything"),
+    ("buffer ignored", B, "(i in top_k if i in due else i in top_b)", "(i in top_k)", TA, "buffer"),
+    ("P13 ignored", B, "due = {i for i in held if m - bought[i] >= s.age_months}",
+     "due: set[int] = set()", TA, "p13"),
+    ("the stop never fires", B, "if c[i][t] <= level[i]:", "if c[i][t] <= level[i] - 1e9:", TA,
+     "stop_sells"),
+    ("VIX ignored", B, "return s.stop_k if calm else s.stop_k_unsettled", "return s.stop_k", TA,
+     "unsettled"),
+    ("a stopped name re-bought at the same close", B,
+     "stopped_on.get(i) != dates[i][now[i]]]", "True]", TA, "stop_sells"),
+    ("A-06 filter ignored", B, "off = market_on is not None and not market_on.get(m, False)",
+     "off = False", TA, "market_filter"),
+    ("no month-end bar: kept", B, "for i in sorted(held - set(now)):", "for i in sorted(set[int]()):",
+     TA, "no_month_end"),
+    ("the 1% ceiling removed", B, "pd.Series(np.minimum(slot, cap), index=n.bars.index)",
+     "pd.Series(slot, index=n.bars.index)", TA, "cap_at_the_one_percent"),
+    ("the causal check never refuses", B, "            if not np.array_equal(again.decisions",
+     "            if False and not np.array_equal(again.decisions", TA, "causal_check"),
+    ("fill at the decision bar (premortem 2)", F, "return np.arange(1, n + 1, dtype=np.int64)",
+     "return np.arange(0, n, dtype=np.int64)", TR, "fills_at_the_next_open"),
+    ("slot weights ignored", G, "    if weights is not None:", "    if False:", TB, "slot_weights"),
+    ("dividend income ignored", S, "        if income is not None:", "        if False:", TB,
+     "income_is_credited"),
+    ("D3 splice removed", BM, "if first is not None and begin < first:", "if False:", TB, "before_vwrp"),
+    ("fingerprint reads volume too", FP, "_in_range(raw[list(OHLC)], first, last)",
+     "_in_range(raw, first, last)", TB, "daily_fingerprint"),
+    ("SUSPECT payouts credited", D, '        if str(row["verdict"]) != "OK":', "        if False:", TR,
+     "income_credits_ok"),
+    ("US tax not withheld", D, "keep = 1.0 - total_return.WITHHOLDING.get(market, 0.0)", "keep = 1.0",
+     TR, "income_credits_ok"),
+    ("trim one bar short", D, "return bars.iloc[max(0, j - WARMUP):]",
+     "return bars.iloc[max(0, j - WARMUP + 1):]", TR, "trim_keeps"),
+    ("finished trials re-run", RUN, "        if path.is_file():                     # finished",
+     "        if False:                     # finished", TR, "resumable"),
+    ("end-of-run fingerprint not checked", RUN, "    if advisor_data.fingerprints() != prints:",
+     "    if False:", TR, "fingerprint_moving"),
+    ("ANTI carries the marker", DR, "volume[up] = SENTINEL_VOLUME", "volume[up + down] = SENTINEL_VOLUME",
+     TR, "plant_marks"),
+]
+failures = 0
+for label, path, old, new, test, key in M:
+    raw = path.read_bytes()                  # bytes: a restore never changes line endings
+    text = raw.decode("utf-8")
+    if text.count(old) != 1:
+        print(f"SKIPPED (snippet not found once): {label}")
+        failures += 1
+        continue
+    try:
+        path.write_bytes(text.replace(old, new).encode("utf-8"))
+        done = subprocess.run([sys.executable, "-m", "pytest", test, "-q", "-p", "no:cacheprovider",
+                               "-k", key], capture_output=True, text=True)
+        red = done.returncode != 0
+        print(f"{'RED  ' if red else 'GREEN'} {label}  ({test} -k {key})")
+        failures += 0 if red else 1
+    finally:
+        path.write_bytes(raw)
+print(f"{len(M) - failures} of {len(M)} mutants RED")
+sys.exit(1 if failures else 0)

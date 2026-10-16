@@ -162,3 +162,27 @@ def test_same_bar_fill_is_the_broken_one() -> None:
     name = _name()
     broken = advisor_drills.same_bar_fills([name])[0]
     assert list(broken.plan.fills[:3]) == [0, 1, 2] and list(name.plan.fills[:3]) == [1, 2, 3]
+
+
+def test_income_credits_ok_payouts_only_and_withholds_us_tax(tmp_path: Path) -> None:
+    folder = tmp_path / "dividends"
+    folder.mkdir()
+    pd.DataFrame({"ex_date": ["2015-01-07", "2015-01-09", "2015-01-13"],
+                  "amount": [1.0, 2.0, 1.0], "verdict": ["OK", "SUSPECT", "UNCHECKED"]}
+                 ).to_parquet(folder / "X.parquet")
+    days = pd.bdate_range("2015-01-05", periods=10, tz="America/New_York")
+    bars = pd.DataFrame({"close": 100.0}, index=days)
+    inc, seen = advisor_data.income("X", "US", bars, tmp_path)
+    assert inc[2] == pytest.approx(0.01 * 0.85) and inc.sum() == pytest.approx(0.0085)
+    assert seen == {"credited": 1, "not_ok": 2}
+    lon, _ = advisor_data.income("X", "LSE", bars, tmp_path)
+    assert lon[2] == pytest.approx(0.01)                             # UK: nothing withheld
+
+
+def test_the_month_end_decision_fills_at_the_next_open() -> None:
+    from qb2.research import fills
+    name = _name(40)
+    decided = np.zeros(40)
+    decided[20:] = 1.0                                               # bought at bar 20's close
+    held = fills.positions(fills.schedule(name.bars.index, "1d", "US"), decided)
+    assert held[20] == 0.0 and held[21] == 1.0

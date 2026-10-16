@@ -1,0 +1,9 @@
+# QT-19 B2 red-first: tests/qb2/test_qt19b_bench.py on the OLD bench (before the four extensions). All 5 RED.
+tests\qb2\test_qt19b_bench.py:104: AttributeError
+=========================== short test summary info ===========================
+FAILED tests/qb2/test_qt19b_bench.py::test_slot_weights_sum_the_held_slots_instead_of_averaging_every_name
+FAILED tests/qb2/test_qt19b_bench.py::test_income_is_credited_only_when_held_through_the_ex_date_open
+FAILED tests/qb2/test_qt19b_bench.py::test_backtest_and_matched_null_carry_the_income
+FAILED tests/qb2/test_qt19b_bench.py::test_d3_before_vwrp_existed_is_vwrl_with_dividends_chained_at_vwrp_first_close
+FAILED tests/qb2/test_qt19b_bench.py::test_daily_fingerprint_reads_content_and_ignores_appended_days
+5 failed in 0.81s
