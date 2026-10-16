@@ -15,6 +15,10 @@ intraday trial's benchmark is VWRP's own closes at the SAME bar size over the sa
 dates: daily VWRP from 2025-10-10 is the DAILY sealed year, and QT-14..16's 5-minute
 benchmark read it (logged, kind seal_viewed). Its price is its total return, so an
 intraday figure needs the accumulating line: the distributing fallback is refused.
+
+QT-19: VWRP's first close is 2019-07-25. A daily span that starts before it is the
+named fallback, VWRL with its dividends added back, up to that close, chained to
+VWRP from it -- one fund, so the splice changes the line, not what is measured.
 """
 
 from __future__ import annotations
@@ -26,6 +30,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from qb2.data import access
 from qb2.ingest import verify_universe
 from qb2.research import holdout, total_return
 
@@ -79,7 +84,25 @@ def over(start: date, end: date, *, clean_root: Path | None = None,
         return Benchmark(symbol=symbol, why=f"{why} ({interval} closes)", start=start, end=end,
                          total_return=float(upto["close"].iloc[-1] / before["close"].iloc[-1]
                                             - 1.0))
-    held = total_return.holding_return(symbol, start - timedelta(days=1), end,
-                                       clean_root=clean_root, final=final)
+    begin = start - timedelta(days=1)
+    first = _first_close(symbol, clean_root=clean_root) if symbol == D3 else None
+    if first is not None and begin < first:                  # QT-19: before VWRP existed
+        early = total_return.holding_return(D3_FALLBACK, begin, first, clean_root=clean_root)
+        late = total_return.holding_return(symbol, first, end, clean_root=clean_root, final=final)
+        return Benchmark(symbol=symbol, why=f"{why}; before {first} (VWRP's first close) "
+                         f"{D3_FALLBACK} with its dividends added back, chained there",
+                         start=start, end=end, total_return=(1.0 + early.total_return_gross)
+                         * (1.0 + late.total_return_gross) - 1.0)
+    held = total_return.holding_return(symbol, begin, end, clean_root=clean_root, final=final)
     return Benchmark(symbol=symbol, why=why, start=start, end=end,
                      total_return=held.total_return_gross)
+
+
+def _first_close(symbol: str, *, clean_root: Path | None = None) -> date | None:
+    """The first daily close in the store (unsealed bars, through the door); None if
+    there is none -- the plain path then refuses loudly, as before."""
+    try:
+        bars = holdout.research_bars(symbol, "1d", "LSE", clean_root=clean_root)
+    except access.AccessRefused:
+        return None
+    return pd.Timestamp(bars.index[0]).date() if len(bars) else None

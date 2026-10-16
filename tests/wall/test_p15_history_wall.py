@@ -26,7 +26,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 QB2 = REPO_ROOT / "qb2"
 TARGET = "qb2.research.p15_history"
-ALLOWED_IMPORTERS = frozenset({"qb2.research.p15", "qb2.research.p15_coverage"})
+# QT-19: advisor_results counts the ADVISOR's P15 warnings on its back-test buys (research only)
+ALLOWED_IMPORTERS = frozenset({"qb2.research.p15", "qb2.research.p15_coverage",
+                               "qb2.research.advisor_results"})
 MUSEUM = REPO_ROOT / "tests" / "museum" / "wall_violations"
 
 

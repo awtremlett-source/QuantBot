@@ -63,6 +63,7 @@ class BacktestResult:
     drag: float
     fx_missing: np.ndarray             # no GBPUSD rate for this bar
     fx_stale: np.ndarray               # an earlier FX bar's close stood in
+    income: np.ndarray | None = None   # QT-19: payout / previous close per bar (P3)
 
     def series(self, which: str) -> pd.Series:
         return pd.Series(getattr(self.paths, which), index=self.index)
@@ -99,7 +100,7 @@ def validate(bars: pd.DataFrame) -> None:
 def run(token: preregister.Registered, strategy: Strategy, bars: pd.DataFrame, *,
         instrument: costs.Instrument, interval: str, market: str, stress: float = 1.0,
         final: holdout.HoldoutPass | None = None, plan: fills.Schedule | None = None,
-        fx: pounds.Rates | None = None,
+        fx: pounds.Rates | None = None, income: np.ndarray | None = None,
         log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG) -> BacktestResult:
     """One name, one registered strategy. Logs ONE trial unless ``log_path`` is None
     (the firewall passes None and logs one summary for the whole candidate)."""
@@ -123,10 +124,10 @@ def run(token: preregister.Registered, strategy: Strategy, bars: pd.DataFrame, *
         opens, closes = pounds.to_pounds(opens, closes, fx)
         missing, stale = fx.missing, fx.stale
     drag = drag_per_bar(instrument, interval, market)
-    paths = simulate.run(opens, closes, held, legs, drag)
+    paths = simulate.run(opens, closes, held, legs, drag, income)
     result = BacktestResult(registered.id, instrument.ticker, interval, market,
                             pd.DatetimeIndex(bars.index), held, paths, legs, stress,
-                            opens, closes, drag, missing, stale)
+                            opens, closes, drag, missing, stale, income)
     if log_path is not None:
         net = stats.compute(paths.net, interval, market)
         trial_log.log_trial({

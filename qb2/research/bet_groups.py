@@ -42,16 +42,23 @@ def effective_n(symbols: Iterable[str], groups: Mapping[str, str] | None = None)
 
 
 def combine(returns: Mapping[str, pd.Series],
-            groups: Mapping[str, str] | None = None) -> pd.Series:
+            groups: Mapping[str, str] | None = None,
+            weights: Mapping[str, pd.Series] | None = None) -> pd.Series:
     """Equal weight per BET: members averaged first, then bets averaged.
 
     Aligned on the union of timestamps; a name with no bar at a moment holds no
-    position then, so it contributes a zero return.
+    position then, so it contributes a zero return. QT-19: with ``weights`` (each
+    line's share of the pot, bar by bar -- the advisor's slots, a bet's lines already
+    split) the slots are summed instead; a line without a weight is cash.
     """
     known = load() if groups is None else groups
     if not returns:
         return pd.Series(dtype=float)
     frame = pd.DataFrame(dict(returns)).fillna(0.0)
+    if weights is not None:
+        share = pd.DataFrame({s: weights[s] for s in frame.columns if s in weights},
+                             columns=frame.columns).reindex(frame.index).fillna(0.0)
+        return (frame * share).sum(axis=1)
     by_bet: dict[str, list[str]] = {}
     for symbol in frame.columns:
         by_bet.setdefault(group_of(str(symbol), known), []).append(str(symbol))

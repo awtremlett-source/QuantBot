@@ -62,8 +62,10 @@ class Paths:
 
 def run(opens: NDArray[np.float64], closes: NDArray[np.float64],
         held: NDArray[np.float64], legs: LegFractions,
-        drag_per_bar: float = 0.0) -> Paths:
-    """Per-bar returns on the slot, re-sized every bar, for a 0/1 position path."""
+        drag_per_bar: float = 0.0, income: NDArray[np.float64] | None = None) -> Paths:
+    """Per-bar returns on the slot, re-sized every bar, for a 0/1 position path.
+    ``income`` (QT-19, P3): each bar's payout / the previous close, earned by the
+    position held into that bar's open (an ex-date's price drop is repaid)."""
     held = np.asarray(held, dtype=float)
     before = np.r_[0.0, held[:-1]]
     entries = held > before
@@ -71,6 +73,8 @@ def run(opens: NDArray[np.float64], closes: NDArray[np.float64],
     prev_close = np.r_[np.nan, closes[:-1]]
     with np.errstate(invalid="ignore", divide="ignore"):
         gap = np.where(before > 0, opens / prev_close - 1.0, 0.0)
+        if income is not None:
+            gap = gap + np.where(before > 0, np.asarray(income, dtype=float), 0.0)
         body = np.where(held > 0, closes / opens - 1.0, 0.0)
     gross = (1.0 + np.nan_to_num(gap)) * (1.0 + np.nan_to_num(body)) - 1.0
     if len(held):

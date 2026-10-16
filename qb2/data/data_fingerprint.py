@@ -27,12 +27,13 @@ from pathlib import Path
 import pandas as pd
 
 from qb2.data import access
-from qb2.ingest import earnings
+from qb2.ingest import daily, dividends, earnings
 
 SEALED_FROM = date(2026, 7, 13)               # = holdout.SEALED_FROM["1h"] (a test pins it)
 HOLDOUT_END = date(2026, 10, 9)
 EARNINGS_CUTOFF = datetime(2026, 10, 9, 23, 59, 59, tzinfo=timezone.utc)
 FX = "GBPUSD=X"
+OHLC = ("open", "high", "low", "close")
 
 
 def _frame_digest(frame: pd.DataFrame) -> str:
@@ -62,6 +63,29 @@ def bars_digest(symbols: Iterable[str], first: date | None, last: date | None,
         except access.AccessRefused:
             frame = pd.DataFrame()
         parts.append(f"{symbol}:{len(frame)}:{_frame_digest(frame) if len(frame) else '-'}")
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()
+
+
+def daily_digest(symbols: Iterable[str], first: date | None, last: date | None,
+                 clean_root: Path | None = None) -> str:
+    """QT-19: one hash over every name's DAILY open/high/low/close dated first..last, by
+    content -- the columns a daily run reads (a revised volume is not a data change)."""
+    parts = []
+    for symbol in sorted(set(symbols)):
+        raw = daily.load(symbol, clean_root)
+        frame = pd.DataFrame() if raw is None else _in_range(raw[list(OHLC)], first, last)
+        parts.append(f"{symbol}:{len(frame)}:{_frame_digest(frame) if len(frame) else '-'}")
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()
+
+
+def dividends_digest(symbols: Iterable[str], clean_root: Path | None = None) -> str:
+    """QT-19: every dividend row a daily run may credit (verdict OK), per name, by content."""
+    parts = []
+    for symbol in sorted(set(symbols)):
+        raw = dividends.load(symbol, clean_root)
+        rows = pd.DataFrame() if raw is None else raw[raw["verdict"] == "OK"][
+            ["ex_date", "amount", "currency"]].astype(str).reset_index(drop=True)
+        parts.append(f"{symbol}:{len(rows)}:{_frame_digest(rows) if len(rows) else '-'}")
     return hashlib.sha256("\n".join(parts).encode()).hexdigest()
 
 

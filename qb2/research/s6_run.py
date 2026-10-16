@@ -73,15 +73,15 @@ def note(run_dir: Path, **row: Any) -> None:
         handle.write(json.dumps({"at": _now(), **row}, sort_keys=True) + "\n")
 
 
-def code_commit(root: Path = REPO_ROOT) -> str:
+def code_commit(root: Path = REPO_ROOT, paths: Sequence[str] = CODE_PATHS) -> str:
     """The last commit touching the code and its inputs; refused if they are dirty."""
     def git(*args: str) -> str:
         return subprocess.run(["git", "-C", str(root), *args], capture_output=True,
                               text=True, check=True).stdout.strip()
-    dirty = git("status", "--porcelain", "--", *CODE_PATHS)
+    dirty = git("status", "--porcelain", "--", *paths)
     if dirty:
         raise Defect(f"code paths have uncommitted changes:\n{dirty}")
-    return git("log", "-1", "--format=%H", "--", *CODE_PATHS)
+    return git("log", "-1", "--format=%H", "--", *paths)
 
 
 def fingerprints(clean_root: Path | None = None) -> dict[str, str]:

@@ -50,13 +50,14 @@ class NameData:
     plan: fills.Schedule
     bet: int                                  # index of its bet group
     fx: pounds.Rates | None = None            # GBPUSD on these bars (dollar lines only)
+    income: np.ndarray | None = None          # QT-19: payout / previous close (P3)
+    weight: pd.Series | None = None           # QT-19: its share of the pot per bar (slots)
 
 
 def instrument_of(entry: Mapping[str, Any]) -> costs.Instrument:
-    return costs.Instrument(ticker=str(entry["t212_ticker"]),
-                            currency=str(entry["quote_currency"]),
-                            market=universe.market_of(entry), kind=str(entry["kind"]),
-                            aim=bool(entry.get("aim", False)))
+    return costs.Instrument(str(entry["t212_ticker"]), str(entry["quote_currency"]),
+                            universe.market_of(entry), str(entry["kind"]),
+                            bool(entry.get("aim", False)))
 
 
 def load(interval: str, *, entries: Sequence[Mapping[str, Any]] | None = None,
@@ -76,11 +77,11 @@ def load(interval: str, *, entries: Sequence[Mapping[str, Any]] | None = None,
         except (pounds.NoRate, access.AccessRefused) as why:
             skipped.append(f"{symbol}: {why}")
             continue
+        if transform is not None and len(bars) >= 2:
+            bars = transform(bars, instrument, market)
         if len(bars) < 2:
             skipped.append(f"{symbol}: no unsealed {interval} bars")
             continue
-        if transform is not None:
-            bars = transform(bars, instrument, market)
         out.append(NameData(symbol, market, instrument, bars,     # P15 mask on intraday
                             p15.schedule(symbol, instrument.kind, bars.index, interval,
                                          market, clean_root),
@@ -102,10 +103,10 @@ class Portfolio:
         return int(sum(int(f[column].sum()) for f in self.parts.values() if column in f))
 
 
-def combined(parts: Mapping[str, pd.DataFrame],
-             graded: Mapping[str, matched_null.Graded] | None = None) -> Portfolio:
-    combine = {col: bet_groups.combine({s: f[col].astype(float) for s, f in parts.items()})
-               for col in ("gross", "net", "marked")}
+def combined(parts: Mapping[str, pd.DataFrame], graded: Mapping[str, matched_null.Graded]
+             | None = None, weights: Mapping[str, pd.Series] | None = None) -> Portfolio:
+    combine = {col: bet_groups.combine({s: f[col].astype(float) for s, f in parts.items()},
+                                       None, weights) for col in ("gross", "net", "marked")}
     trades = int(sum(int(f["entries"].sum()) for f in parts.values()))
     return Portfolio(combine["gross"], combine["net"], combine["marked"], trades,
                      dict(parts), dict(graded or {}))
@@ -117,7 +118,8 @@ def _graded(token: preregister.Registered, strategy: Strategy, name: NameData, i
     fixed parameters, so one slice = the folds stitched), or the sealed bars."""
     full = backtest.run(token, strategy, name.bars, instrument=name.instrument,
                         interval=interval, market=name.market, stress=stress,
-                        final=final, plan=name.plan, fx=name.fx, log_path=None)
+                        final=final, plan=name.plan, fx=name.fx, income=name.income,
+                        log_path=None)
     if final is not None:
         days = holdout.local_index(name.bars.index, name.market).date
         first = int((days < holdout.SEALED_FROM[interval]).sum())      # bars are in order
@@ -136,7 +138,11 @@ def portfolio(token: preregister.Registered, make: Callable[[NameData], Strategy
         if g is not None and g.hi > g.lo:
             graded[name.symbol] = g
             parts[name.symbol] = backtest.frame(g.full, g.lo, g.hi)
-    return combined(parts, graded)
+    return combined(parts, graded, _weights(data))
+
+
+def _weights(data: Sequence[NameData]) -> dict[str, pd.Series] | None:     # QT-19 slots
+    return {d.symbol: d.weight for d in data if d.weight is not None} or None
 
 
 @dataclass(slots=True)
@@ -178,14 +184,13 @@ def _matched(seen: Portfolio, data: Sequence[NameData], interval: str,
     plans = {d.symbol: d.plan for d in data}
     ready = {s: matched_null.prepare(g.full.held, plans[s], g.lo, g.hi) for s, g in seen.graded.items()}
     bets = {d.symbol: d.bet for d in data}
-    return [_draw(combined(matched_null.frames(seen.graded, ready, bets, s)), interval)
-            for s in seeds]
+    return [_draw(combined(matched_null.frames(seen.graded, ready, bets, s), None,
+                           _weights(data)), interval) for s in seeds]
 
 
 def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
           data: Sequence[NameData], *, interval: str, stress: float = 1.0,
-          skipped: Sequence[str] = (), n_null: int = monte_carlo.DEFAULT_TRIALS,
-          seed: int = 0,
+          skipped: Sequence[str] = (), n_null: int = monte_carlo.DEFAULT_TRIALS, seed: int = 0,
           bench: Callable[[date, date], benchmark.Benchmark] | None = None,
           log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG, n_trials: int = 0,
           final: holdout.HoldoutPass | None = None) -> FirewallResult:
@@ -207,8 +212,7 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
             "so there is no pound figure (P3)"] if seen.count("fx_gap") else []
     if not gaps and seen.trades >= verdict.MIN_OOS_TRADES and len(flat) >= verdict.MIN_OOS_BARS:
         seeds = monte_carlo.trial_seeds(seed, n_null)
-        coin = [_draw(portfolio(registered, _coin(s), data, interval, stress, final), interval)
-                for s in seeds]
+        coin = [_draw(portfolio(registered, _coin(s), data, interval, stress, final), interval) for s in seeds]
         matched = _matched(seen, data, interval, seeds)
         if any(g for _, g in coin + matched):
             gaps.append("a luck-test path held a dollar line on a bar with no GBPUSD rate")
@@ -216,8 +220,7 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
         observed = stats.compute(flat, interval, market).sharpe_per_bar
         result.p_value = monte_carlo.p_value(observed, nulls)          # the luck test
         result.null_mean, result.null_std = float(np.mean(nulls)), float(np.std(nulls))
-        result.coin = (monte_carlo.p_value(observed, coins), float(np.mean(coins)),
-                       float(np.std(coins)))
+        result.coin = (monte_carlo.p_value(observed, coins), float(np.mean(coins)), float(np.std(coins)))
         counted, _ = trial_log.count_selection_trials(log_path)
         n_full = max(2, counted + (0 if registered.is_drill else 1), n_trials)
         try:
@@ -227,10 +230,9 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
     result.verdict = verdict.judge(
         oos_trades=seen.trades, oos_bars=len(flat), p_value=result.p_value,
         mean_per_bar=float(flat.mean()) if len(flat) else None,      # QT-17 A2
-        dsr=result.deflated.get("dsr"),
+        dsr=result.deflated.get("dsr"), gaps=gaps,
         strategy_return=stats.compute(flat, interval, market).total_return,  # compounded
-        benchmark_return=result.benchmark.total_return if result.benchmark else np.inf,
-        gaps=gaps)
+        benchmark_return=result.benchmark.total_return if result.benchmark else np.inf)
     if log_path is not None:
         trial_log.log_trial({
             "utc_time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -239,8 +241,7 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
             "strategy_name": str(registered.entry["rule"]),
             "params": {"stress": stress, "n_null": n_null, "seed": seed,
                        "verdict": result.verdict.outcome, "p_value": result.p_value,
-                       "null": "turnover-matched",
-                       "p_coin": result.coin[0] if result.coin else None,
+                       "null": "turnover-matched", "p_coin": result.coin[0] if result.coin else None,
                        "dsr": result.deflated.get("dsr"), "trades": seen.trades,
                        "benchmark": result.benchmark.symbol if result.benchmark else None},
             "metric_name": "oos_sharpe_per_bar_marked",

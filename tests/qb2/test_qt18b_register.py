@@ -29,7 +29,10 @@ def test_the_register_was_committed_before_any_rule_code() -> None:
     def git(*args: str) -> str:
         return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True,
                               check=True).stdout.strip()
-    registered = preregister.require("S6-01-US").commit
+    preregister.require("S6-01-US")                  # committed and unchanged
+    # the commit that FIRST wrote the S6 entries (QT-19: not the register's newest)
+    registered = git("log", "--format=%H", "--reverse", '-S"S6-01-US"', "--",
+                     preregister.REGISTER_REL).split()[0]
     added = git("log", "--diff-filter=A", "--format=%H", "--", "qb2/signals/s6_rules.py")
     for commit in added.split():                     # empty until the rule code is committed
         assert commit != registered

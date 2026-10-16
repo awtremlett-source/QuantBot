@@ -165,6 +165,7 @@ def frames(graded: Mapping[str, Graded], prepared: Mapping[str, Prepared],
     for symbol, g in graded.items():
         rng = np.random.default_rng(np.random.SeedSequence([seed, bets[symbol]]))
         held = draw(prepared[symbol], rng)
-        paths = simulate.run(g.full.opens, g.full.closes, held, g.full.legs, g.full.drag)
+        paths = simulate.run(g.full.opens, g.full.closes, held, g.full.legs, g.full.drag,
+                             g.full.income)
         out[symbol] = backtest.frame(g.full, g.lo, g.hi, paths, held)
     return out
