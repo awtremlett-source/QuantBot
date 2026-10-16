@@ -265,7 +265,7 @@ def to_pounds(frame: pd.DataFrame, currency: str) -> tuple[pd.DataFrame, bool]:
     if currency not in PENCE:
         return frame, False
     converted = frame.copy()
-    for column in OHLC:
+    for column in (c for c in OHLC if c in converted.columns):   # the daily door too (QT-21)
         converted[column] = converted[column] / PENCE_PER_POUND
     return converted, True
 

@@ -1,0 +1,58 @@
+QT-21 A4 red-first: tests/qb2/test_qt21_cross_bar.py run against the OLD daily writer
+(qb2/ingest/daily.py at 747eed1, before the cross-bar check was wired in). 2026-10-16T23:04Z
+
+FFFFF.FFF....                                                            [100%]
+================================== FAILURES ===================================
+E   assert datetime.date(2024, 6, 28) == datetime.date(2023, 11, 24)
+     +  where datetime.date(2024, 6, 28) = <built-in method max of numpy.ndarray object at 0x000002354E2CBED0>()
+     +    where <built-in method max of numpy.ndarray object at 0x000002354E2CBED0> = array([datetime.date(2021, 1, 4), datetime.date(2021, 1, 5),\n       datetime.date(2021, 1, 6), datetime.date(2021, 1, ...6, 25), datetime.date(2024, 6, 26),\n       datetime.date(2024, 6, 27), datetime.date(2024, 6, 28)],\n      dtype=object).max
+     +      where array([datetime.date(2021, 1, 4), datetime.date(2021, 1, 5),\n       datetime.date(2021, 1, 6), datetime.date(2021, 1, ...6, 25), datetime.date(2024, 6, 26),\n       datetime.date(2024, 6, 27), datetime.date(2024, 6, 28)],\n      dtype=object) = days(                              open       high  ...  volume  currency\ndate                                           .....000  ...   39429       GBP\n2024-06-28 00:00:00+01:00  66.9000  67.070000  ...  226283       GBP\n\n[690 rows x 6 columns])
+     +  and   datetime.date(2023, 11, 24) = date(2023, 11, 24)
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:60: assert datetime.date(2024, 6, 28) == datetime.date(2023, 11, 24)
+E   assert datetime.date(2023, 6, 26) == datetime.date(2023, 7, 11)
+     +  where datetime.date(2023, 6, 26) = <built-in method min of numpy.ndarray object at 0x000002354E2CBCF0>()
+     +    where <built-in method min of numpy.ndarray object at 0x000002354E2CBCF0> = array([datetime.date(2023, 6, 26), datetime.date(2023, 6, 27),\n       datetime.date(2023, 6, 28), datetime.date(2023, ...9, 26), datetime.date(2023, 9, 27),\n       datetime.date(2023, 9, 28), datetime.date(2023, 9, 29)],\n      dtype=object).min
+     +      where array([datetime.date(2023, 6, 26), datetime.date(2023, 6, 27),\n       datetime.date(2023, 6, 28), datetime.date(2023, ...9, 26), datetime.date(2023, 9, 27),\n       datetime.date(2023, 9, 28), datetime.date(2023, 9, 29)],\n      dtype=object) = days(                               open      high  ...  volume  currency\ndate                                           .....4000  ...   48433       GBP\n2023-09-29 00:00:00+01:00  4.331500  4.332000  ...    9971       GBP\n\n[62 rows x 6 columns])
+     +  and   datetime.date(2023, 7, 11) = date(2023, 7, 11)
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:69: assert datetime.date(2023, 6, 26) == datetime.date(2023, 7, 11)
+E   assert datetime.date(2018, 1, 31) == datetime.date(2021, 6, 14)
+     +  where datetime.date(2018, 1, 31) = <built-in method min of numpy.ndarray object at 0x000002354E349CB0>()
+     +    where <built-in method min of numpy.ndarray object at 0x000002354E349CB0> = array([datetime.date(2018, 1, 31), datetime.date(2018, 2, 1),\n       datetime.date(2018, 2, 2), datetime.date(2018, 2,...4),\n       datetime.date(2021, 12, 29), datetime.date(2021, 12, 30),\n       datetime.date(2021, 12, 31)], dtype=object).min
+     +      where array([datetime.date(2018, 1, 31), datetime.date(2018, 2, 1),\n       datetime.date(2018, 2, 2), datetime.date(2018, 2,...4),\n       datetime.date(2021, 12, 29), datetime.date(2021, 12, 30),\n       datetime.date(2021, 12, 31)], dtype=object) = days(                            open   high    low  close  volume currency\ndate                                           ...  16.20  265883      GBP\n2021-12-31 00:00:00+00:00  16.00  16.70  16.00  16.70   91304      GBP\n\n[989 rows x 6 columns])
+     +  and   datetime.date(2021, 6, 14) = date(2021, 6, 14)
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:75: assert datetime.date(2018, 1, 31) == datetime.date(2021, 6, 14)
+E   assert datetime.date(2015, 11, 20) == datetime.date(2016, 2, 15)
+     +  where datetime.date(2015, 11, 20) = <built-in method min of numpy.ndarray object at 0x000002354E349890>()
+     +    where <built-in method min of numpy.ndarray object at 0x000002354E349890> = array([datetime.date(2015, 11, 20), datetime.date(2015, 11, 23),\n       datetime.date(2015, 11, 24), datetime.date(201...5, 23), datetime.date(2016, 5, 25),\n       datetime.date(2016, 5, 26), datetime.date(2016, 5, 31)],\n      dtype=object).min
+     +      where array([datetime.date(2015, 11, 20), datetime.date(2015, 11, 23),\n       datetime.date(2015, 11, 24), datetime.date(201...5, 23), datetime.date(2016, 5, 25),\n       datetime.date(2016, 5, 26), datetime.date(2016, 5, 31)],\n      dtype=object) = days(                             open    high     low   close  volume currency\ndate                                       ...935    9000      GBP\n2016-05-31 00:00:00+01:00  3.4430  3.4430  3.4430  3.4430     315      GBP\n\n[104 rows x 6 columns])
+     +  and   datetime.date(2016, 2, 15) = date(2016, 2, 15)
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:82: assert datetime.date(2015, 11, 20) == datetime.date(2016, 2, 15)
+E   assert datetime.date(2010, 1, 4) == datetime.date(2013, 1, 2)
+     +  where datetime.date(2010, 1, 4) = <built-in method min of numpy.ndarray object at 0x000002354E34AE50>()
+     +    where <built-in method min of numpy.ndarray object at 0x000002354E34AE50> = array([datetime.date(2010, 1, 4), datetime.date(2010, 1, 5),\n       datetime.date(2010, 1, 6), ..., datetime.date(2016, 12, 28),\n       datetime.date(2016, 12, 29), datetime.date(2016, 12, 30)],\n      shape=(1767,), dtype=object).min
+     +      where array([datetime.date(2010, 1, 4), datetime.date(2010, 1, 5),\n       datetime.date(2010, 1, 6), ..., datetime.date(2016, 12, 28),\n       datetime.date(2016, 12, 29), datetime.date(2016, 12, 30)],\n      shape=(1767,), dtype=object) = days(                             open    high      low   close   volume currency\ndate                                     ...  590100      GBP\n2016-12-30 00:00:00+00:00  0.8465  0.8475  0.84255  0.8465   205870      GBP\n\n[1767 rows x 6 columns])
+     +  and   datetime.date(2013, 1, 2) = date(2013, 1, 2)
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:88: assert datetime.date(2010, 1, 4) == datetime.date(2013, 1, 2)
+E   AssertionError: no quarantine ledger for SMEA.L
+    assert False
+     +  where False = is_file()
+     +    where is_file = WindowsPath('C:/Users/mtrem/AppData/Local/Temp/pytest-of-mtrem/pytest-653/test_the_nightly_refetch_canno0/quarantine/daily/SMEA.L-crossbar.parquet').is_file
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:54: AssertionError: no quarantine ledger for SMEA.L
+E   assert (                            open   high    low  close  volume currency\ndate                                           ...  16.20  265883      GBP\n2021-12-31 00:00:00+00:00  16.00  16.70  16.00  16.70   91304      GBP\n\n[989 rows x 6 columns] is not None and datetime.date(2018, 1, 31) == datetime.date(2021, 6, 14))
+     +  where datetime.date(2018, 1, 31) = <built-in method min of numpy.ndarray object at 0x000002358E7B3930>()
+     +    where <built-in method min of numpy.ndarray object at 0x000002358E7B3930> = array([datetime.date(2018, 1, 31), datetime.date(2018, 2, 1),\n       datetime.date(2018, 2, 2), datetime.date(2018, 2,...4),\n       datetime.date(2021, 12, 29), datetime.date(2021, 12, 30),\n       datetime.date(2021, 12, 31)], dtype=object).min
+     +      where array([datetime.date(2018, 1, 31), datetime.date(2018, 2, 1),\n       datetime.date(2018, 2, 2), datetime.date(2018, 2,...4),\n       datetime.date(2021, 12, 29), datetime.date(2021, 12, 30),\n       datetime.date(2021, 12, 31)], dtype=object) = days(                            open   high    low  close  volume currency\ndate                                           ...  16.20  265883      GBP\n2021-12-31 00:00:00+00:00  16.00  16.70  16.00  16.70   91304      GBP\n\n[989 rows x 6 columns])
+     +  and   datetime.date(2021, 6, 14) = date(2021, 6, 14)
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:120: assert (                            open   high    low  close  volume currency\ndate                                           ...  16.20  265883      GBP\n2021-12-31 00:00:00+00:00  16.00  16.70  16.00  16.70   91304      GBP\n\n[989 rows x 6 columns] is not None and datetime.date(2018, 1, 31) == datetime.date(2021, 6, 14))
+E   AttributeError: module 'qb2.ingest.daily' has no attribute 'requarantine'
+C:\Users\mtrem\TRADING\tests\qb2\test_qt21_cross_bar.py:126: AttributeError: module 'qb2.ingest.daily' has no attribute 'requarantine'
+=========================== short test summary info ===========================
+FAILED tests/qb2/test_qt21_cross_bar.py::test_smea_unit_break_quarantines_everything_from_2023_11_27
+FAILED tests/qb2/test_qt21_cross_bar.py::test_fwrg_first_seven_rows_quarantined
+FAILED tests/qb2/test_qt21_cross_bar.py::test_edv_rows_before_its_london_listing_quarantined
+FAILED tests/qb2/test_qt21_cross_bar.py::test_iitu_launch_rows_quarantined - ...
+FAILED tests/qb2/test_qt21_cross_bar.py::test_three_breaks_keep_the_line_with_the_most_rows
+FAILED tests/qb2/test_qt21_cross_bar.py::test_the_nightly_refetch_cannot_bring_a_quarantined_row_back
+FAILED tests/qb2/test_qt21_cross_bar.py::test_the_after_hours_step_runs_the_check
+FAILED tests/qb2/test_qt21_cross_bar.py::test_requarantine_cleans_the_store_and_reconciles
+8 failed, 5 passed in 2.13s

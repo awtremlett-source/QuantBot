@@ -29,9 +29,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from qb2.data.front_door import (CLEAN, PENCE, PENCE_PER_POUND, WriterLock,
-                                 _append_manifest, _write_parquet_atomically,
-                                 impossible_rows)
+from qb2.data import cross_bar
+from qb2.data.front_door import (CLEAN, PENCE, WriterLock, _append_manifest,
+                                 _write_parquet_atomically, impossible_rows, to_pounds)
 
 DAILY_DIR = CLEAN / "daily"
 FX_PAIR = "GBPUSD=X"
@@ -71,17 +71,6 @@ def fetch_daily(symbol: str, start: str = HISTORY_START) -> pd.DataFrame | None:
     wanted = [c for c in COLUMNS if c in frame.columns]
     frame = frame[wanted].dropna(how="all")
     return None if frame.empty else frame
-
-
-def to_pounds(frame: pd.DataFrame, currency: str) -> tuple[pd.DataFrame, bool]:
-    """Pence to pounds, exactly once -- the same rule the bars follow."""
-    if currency not in PENCE:
-        return frame, False
-    converted = frame.copy()
-    for column in ("open", "high", "low", "close"):
-        if column in converted.columns:
-            converted[column] = converted[column] / PENCE_PER_POUND
-    return converted, True
 
 
 def daily_path(symbol: str, clean_root: Path | None = None) -> Path:
@@ -129,13 +118,9 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
     target = (clean_root or CLEAN) / "daily"
     target.mkdir(parents=True, exist_ok=True)
 
-    wanted: list[tuple[str, str]] = [
-        (str(e["yfinance"]), str(e.get("quote_currency") or "USD")) for e in entries]
-    if include_fx:
-        wanted.append((FX_PAIR, "RATE"))
-
+    wanted = _wanted(entries, include_fx)
     with WriterLock((clean_root or CLEAN) / "daily.lock"):
-        for symbol, currency in wanted:
+        for symbol, currency, kind in wanted:
             outcome.attempted.append(symbol)
             try:
                 frame = getter(symbol)                    # type: ignore[operator]
@@ -175,6 +160,12 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
             frame = frame.copy()
             frame["currency"] = stored
             frame.index.name = "date"
+            frame, moved = cross_bar.apply(frame, symbol, kind, now=moment,   # QT-21: every write
+                                           clean_root=clean_root)
+            outcome.quarantined += moved
+            if frame.empty:
+                outcome.lost[symbol] = "every row is quarantined (cross_bar.py)"
+                continue
 
             destination = daily_path(symbol, clean_root)
             _write_parquet_atomically(frame, destination)
@@ -190,6 +181,41 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
                 "pence_to_pounds": converted,
             }, clean_root)
             outcome.saved[symbol] = int(len(frame))
+    return outcome
+
+
+def _wanted(entries: Sequence[Mapping[str, object]], include_fx: bool,
+            ) -> list[tuple[str, str, str]]:
+    """(symbol, quote currency, kind) per entry; the pound/dollar rate has no kind."""
+    out = [(str(e["yfinance"]), str(e.get("quote_currency") or "USD"), str(e.get("kind") or ""))
+           for e in entries]
+    return out + [(FX_PAIR, "RATE", "")] if include_fx else out
+
+
+def requarantine(entries: Sequence[Mapping[str, object]], *, clean_root: Path | None = None,
+                 include_fx: bool = True, now: datetime | None = None) -> DailyOutcome:
+    """QT-21 A2: the cross-bar check run over the files ALREADY stored, through the same
+    lock, ledger, atomic write and manifest as every top-up. No fetch; rows are moved, never
+    changed: rows in = rows kept + rows quarantined."""
+    moment = now or datetime.now(timezone.utc)
+    outcome = DailyOutcome()
+    with WriterLock((clean_root or CLEAN) / "daily.lock"):
+        for symbol, _, kind in _wanted(entries, include_fx):
+            outcome.attempted.append(symbol)
+            frame = load(symbol, clean_root)
+            if frame is None or frame.empty:
+                outcome.lost[symbol] = "nothing stored"
+                continue
+            kept, moved = cross_bar.apply(frame, symbol, kind, now=moment, clean_root=clean_root)
+            outcome.quarantined += moved
+            outcome.saved[symbol] = int(len(kept))
+            if len(kept) != len(frame):
+                _write_parquet_atomically(kept, daily_path(symbol, clean_root))
+                _append_manifest({
+                    "event": "daily", "at": moment.isoformat(timespec="seconds"),
+                    "symbol": symbol, "rows": int(len(kept)), "first": str(kept.index.min()),
+                    "last": str(kept.index.max()), "requarantine": int(len(frame) - len(kept)),
+                    "note": "QT-21 cross-bar check over the stored file (no fetch)"}, clean_root)
     return outcome
 
 
