@@ -1,6 +1,6 @@
 # S6 batch 1 results, 2026-10 (QT-18: 8 same-day rules × 3 arms, 1-hour bars)
 
-Run 1 of 1; **12 of 24 trials complete**; interrupted runs logged (counted 0): none. Every trial run exactly as registered (docs/research/preregistered.json, ids S6-01-US … S6-08-MIX); code commit and data fingerprints in docs/reports/QT-18_progress.md.
+Run 1 of 1; **16 of 24 trials complete**; interrupted runs logged (counted 0): none. Every trial run exactly as registered (docs/research/preregistered.json, ids S6-01-US … S6-08-MIX); code commit and data fingerprints in docs/reports/QT-18_progress.md.
 
 **Survived both gates (walk-forward PASS at 2× costs AND holdout PASS): none.**
 
@@ -8,7 +8,7 @@ How each trial is judged: net after 2× costs with the survivorship mark-down, c
 
 **Read with care:** the P15 history rule lets the back-test always dodge the real results date. Live, a date can move, so share results are slightly optimistic (ETFs are not affected) -- most of all in the holdout, where each share's next date is the one first recorded on 2026-10-02, treated as known from its July/August results.
 
-Trial count for deflation: **N = 42** (18 before + 24). qb2's trial log now counts 30 selection trials (38 drill and 0 holdout lines excluded). Trial runtime 55 minutes.
+Trial count for deflation: **N = 42** (18 before + 24). qb2's trial log now counts 34 selection trials (38 drill and 0 holdout lines excluded). Trial runtime 76 minutes.
 
 ## The 24 trials
 
@@ -26,6 +26,10 @@ Trial count for deflation: **N = 42** (18 before + 24). qb2's trial log now coun
 | S6-04-US | US | 2024-02-01 → 2026-07-10 | 4,652 | -49.29% | **-72.80%** | +50.70% | -72.81% | 0.025 | 0.000 (42) | **FAIL** | not run (no walk-forward PASS) |
 | S6-04-LON | LON | 2024-02-12 → 2026-07-10 | 3,360 | -48.41% | **-73.29%** | +47.33% | -73.29% | 0.005 | 0.000 (42) | **FAIL** | not run (no walk-forward PASS) |
 | S6-04-MIX | MIX | 2024-02-01 → 2026-07-10 | 8,012 | -48.93% | **-72.97%** | +50.70% | -72.97% | 0.005 | 0.000 (42) | **FAIL** | not run (no walk-forward PASS) |
+| S6-05-US | US | 2024-02-01 → 2026-07-10 | 10,904 | -78.28% | **-94.92%** | +50.70% | -94.92% | 0.249 | 0.000 (42) | **FAIL** | not run (no walk-forward PASS) |
+| S6-05-LON | LON | 2024-02-12 → 2026-07-10 | 4,892 | -64.84% | **-87.57%** | +47.33% | -87.57% | 0.005 | 0.000 (42) | **FAIL** | not run (no walk-forward PASS) |
+| S6-05-MIX | MIX | 2024-02-01 → 2026-07-10 | 15,796 | -73.84% | **-92.83%** | +50.70% | -92.83% | 0.035 | 0.000 (42) | **FAIL** | not run (no walk-forward PASS) |
+| S6-06-US | US | 2024-02-01 → 2026-07-10 | 3,286 | -34.89% | **-58.15%** | +50.70% | -58.16% | 0.080 | 0.000 (42) | **FAIL** | not run (no walk-forward PASS) |
 
 ## Why each verdict
 
@@ -41,6 +45,10 @@ Trial count for deflation: **N = 42** (18 before + 24). qb2's trial log now coun
 - **S6-04-US** FAIL: failed: a positive net mean per bar (-0.03060% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-72.80% vs +50.70%)
 - **S6-04-LON** FAIL: failed: a positive net mean per bar (-0.02411% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-73.29% vs +47.33%)
 - **S6-04-MIX** FAIL: failed: a positive net mean per bar (-0.01345% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-72.97% vs +50.70%)
+- **S6-05-US** FAIL: failed: beats the turnover-matched luck test (p 0.2488 < 0.05); failed: a positive net mean per bar (-0.06997% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-94.92% vs +50.70%)
+- **S6-05-LON** FAIL: failed: a positive net mean per bar (-0.03807% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-87.57% vs +47.33%)
+- **S6-05-MIX** FAIL: failed: a positive net mean per bar (-0.02708% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-92.83% vs +50.70%)
+- **S6-06-US** FAIL: failed: beats the turnover-matched luck test (p 0.0796 < 0.05); failed: a positive net mean per bar (-0.02046% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-58.15% vs +50.70%)
 
 ## Per sleeve (net after 2× costs and mark-down, compounded)
 
@@ -62,6 +70,10 @@ Trial count for deflation: **N = 42** (18 before + 24). qb2's trial log now coun
 | S6-04-US | — | — | -72.80% (4,652) |
 | S6-04-LON | -63.48% (2,226) | -79.23% (1,134) | — |
 | S6-04-MIX | -63.48% (2,226) | -79.23% (1,134) | -72.80% (4,652) |
+| S6-05-US | — | — | -94.92% (10,904) |
+| S6-05-LON | -73.67% (2,982) | -93.19% (1,910) | — |
+| S6-05-MIX | -73.67% (2,982) | -93.19% (1,910) | -94.92% (10,904) |
+| S6-06-US | — | — | -58.15% (3,286) |
 
 ## Appendix: each trial's firewall report
 
@@ -328,4 +340,92 @@ Trial count for deflation: **N = 42** (18 before + 24). qb2's trial log now coun
 - Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar -0.6820 ± 0.0115)
 - Deflated Sharpe: 0.000 over 42 trials (luck ceiling 0.0255 per bar)
 - Verdict: FAIL -- failed: a positive net mean per bar (-0.01345% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-72.97% vs +50.70%)
+
+### S6-05-US -- FAIL
+
+- Registered in commit `c89f2fd7202c`; bars: 1h; costs at 2x; out-of-sample 2024-02-01 to 2026-07-10
+- Names: 30 (29 independent bets; 0 left out)
+
+| | total return | Sharpe / bar | annualised | max drawdown |
+|---|---|---|---|---|
+| strategy, gross (no costs) | -6.73% | -0.0106 | -0.44 | -12.06% |
+| strategy, net at 2x costs | -94.90% | -0.3959 | -16.63 | -94.90% |
+| strategy, net after survivorship mark-down | -94.92% | -0.3966 | -16.66 | -94.92% |
+| strategy, net at 1x costs | -78.17% | -0.2328 | -9.78 | -78.17% |
+| **benchmark VWRP.L** (same period) | **+50.70%** | | | |
+
+- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)
+- Mark-down: before -94.90%, after -94.92% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)
+- Out-of-sample trades: 10904; bars: 4249; net mean per bar -0.06997% (Gate 1 needs it above zero)
+- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them
+- Luck test (turnover-matched null: the rule's own trades at random times): p = 0.2488 (null Sharpe/bar -0.4092 ± 0.0164)
+- Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar -0.6979 ± 0.0137)
+- Deflated Sharpe: 0.000 over 42 trials (luck ceiling 0.0303 per bar)
+- Verdict: FAIL -- failed: beats the turnover-matched luck test (p 0.2488 < 0.05); failed: a positive net mean per bar (-0.06997% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-94.92% vs +50.70%)
+
+### S6-05-LON -- FAIL
+
+- Registered in commit `c89f2fd7202c`; bars: 1h; costs at 2x; out-of-sample 2024-02-12 to 2026-07-10
+- Names: 19 (18 independent bets; 1 left out)
+
+| | total return | Sharpe / bar | annualised | max drawdown |
+|---|---|---|---|---|
+| strategy, gross (no costs) | -0.46% | -0.0012 | -0.05 | -5.24% |
+| strategy, net at 2x costs | -87.54% | -0.4497 | -18.89 | -87.54% |
+| strategy, net after survivorship mark-down | -87.57% | -0.4501 | -18.90 | -87.57% |
+| strategy, net at 1x costs | -64.77% | -0.2919 | -12.26 | -64.77% |
+| **benchmark VWRP.L** (same period) | **+47.33%** | | | |
+
+- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)
+- Mark-down: before -87.54%, after -87.57% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)
+- Out-of-sample trades: 4892; bars: 5470; net mean per bar -0.03807% (Gate 1 needs it above zero)
+- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them
+- Luck test (turnover-matched null: the rule's own trades at random times): p = 0.0050 (null Sharpe/bar -0.5333 ± 0.0163)
+- Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar -0.9900 ± 0.0157)
+- Deflated Sharpe: 0.000 over 42 trials (luck ceiling 0.0346 per bar)
+- Verdict: FAIL -- failed: a positive net mean per bar (-0.03807% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-87.57% vs +47.33%)
+
+### S6-05-MIX -- FAIL
+
+- Registered in commit `c89f2fd7202c`; bars: 1h; costs at 2x; out-of-sample 2024-02-01 to 2026-07-10
+- Names: 49 (47 independent bets; 1 left out)
+
+| | total return | Sharpe / bar | annualised | max drawdown |
+|---|---|---|---|---|
+| strategy, gross (no costs) | -4.25% | -0.0070 | -0.29 | -8.28% |
+| strategy, net at 2x costs | -92.80% | -0.3500 | -14.70 | -92.80% |
+| strategy, net after survivorship mark-down | -92.83% | -0.3504 | -14.72 | -92.83% |
+| strategy, net at 1x costs | -73.74% | -0.2091 | -8.78 | -73.74% |
+| **benchmark VWRP.L** (same period) | **+50.70%** | | | |
+
+- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)
+- Mark-down: before -92.80%, after -92.83% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)
+- Out-of-sample trades: 15796; bars: 9719; net mean per bar -0.02708% (Gate 1 needs it above zero)
+- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them
+- Luck test (turnover-matched null: the rule's own trades at random times): p = 0.0348 (null Sharpe/bar -0.3706 ± 0.0115)
+- Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar -0.6820 ± 0.0115)
+- Deflated Sharpe: 0.000 over 42 trials (luck ceiling 0.0255 per bar)
+- Verdict: FAIL -- failed: a positive net mean per bar (-0.02708% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-92.83% vs +50.70%)
+
+### S6-06-US -- FAIL
+
+- Registered in commit `c89f2fd7202c`; bars: 1h; costs at 2x; out-of-sample 2024-02-01 to 2026-07-10
+- Names: 30 (29 independent bets; 0 left out)
+
+| | total return | Sharpe / bar | annualised | max drawdown |
+|---|---|---|---|---|
+| strategy, gross (no costs) | +1.46% | 0.0050 | 0.21 | -4.38% |
+| strategy, net at 2x costs | -58.07% | -0.2535 | -10.65 | -58.08% |
+| strategy, net after survivorship mark-down | -58.15% | -0.2540 | -10.67 | -58.16% |
+| strategy, net at 1x costs | -34.77% | -0.1335 | -5.61 | -35.00% |
+| **benchmark VWRP.L** (same period) | **+50.70%** | | | |
+
+- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)
+- Mark-down: before -58.07%, after -58.15% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)
+- Out-of-sample trades: 3286; bars: 4249; net mean per bar -0.02046% (Gate 1 needs it above zero)
+- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them
+- Luck test (turnover-matched null: the rule's own trades at random times): p = 0.0796 (null Sharpe/bar -0.2898 ± 0.0225)
+- Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar -0.6979 ± 0.0137)
+- Deflated Sharpe: 0.000 over 42 trials (luck ceiling 0.0303 per bar)
+- Verdict: FAIL -- failed: beats the turnover-matched luck test (p 0.0796 < 0.05); failed: a positive net mean per bar (-0.02046% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-58.15% vs +50.70%)
 
