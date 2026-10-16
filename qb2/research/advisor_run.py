@@ -3,7 +3,8 @@
 Same rules of the run as S6 batch 1 (qb2/research/s6_run.py, whose helpers this uses):
 
 * register order (A-01..A-06); each judged by firewall.score at 2x costs (1x beside
-  it), N = 42 + 6 = 48 for the Deflated Sharpe; one arm, the whole advisor list;
+  it), N = 42 + 6 = 48 for the Deflated Sharpe; one arm, the whole advisor list; the
+  luck bar from random-rank books built by the trial's own rules (rank_null.py, QT-21 C);
 * the rule is a_rules.of(entry) and the book advisor_book.build -- each refuses what
   it does not implement; the book is rebuilt on data cut at three mid-month dates and
   refused if its past changed (advisor_book.causal);
@@ -30,11 +31,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from qb2.research import (advisor_book, advisor_data, advisor_results, firewall, holdout,
-                          p19_results, preregister, trial_log)
+                          p19_results, preregister, rank_null, trial_log)
+from qb2.research.advisor_book import Held as Held      # re-exported: advisor_run.Held
 from qb2.research.s6_run import Defect, atomic_write, code_commit, journal, note, start
 from qb2.signals import a_rules
 
@@ -44,19 +45,6 @@ PAGE = REPO_ROOT / "docs" / "research" / "A_batch1_results_2026-10.md"
 STRESS, N_TRIALS, N_NULL = 2.0, 48, 200
 CODE_PATHS = ("qb2", "requirements-qb2.txt", "docs/research/preregistered.json",
               "docs/research/bet_groups.json", "docs/universe/advisor-universe-v1-2026-10-01.json")
-
-
-class Held:
-    """One name's targets from the book; refuses bars that are not a prefix of its own."""
-
-    def __init__(self, symbol: str, index: pd.DatetimeIndex, decisions: np.ndarray) -> None:
-        self.name, self.index, self.decisions = f"advisor_book:{symbol}", index, decisions
-
-    def weights(self, bars: pd.DataFrame) -> pd.Series:
-        n = len(bars)
-        if n > len(self.index) or not pd.DatetimeIndex(bars.index).equals(self.index[:n]):
-            raise ValueError(f"{self.name}: bars are not a prefix of the book's own")
-        return pd.Series(self.decisions[:n], index=bars.index)
 
 
 def trials(root: Path | None = None) -> list[dict[str, Any]]:
@@ -81,10 +69,7 @@ def book_for(entry: Mapping[str, Any], data: Sequence[firewall.NameData], *,
     on = advisor_data.market_filter(final, clean_root) if rule.market_filter else None
 
     def make(names: Sequence[firewall.NameData]) -> advisor_book.Book:
-        values = {n.symbol: rule.values(n.bars, n.bet, np.array(
-            [advisor_book.month_of(d) for d in pd.DatetimeIndex(n.bars.index).date]))
-            for n in names}
-        return advisor_book.build(s, names, values, vix=vix, market_on=on)
+        return advisor_book.build(s, names, rank_null.rule_values(rule, names), vix=vix, market_on=on)
 
     book = make(data)
     advisor_book.causal(make, data, book, cuts(data))
@@ -99,8 +84,10 @@ def score(token: preregister.Registered, data: Sequence[firewall.NameData],
 
     def make(name: firewall.NameData) -> Held:
         return Held(name.symbol, index[name.symbol], book.decisions[name.symbol])
+    nulls = rank_null.Nulls(token.entry, data, vix=advisor_data.vix(final), cuts=cuts(data))
     return firewall.score(token, make, data, interval="1d", stress=stress, skipped=skipped,
-                          n_null=n_null, log_path=log_path, n_trials=N_TRIALS, final=final)
+                          n_null=n_null, log_path=log_path, n_trials=N_TRIALS, final=final,
+                          skill_free=nulls.draw)
 
 
 def summary(token: preregister.Registered, result: firewall.FirewallResult,
@@ -211,15 +198,17 @@ def write_page(run_dir: Path = RUN_DIR, target: Path = PAGE) -> str:
     records = advisor_results.load(run_dir / f"run{number}", [str(e["id"]) for e in trials()])
     passed = [r["id"] for r in records if r["verdict"] == "PASS"
               and (r.get("holdout") or {}).get("verdict") == "PASS"]
-    intro = ["# S9 advisor batch 1 — results, 2026-10 (QT-19)", "",
+    intro = ["# S9 advisor batch 1 — results, 2026-10 (built QT-19, run QT-21)", "",
              f"Run {number}; {len(records)} of {len(trials())} trials complete; register commit "
              f"`{str(records[0]['register_commit'])[:7] if records else '?'}`. Every trial run "
              "exactly as registered (docs/research/preregistered.json).", "",
              f"**Survived (walk-forward PASS and holdout PASS): {', '.join(passed) or 'none'}.**",
              "", "Judged on net after 2× costs with the survivorship mark-down and dividends "
              "credited, compounded, against D3 over the same dates (VWRP; VWRL with dividends "
-             "before VWRP's first close, 2019-07-25). PASS needs the luck test (p < 0.05) and a "
-             "positive net mean, Deflated Sharpe ≥ 0.95 at N = 48, and beating D3. Dividends: "
+             "before VWRP's first traded close, 2019-08-13 since QT-21). PASS needs the luck test "
+             "(p < 0.05) and a positive net mean, Deflated Sharpe ≥ 0.95 at N = 48 (luck bar from "
+             "random-rank books), and beating D3; one bar over 25% of the variance = "
+             "INSUFFICIENT. Dividends: "
              + (advisor_data.counts_text(records[0]["dividends"]) if records else "—") + "."]
     text = advisor_results.page(records, intro)
     target.write_text(text, encoding="utf-8")

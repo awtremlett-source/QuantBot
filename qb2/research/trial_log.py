@@ -12,7 +12,9 @@ Adapted for qb2:
   counted as a trial (a measuring instrument is not a lottery ticket);
 * ``kind="seal_viewed"`` (QT-17 A1) records that sealed data was LOOKED AT outside
   the single final run -- a breach on record, counted 0, never a trial: e.g. the
-  QT-16 stop description's read of the sealed daily year.
+  QT-16 stop description's read of the sealed daily year;
+* ``kind="note"`` (QT-21) records a change to the judging itself (e.g. the advisor's
+  luck bar): on the record, counted 0 -- a firewall change is not a trial.
 
 Append-only by construction ("a" mode, one JSON object per line). A failure to
 write is RE-RAISED (Scar #12): a silently lost trial would understate the count.
@@ -35,8 +37,9 @@ WALK_FORWARD = "walk_forward"
 MONTE_CARLO = "monte_carlo"
 HOLDOUT = "holdout"
 SEAL_VIEWED = "seal_viewed"
+NOTE = "note"
 KINDS = frozenset({DRILL, FIREWALL, BACKTEST, WALK_FORWARD, MONTE_CARLO, HOLDOUT,
-                   SEAL_VIEWED})
+                   SEAL_VIEWED, NOTE})
 
 REQUIRED_KEYS = ("utc_time", "kind", "candidate_id", "register_commit",
                  "strategy_name", "params", "metric_name", "metric_value", "n_bars")
@@ -69,12 +72,12 @@ def count_selection_trials(path: Path | None = None) -> tuple[int, dict[str, int
 
     firewall and backtest records count 1 each; walk_forward counts its
     ``params.total_trials``; monte_carlo and holdout count 0 (a measuring stick
-    pointed at a result we already had); drills and seal_viewed records count 0
+    pointed at a result we already had); drills, seal_viewed and note records count 0
     and are reported.
     """
     seen = {"firewall": 0, "backtest": 0, "walk_forward_trials": 0,
             "monte_carlo_excluded": 0, "holdout_excluded": 0, "drills_excluded": 0,
-            "seal_viewed_excluded": 0}
+            "seal_viewed_excluded": 0, "notes_excluded": 0}
     for record in read_trials(path):
         kind = record.get("kind")
         if kind == DRILL:
@@ -91,6 +94,8 @@ def count_selection_trials(path: Path | None = None) -> tuple[int, dict[str, int
             seen["holdout_excluded"] += 1
         elif kind == SEAL_VIEWED:
             seen["seal_viewed_excluded"] += 1
+        elif kind == NOTE:
+            seen["notes_excluded"] += 1
         else:
             raise ValueError(f"unknown trial kind {kind!r} in the qb2 trial log")
     return seen["firewall"] + seen["backtest"] + seen["walk_forward_trials"], seen

@@ -20,7 +20,8 @@ import numpy as np
 import pandas as pd
 
 from qb2.guard import earnings_window
-from qb2.research import advisor_book, bet_groups, fills, firewall, matched_null, p15_history, stats
+from qb2.research import (advisor_book, bet_groups, fills, firewall, matched_null, p15_history,
+                          rank_null, stats, verdict)
 from qb2.research.p19_results import _num, _pct
 
 WARNING = ("Description only. Choosing the US or London half because it looks better here "
@@ -51,11 +52,32 @@ def extras(result: firewall.FirewallResult, data: Sequence[firewall.NameData],
                                       {s: w for s in part if (w := by[s].weight) is not None})
             split[market] = {"marked_2x": stats.compute(line, "1d").total_return,
                              "trades": int(sum(int(f["entries"].sum()) for f in part.values()))}
+    marked = seen.marked.to_numpy(dtype=float)
+    sr0_ii = rank_null.analytic_sr0(marked, int(result.deflated.get("n_trials", 48)))
     return {"turnover_per_year": bought / years, "avg_hold_days": float(np.mean(days)) if days
             else None, "split": split, "stopped": book.stopped, "requalified": book.requalified,
             "filter_off_months": book.filter_off_months,
             "ceiling_binds": capped / held_bars if held_bars else 0.0,
-            "warnings": warnings(book, data, result.start)}
+            "warnings": warnings(book, data, result.start),
+            "top_bar_share": verdict.top_bar_share(marked), "stopped_in_a_month":
+            stopped_within(book, data, result.start), "sr0_rank": result.deflated.get("sr0"),
+            "sr0_analytic": sr0_ii}
+
+
+def stopped_within(book: advisor_book.Book, data: Sequence[firewall.NameData], start: object,
+                   bars: int = 21) -> float | None:
+    """Of the buys decided on/after ``start``: the share whose holding ended at a P10 stop
+    within ``bars`` sessions (a month) of the decision."""
+    by, stops = {d.symbol: d for d in data}, set(book.stops)
+    hit = n = 0
+    for sym, t in book.buys:
+        if start is None or pd.DatetimeIndex(by[sym].bars.index).date[t] < start:
+            continue
+        n += 1
+        rest = np.flatnonzero(book.decisions[sym][t + 1:] == 0.0)
+        end = t + 1 + int(rest[0]) if len(rest) else None
+        hit += end is not None and (sym, end) in stops and end - t <= bars
+    return hit / n if n else None
 
 
 def warnings(book: advisor_book.Book, data: Sequence[firewall.NameData],
@@ -83,8 +105,8 @@ def warnings(book: advisor_book.Book, data: Sequence[firewall.NameData],
 
 def table(records: Sequence[Mapping[str, Any]]) -> list[str]:
     lines = ["| id | rule | trades | gross | net 1× | **net 2×** | D3 same dates | max DD | "
-             "p (matched) | DSR (N) | verdict | holdout | turnover/yr | avg hold |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "p (matched) | DSR (N) | biggest bar | verdict | holdout | turnover/yr | avg hold | "
+             "stopped < 1 month |", "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in records:
         hold = r.get("holdout")
         held = "—" if r["avg_hold_days"] is None else f"{r['avg_hold_days']:.0f} days"
@@ -92,9 +114,14 @@ def table(records: Sequence[Mapping[str, Any]]) -> list[str]:
             f"| {r['id']} | {r['rule_name']} | {r['trades']:,} | {_pct(r['gross'])} | "
             f"{_pct(r['marked_1x'])} | **{_pct(r['marked_2x'])}** | {_pct(r['vwrp'])} | "
             f"{_pct(r['max_dd_2x'])} | {_num(r['p'])} | {_num(r['dsr'])} ({_num(r['n_trials'], 0)})"
-            f" | **{r['verdict']}** | {hold['verdict'] if hold else 'not run'} | "
-            f"{_pct(r['turnover_per_year'])} | {held} |")
+            f" | {_share(r.get('top_bar_share'))} | **{r['verdict']}** | "
+            f"{hold['verdict'] if hold else 'not run'} | {_pct(r['turnover_per_year'])} | {held} | "
+            f"{_share(r.get('stopped_in_a_month'))} |")
     return lines
+
+
+def _share(x: float | None) -> str:
+    return "—" if x is None else f"{float(x):.1%}"
 
 
 def page(records: Sequence[Mapping[str, Any]], intro: Sequence[str]) -> str:
@@ -111,6 +138,14 @@ def page(records: Sequence[Mapping[str, Any]], intro: Sequence[str]) -> str:
         lines.append(f"| {r['id']} | {r['stopped']:,} | {r['requalified']:,} | "
                      f"{r['ceiling_binds']:.2%} | {r['filter_off_months']} | {w['buys']:,} | "
                      f"{w['within_5_days']:,} | {w['date_unknown']:,} |")
+    lines += ["", "## The luck bar, two ways (SR0 at N; DSR uses (i))", "",
+              "(i) random-rank books built by the trial's own rules: how far skill-free books sit "
+              "from each other on the one shared history. (ii) DESCRIPTION ONLY, one book's own "
+              "Sharpe noise from its moments: the noise the PSR already charges in its "
+              "denominator, so (ii) is expected to be the larger.", "",
+              "| id | Sharpe/bar (2×) | SR0 (i) random-rank | SR0 (ii) analytic |", "|---|---|---|---|"]
+    lines += [f"| {r['id']} | {_num(r['sharpe'], 4)} | {_num(r.get('sr0_rank'), 4)} | "
+              f"{_num(r.get('sr0_analytic'), 4)} |" for r in records]
     lines += ["", "## Why each did not pass", ""]
     lines += [f"- **{r['id']}**: " + ("; ".join(r["reasons"]) or "every check met") for r in records]
     for r in records:

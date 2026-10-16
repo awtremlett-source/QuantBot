@@ -16,7 +16,8 @@ dates: daily VWRP from 2025-10-10 is the DAILY sealed year, and QT-14..16's 5-mi
 benchmark read it (logged, kind seal_viewed). Its price is its total return, so an
 intraday figure needs the accumulating line: the distributing fallback is refused.
 
-QT-19: VWRP's first close is 2019-07-25. A daily span that starts before it is the
+QT-19: VWRP's first close (in the store) was 2019-07-25; since QT-21 quarantined its five
+untraded filler rows it is 2019-08-13. A daily span that starts before it is the
 named fallback, VWRL with its dividends added back, up to that close, chained to
 VWRP from it -- one fund, so the splice changes the line, not what is measured.
 """

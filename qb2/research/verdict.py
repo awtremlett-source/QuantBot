@@ -5,6 +5,10 @@
   third answer, never shown as PASS and never silently dropped.
 * INSUFFICIENT too when a figure cannot honestly be made: a held dollar bar with
   no GBPUSD rate has no pound figure (P3; QT-16 A2).
+* INSUFFICIENT too when ONE bar carries more than 25% of the result's variance (QT-21
+  B1, red-on-broken, SCARS #9): a result made by a single bar is a data question, not a
+  verdict. The QT-19 coin books that held SMEA.L into its broken open carried ~90% in
+  that one bar; clean books carry ~2%. It labels; it never makes a PASS.
 * PASS needs all of these, on the marked-down NET record:
   1. Gate 1, the luck gate, in two halves:
      a. ``luck`` -- better than the turnover-matched null, the candidate's own
@@ -23,6 +27,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+import numpy as np
+
 PASS = "PASS"
 FAIL = "FAIL"
 INSUFFICIENT = "INSUFFICIENT"
@@ -30,6 +36,7 @@ MIN_OOS_TRADES = 30          # STARTING FIGURE (standing GO 2026-10-07)
 MIN_OOS_BARS = 30
 ALPHA = 0.05
 DSR_PASS = 0.95
+BIGGEST_BAR = 0.25           # STARTING FIGURE (QT-21 B1, standing GO): one bar's variance share
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,10 +55,22 @@ class Verdict:
         return f"{self.outcome} -- {detail}"
 
 
+def top_bar_share(returns: Sequence[float] | np.ndarray) -> float:
+    """The biggest single bar's share of the result's variance (squared deviations)."""
+    r = np.asarray(returns, dtype=float)
+    dev = (r - r.mean()) ** 2 if len(r) else r
+    total = float(dev.sum()) if len(r) else 0.0
+    return float(dev.max()) / total if total > 0 else 0.0
+
+
 def judge(*, oos_trades: int, oos_bars: int, p_value: float | None,
           mean_per_bar: float | None, dsr: float | None, strategy_return: float,
-          benchmark_return: float, gaps: Sequence[str] = ()) -> Verdict:
+          benchmark_return: float, gaps: Sequence[str] = (),
+          top_share: float | None = None) -> Verdict:
     short = list(gaps)
+    if top_share is not None and top_share > BIGGEST_BAR:
+        short.append(f"one bar carries {top_share:.0%} of the result's variance (more than "
+                     f"{BIGGEST_BAR:.0%}): a result made by one bar is not judged")
     if oos_trades < MIN_OOS_TRADES:
         short.append(f"only {oos_trades} out-of-sample trades (need {MIN_OOS_TRADES})")
     if oos_bars < MIN_OOS_BARS:

@@ -1,0 +1,328 @@
+# ==================== census0.py ====================
+"""QT-21 census of every daily file, UNSEALED rows only (via the holdout door)."""
+import json, sys
+import numpy as np, pandas as pd
+from pathlib import Path
+from qb2.research import holdout
+from qb2.data import universe
+mk = {}
+for e in universe.advisor_entries():
+    mk[str(e["yfinance"])] = "US" if str(e["quote_currency"]) == "USD" else "LSE"
+rows = []
+for p in sorted(Path("data/clean/daily").glob("*.parquet")):
+    sym = p.stem
+    market = mk.get(sym) or ("LSE" if sym.endswith(".L") else "US")
+    try:
+        b = holdout.research_bars(sym, "1d", market)
+    except Exception as exc:
+        try:
+            b = holdout.research_bars(sym, "1d", "US" if market == "LSE" else "LSE"); market = "US" if market == "LSE" else "LSE"
+        except Exception as exc2:
+            rows.append({"sym": sym, "err": f"{type(exc2).__name__}: {exc2}"[:120]}); continue
+    if b.empty:
+        rows.append({"sym": sym, "n": 0}); continue
+    o, c, v = b.open.to_numpy(float), b.close.to_numpy(float), b.volume.to_numpy(float)
+    flat = ((b.open == b.high) & (b.high == b.low) & (b.low == b.close)).to_numpy()
+    dead = flat & (v == 0)
+    traded = v > 0
+    pc = np.r_[np.nan, c[:-1]]
+    r = o / pc
+    brk = np.flatnonzero((r >= 3) | (r <= 1 / 3))
+    big = np.flatnonzero((r >= 1.5) | (r <= 0.67))
+    first_tr = int(np.argmax(traded)) if traded.any() else None
+    lead_dead = int(dead[:first_tr].sum()) if first_tr is not None else int(dead.sum())
+    # longest run of traded rows, and first start of a run >= R
+    runs, start, best = {}, None, 0
+    run = 0
+    first_run = {}
+    for i, t in enumerate(traded):
+        run = run + 1 if t else 0
+        best = max(best, run)
+        for R in (5, 10, 20):
+            if run == R and R not in first_run:
+                first_run[R] = str(b.index[i - R + 1].date())
+    rows.append({"sym": sym, "mkt": market, "n": len(b), "first": str(b.index[0].date()),
+                 "first_traded": str(b.index[first_tr].date()) if first_tr is not None else None,
+                 "lead_dead": lead_dead, "dead_share": round(float(dead.mean()), 3),
+                 "traded_share": round(float(traded.mean()), 3), "longest_traded_run": best,
+                 "first_run": first_run,
+                 "breaks": [(str(b.index[t].date()), round(float(r[t]), 3), int(v[t - 1]), int(v[t]), bool(dead[t - 1]), bool(dead[t])) for t in brk],
+                 "big": [(str(b.index[t].date()), round(float(r[t]), 3)) for t in big][:12]})
+json.dump(rows, open(sys.argv[1], "w"), indent=0)
+for x in rows:
+    if x.get("err") or x.get("breaks") or (x.get("lead_dead") or 0) > 0:
+        print({k: x.get(k) for k in ("sym", "err", "n", "first", "first_traded", "lead_dead", "dead_share", "longest_traded_run", "first_run", "breaks")})
+
+# ==================== census1.py ====================
+"""Per name: kind, rows before the first run of R traded sessions, of which not flat-zero-vol."""
+import numpy as np, pandas as pd
+from pathlib import Path
+from qb2.research import holdout
+from qb2.data import universe
+kind, mk = {}, {}
+for e in universe.bot_entries() + universe.advisor_entries():
+    kind[str(e["yfinance"])] = str(e.get("kind")); mk[str(e["yfinance"])] = universe.market_of(e)
+print(len(kind))
+out = []
+for p in sorted(Path("data/clean/daily").glob("*.parquet")):
+    s = p.stem
+    if s not in kind: print("no kind:", s); continue
+    b = holdout.research_bars(s, "1d", mk[s])
+    v = b.volume.to_numpy(float); tr = v > 0
+    flat = ((b.open == b.high) & (b.high == b.low) & (b.low == b.close)).to_numpy()
+    dead = flat & ~tr
+    for R in (20,):
+        run, st = 0, None
+        for i, t in enumerate(tr):
+            run = run + 1 if t else 0
+            if run == R: st = i - R + 1; break
+        before = st if st is not None else len(b)
+        out.append((s, kind[s], len(b), before, int(dead[:before].sum()), int((~dead[:before]).sum()), str(b.index[st].date()) if st is not None else None, round(float(dead.mean()),3)))
+for r in out:
+    if r[1] != "ETF" and r[3] > 0: print("SHARE", r)
+print("---- ETFs")
+for r in out:
+    if r[1] == "ETF" and r[3] > 0: print("ETF", r)
+
+# ==================== march2020.py ====================
+import numpy as np, pandas as pd
+from datetime import date
+from pathlib import Path
+from qb2.research import holdout
+from qb2.data import universe
+best = []
+for e in universe.bot_entries() + universe.advisor_entries():
+    s = str(e["yfinance"]); m = universe.market_of(e)
+    b = holdout.research_bars(s, "1d", m)
+    r = (b.open / b.close.shift(1))
+    d = pd.Series(pd.DatetimeIndex(b.index).date, index=b.index)
+    x = r[(d >= date(2020, 2, 20)) & (d <= date(2020, 4, 30))]
+    if len(x): best.append((float(np.abs(np.log(x)).max()), s, str(x.abs().idxmax())[:10], float(x.loc[np.abs(np.log(x)).idxmax()])))
+for t in sorted(set(best), reverse=True)[:6]: print(t)
+
+# ==================== fixtures.py ====================
+"""QT-21 A4 fixtures: excerpts of the REAL daily files (unsealed rows only, as stored: pounds)."""
+from datetime import date
+import pandas as pd
+from qb2.research import holdout
+OUT = "tests/qb2/fixtures/qt21"
+SPANS = {  # symbol: (market, first, last, why)
+    "SMEA.L": ("LSE", date(2021, 1, 1), date(2024, 6, 28), "unit break 2023-11-27 (x114.6), euro filler, live again 2024-04-25"),
+    "FWRG.L": ("LSE", None, date(2023, 9, 29), "first 7 rows flat zero-volume at 1/77"),
+    "EDV.L": ("LSE", None, date(2021, 12, 31), "848 rows before the 2021-06-14 London listing"),
+    "IITU.L": ("LSE", None, date(2016, 5, 31), "flat zero-volume launch rows before its first trade"),
+    "PCT.L": ("LSE", None, date(2016, 12, 30), "three breaks 2011-2013 (x0.1, x9.97, x0.101)"),
+    "VRT": ("US", date(2022, 1, 3), date(2022, 4, 29), "REAL: x0.62 on 2022-02-23 (results day)"),
+    "AV.L": ("LSE", date(2016, 5, 3), date(2016, 8, 31), "REAL: the Brexit vote, 2016-06-24"),
+    "EXPN.L": ("LSE", date(2020, 2, 3), date(2020, 4, 30), "REAL: March 2020, x0.70 open on 2020-03-09"),
+}
+for s, (m, a, b, why) in SPANS.items():
+    f = holdout.research_bars(s, "1d", m)
+    d = pd.Series(pd.DatetimeIndex(f.index).date, index=f.index)
+    keep = (d <= b) & ((d >= a) if a else True)
+    x = f[keep.to_numpy()]
+    if s == "SMEA.L":                                   # start on a traded bar (an ETF's line start)
+        x = x[x.index >= x.index[(x.volume > 0).to_numpy().argmax()]]
+    x.to_parquet(f"{OUT}/{s}.parquet")
+    print(s, len(x), x.index[0].date(), x.index[-1].date(), why)
+# (then, because *.parquet is git-ignored, each excerpt was written as CSV and checked to read back
+#  exactly: pd.testing.assert_frame_equal(read_csv(...) with its exchange zone, the parquet) -- QT-21.)
+
+# ==================== b_fixture.py ====================
+"""QT-21 B2 fixture, made on the OLD (un-cleaned) store: one QT-19 coin book that held SMEA.L
+into its broken 2023-11-27 open, and one random-rank book (the box's fix (i)), both on
+KN-A-RANDOM-1d's settings at 1x. Saves each book's marked net series (per bar) + timings."""
+import sys, time, json
+from dataclasses import replace
+from datetime import date
+import numpy as np, pandas as pd
+from qb2.research import advisor_book, advisor_data, advisor_run, firewall, monte_carlo, preregister
+from qb2.signals import a_rules
+out = sys.argv[1]
+t0 = time.monotonic(); data, skipped, _ = advisor_data.load(); t_load = time.monotonic() - t0
+tok = preregister.require("KN-A-RANDOM-1d")
+t0 = time.monotonic(); book, weighted = advisor_run.book_for(tok.entry, data); t_book = time.monotonic() - t0
+by = {d.symbol: d for d in weighted}
+def held_into(seed, sym, day):
+    n = by[sym]; t = int((pd.DatetimeIndex(n.bars.index).date < day).sum())
+    s = int(np.random.SeedSequence([seed, n.bet]).generate_state(1)[0])
+    return bool((np.random.default_rng(s).random(len(n.bars)) < 0.5)[t - 2])
+seed = next(s for s in monte_carlo.trial_seeds(0, 200) if held_into(s, "SMEA.L", date(2023, 11, 27)))
+t0 = time.monotonic(); coin = firewall.portfolio(tok, firewall._coin(seed), weighted, "1d", 1.0); t_coin = time.monotonic() - t0
+rule = a_rules.of(tok.entry); s = advisor_book.Settings.of(tok.entry["parameters"], rule.lookback, rule.ascending)
+vix = advisor_data.vix()
+months = {d.symbol: np.array([advisor_book.month_of(x) for x in pd.DatetimeIndex(d.bars.index).date]) for d in weighted}
+rs = monte_carlo.trial_seeds(0, 1)[0]
+values = {d.symbol: np.array([np.random.default_rng(np.random.SeedSequence([rs, d.bet, int(m)])).random() for m in months[d.symbol]]) for d in weighted}
+t0 = time.monotonic(); rb = advisor_book.build(s, weighted, values, vix=vix); t_build = time.monotonic() - t0
+names = [replace(d, weight=rb.weights[d.symbol]) for d in weighted]
+idx = {d.symbol: pd.DatetimeIndex(d.bars.index) for d in names}
+t0 = time.monotonic(); rank = firewall.portfolio(tok, lambda nm: advisor_run.Held(nm.symbol, idx[nm.symbol], rb.decisions[nm.symbol]), names, "1d", 1.0); t_rank = time.monotonic() - t0
+def share(m):
+    m = np.asarray(m, float); d = (m - m.mean()) ** 2; return float(d.max() / d.sum())
+frame = pd.DataFrame({"coin_old_data": coin.marked, "rank_old_data": rank.marked})
+frame.index.name = "ts"
+frame.to_parquet(out)
+print(json.dumps({"coin_seed": int(seed), "rank_seed": int(rs), "coin_top_share": share(coin.marked), "rank_top_share": share(rank.marked),
+                  "coin_bars": len(coin.marked), "rank_bars": len(rank.marked),
+                  "coin_max_bar_at": str(coin.marked.abs().idxmax())[:10],
+                  "seconds": {"load": round(t_load,1), "book_for": round(t_book,1), "coin_portfolio": round(t_coin,1), "rank_build": round(t_build,1), "rank_portfolio": round(t_rank,1)}}, indent=1))
+
+# ==================== partA_clean.py ====================
+"""QT-21 A2-A3: the one-time clean-up of the stored daily files through the daily front door
+(daily.requarantine: the same lock, cross-bar check, ledger, atomic write and manifest as every
+top-up; no fetch). Census before/after, reconciled; fingerprints (a) and (b) before and after.
+Sealed-year rows (dated 2025-10-10 on) are COUNTED only: no price of theirs is read or shown."""
+import json, sys
+from datetime import date, datetime, timezone
+from pathlib import Path
+import pandas as pd
+from qb2.data import cross_bar, daily_step
+from qb2.ingest import daily
+from qb2.research import advisor_data
+SEAL = date(2025, 10, 10)
+OUT = Path(sys.argv[1])
+def counts(sym):
+    f = daily.load(sym)
+    d = pd.DatetimeIndex(f.index).date
+    return {"rows": int(len(f)), "unsealed": int((d < SEAL).sum()), "sealed": int((d >= SEAL).sum())}
+entries = daily_step.wanted() + [{"yfinance": "^VIX", "quote_currency": "USD"}]
+files = sorted(p.stem for p in daily.DAILY_DIR.glob("*.parquet"))
+names = sorted({str(e["yfinance"]) for e in entries} | {daily.FX_PAIR})
+assert names == files, (set(files) ^ set(names))
+fp_before = advisor_data.fingerprints()
+print("fingerprints before", fp_before, flush=True)
+before = {s: counts(s) for s in files}
+had = {s: cross_bar.load_ledger(s) is not None for s in files}
+assert not any(had.values()), "a cross-bar ledger already exists"
+now = datetime.now(timezone.utc)
+out = daily.requarantine(entries, now=now)
+print(daily.report(out), flush=True)
+after = {s: counts(s) for s in files}
+ledger, recon = {}, []
+for s in files:
+    q = cross_bar.load_ledger(s)
+    n = 0 if q is None else len(q)
+    if q is not None:
+        d = pd.DatetimeIndex(q.index).date
+        un = q[d < SEAL]
+        ledger[s] = {"rows": n, "sealed_rows": int((d >= SEAL).sum()),
+                     "by_reason": {r: int(c) for r, c in q["reason"].value_counts().items()},
+                     "unsealed_first": str(pd.DatetimeIndex(un.index).date.min()) if len(un) else None,
+                     "unsealed_last": str(pd.DatetimeIndex(un.index).date.max()) if len(un) else None,
+                     "found": sorted(set(q["found"]))}
+    recon.append(before[s]["rows"] == after[s]["rows"] + n)
+assert all(recon), "rows in != rows kept + rows quarantined"
+fp_after = advisor_data.fingerprints()
+print("fingerprints after", fp_after, flush=True)
+tot = lambda c, k: sum(v[k] for v in c.values())
+doc = {"at": now.isoformat(timespec="seconds"), "files": len(files),
+       "rows_in": tot(before, "rows"), "rows_kept": tot(after, "rows"),
+       "rows_quarantined": sum(v["rows"] for v in ledger.values()),
+       "unsealed_in": tot(before, "unsealed"), "unsealed_kept": tot(after, "unsealed"),
+       "sealed_in": tot(before, "sealed"), "sealed_kept": tot(after, "sealed"),
+       "reconciled": all(recon), "fingerprints": {"before": fp_before, "after": fp_after},
+       "ledger": ledger, "before": before, "after": after}
+OUT.write_text(json.dumps(doc, indent=1), encoding="utf-8")
+print(json.dumps({k: v for k, v in doc.items() if k not in ("ledger", "before", "after")}, indent=1))
+for s, v in ledger.items():
+    print(s, v)
+
+# ==================== realmoves.py ====================
+"""QT-21 A2 STOP check: the known-real moves are still in the series (unsealed rows only)."""
+from datetime import date
+import pandas as pd
+from qb2.data import cross_bar, universe
+from qb2.research import holdout
+mk = {str(e["yfinance"]): universe.market_of(e) for e in universe.bot_entries() + universe.advisor_entries()}
+def has(sym, day):
+    b = holdout.research_bars(sym, "1d", mk.get(sym, "LSE"))
+    d = list(pd.DatetimeIndex(b.index).date)
+    if day not in d: return None
+    t = d.index(day); return round(float(b.open.iloc[t] / b.close.iloc[t - 1]), 3)
+checks = [("VRT", date(2022, 2, 23))] + [(s, date(2016, 6, 24)) for s in ("AV.L", "BLND.L", "IAG.L", "NWG.L", "NXT.L")] + \
+         [("EXPN.L", date(2020, 3, 9)), ("INVP.L", date(2020, 3, 16)), ("BP.L", date(2020, 3, 20)), ("WEIR.L", date(2020, 3, 2)), ("C", date(2020, 3, 13))]
+for s, d in checks:
+    print("KEPT" if has(s, d) is not None else "MISSING", s, d, has(s, d))
+# every quarantined row dated in the March-2020 window, by name and reason
+for p in sorted((cross_bar.ledger_path("x").parent).glob("*-crossbar.parquet")):
+    q = pd.read_parquet(p); dd = pd.Series(pd.DatetimeIndex(q.index).date, index=q.index)
+    w = q[((dd >= date(2020, 2, 20)) & (dd <= date(2020, 4, 30))).to_numpy()]
+    if len(w): print("March-2020 window:", p.stem.replace("-crossbar", ""), len(w), dict(w.reason.value_counts()))
+    w = q[(dd == date(2016, 6, 24)).to_numpy() | (dd == date(2022, 2, 23)).to_numpy()]
+    if len(w): print("Brexit/VRT day:", p.stem, len(w), dict(w.reason.value_counts()))
+
+# ==================== guard_wall.py ====================
+"""QT-21 B3 evidence: each saved S6/P19 verdict's judged series (net 2x, marked) re-run on the
+data it was judged on, its biggest bar's share of the variance measured, and the record
+checked to reproduce (trades, net 2x). P19's daily trials ran on the 3-year store of QT-15:
+re-run on data/qb2/daily_before_QT19 (the files QT-19 kept). No null is drawn; nothing logged."""
+import glob, json, os, shutil, sys, time
+from pathlib import Path
+import numpy as np
+from qb2.data import universe
+from qb2.research import firewall, preregister, s6_run, stats
+from qb2.signals import p19_rules, s6_rules
+OUT = sys.argv[1]
+old = Path(sys.argv[2])                       # a temp clean root whose daily/ = the QT-15 store
+if not (old / "daily").is_dir():
+    shutil.copytree("data/qb2/daily_before_QT19", old / "daily")
+def share(m):
+    m = np.asarray(m, float); d = (m - m.mean()) ** 2; return float(d.max() / d.sum())
+print("S6 fingerprint (a) now:", s6_run.fingerprints()["a"][:10], flush=True)
+rows, cache = [], {}
+recs = sorted(glob.glob("docs/research/S6_batch1_runs/run1/*.json")) + sorted(glob.glob("data/qb2/p19_run/batch1/*.json"))
+for f in recs:
+    r = json.load(open(f, encoding="utf-8")); cid = r["id"]; t0 = time.monotonic()
+    tok = preregister.require(cid); e = tok.entry
+    if cid.startswith("S6-"):
+        key = "s6:" + ",".join(e["parameters"]["sleeves"])
+        if key not in cache: cache[key] = firewall.load("1h", entries=s6_run.arm_entries(e))[0]
+        data, interval = cache[key], "1h"; make = s6_rules.maker(e, data)
+    else:
+        interval = str(e["bar_size"]); key = "p19:" + str(e["universe"]).split(":", 1)[0] + "/" + interval
+        if key not in cache: cache[key] = firewall.load(interval, entries=universe.for_register(e), clean_root=old if interval == "1d" else None)[0]
+        data = cache[key]; make = (lambda en: lambda name: p19_rules.build(en))(e)
+    p = firewall.portfolio(tok, make, data, interval, 2.0)
+    m = p.marked.to_numpy(float)
+    tr = stats.compute(p.marked, interval).total_return
+    rows.append({"id": cid, "interval": interval, "saved_verdict": r["verdict"], "saved_trades": r["trades"], "trades": p.trades,
+                 "saved_marked_2x": r["marked_2x"], "marked_2x": tr, "n_bars": len(m), "saved_n_bars": r["n_bars"],
+                 "reproduced": bool(p.trades == r["trades"] and len(m) == r["n_bars"] and abs(tr - r["marked_2x"]) < 1e-9),
+                 "top_bar_share": share(m), "top_bar_at": str(p.marked.index[int(np.argmax((m - m.mean()) ** 2))]),
+                 "mean_per_bar": float(m.mean()), "seconds": round(time.monotonic() - t0, 1)})
+    print(json.dumps(rows[-1]), flush=True)
+    json.dump(rows, open(OUT, "w"), indent=1)
+
+# ==================== d3_shift.py ====================
+"""QT-21: D3 over the trials' out-of-sample span, on the cleaned store vs the store before the clean-up
+(data/qb2/daily_before_QT21 as a clean root; dividends/manifest read from the live store copy). Unsealed only."""
+import shutil, sys
+from datetime import date
+from pathlib import Path
+from qb2.research import benchmark
+old = Path(sys.argv[1])
+if not (old / "daily").is_dir():
+    shutil.copytree("data/qb2/daily_before_QT21", old / "daily")
+    shutil.copytree("data/clean/dividends", old / "dividends")
+for label, root in (("cleaned", None), ("before", old)):
+    print(label, "first VWRP close", benchmark._first_close(benchmark.D3, clean_root=root))
+    for a, b in ((date(2014, 3, 31), date(2025, 10, 9)), (date(2019, 7, 1), date(2019, 9, 30)), (date(2015, 3, 31), date(2025, 10, 9))):
+        bm = benchmark.over(a, b, interval="1d", clean_root=root)
+        print(" ", a, b, f"{bm.total_return:+.6%}", bm.why[:90])
+
+# ==================== a5_spread.py ====================
+"""QT-21 A5: the coin-flip spread re-measured on the CLEANED store (QT-20's partA_measure.py,
+dataset "raw" = advisor_data.load() as it now is, 200 coins, KN-A-RANDOM-1d's slots).
+Projection (QT-20, broken rows cut in memory): spread 0.0028 / 0.0039 -> SR0(N=48) 0.006 / 0.009."""
+import json, sys
+import numpy as np
+from qb2.research import deflation
+rows = json.load(open(sys.argv[1]))
+for st in (1.0, 2.0):
+    s = np.array([r["sharpe"] for r in rows if r["stress"] == st])
+    top = np.array([r["top_bar_share"] for r in rows if r["stress"] == st])
+    sd = s.std(ddof=1)
+    print(f"{st:g}x: {len(s)} coins, Sharpe/bar mean {s.mean():+.4f}, spread {sd:.4f}, "
+          f"SR0(N=48) {deflation.expected_max_sharpe(48, sd ** 2):.4f}; biggest bar median {np.median(top):.2%}, max {top.max():.2%}")
+

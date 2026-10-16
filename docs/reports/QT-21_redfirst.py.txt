@@ -1,0 +1,83 @@
+"""Red-first for QT-21 A-C (cross-bar check, bench guard, random-rank null): each mutant must
+turn its named test RED; every file is restored byte for byte. Run from the repo root under
+.venv-qb2 (copied to a .py first):  python -I <copy>.py  -- results go to stdout."""
+import subprocess
+import sys
+from pathlib import Path
+
+X = Path("qb2/data/cross_bar.py")
+DAILY = Path("qb2/ingest/daily.py")
+V = Path("qb2/research/verdict.py")
+F = Path("qb2/research/firewall.py")
+RUN = Path("qb2/research/advisor_run.py")
+N = Path("qb2/research/rank_null.py")
+TA = "tests/qb2/test_qt21_cross_bar.py"
+TB = "tests/qb2/test_qt21_bench_guard.py"
+TC = "tests/qb2/test_qt21_rank_null.py"
+M = [
+    # ---- A: the daily front door's cross-bar check
+    ("unit-break threshold far too loose (200x)", X, "UNIT_BREAK = 3.0 ", "UNIT_BREAK = 200.0 ", TA,
+     "smea"),
+    ("a unit break keeps the side with the FEWEST rows", X,
+     "ref = int(np.flatnonzero(rows == rows.max())[-1])",
+     "ref = int(np.flatnonzero(rows == rows.min())[-1])", TA, "smea"),
+    ("threshold so tight it eats real moves (1.5x)", X, "UNIT_BREAK = 3.0 ", "UNIT_BREAK = 1.5 ", TA,
+     "real_moves"),
+    ("filler rule off", X, "        out[:int(np.argmax(full))] = True", "        pass", TA, "edv"),
+    ("a share's line starts at its first trade", X, 'run = 1 if kind == "ETF" else SHARE_RUN',
+     "run = 1", TA, "edv"),
+    ("the daily path skips the check", DAILY,
+     "frame, moved = cross_bar.apply(frame, symbol, kind, now=moment,   # QT-21: every write",
+     "frame, moved = (lambda f, *a, **k: (f, 0))(frame, symbol, kind, now=moment,", TA,
+     "after_hours"),
+    ("quarantine not sticky: a re-fetch brings rows back", X,
+     "    known = np.array([d in seen for d in days], dtype=bool)",
+     "    known = np.zeros(len(days), dtype=bool)", TA, "refetch"),
+    # ---- B: the bench guard
+    ("guard removed", V, "    if top_share is not None and top_share > BIGGEST_BAR:", "    if False:", TB,
+     "coin_book"),
+    ("the firewall never hands the series to the guard", F,
+     'gaps=gaps, top_share=verdict.top_bar_share(flat),', "gaps=gaps,", TB, "firewall_hands"),
+    # ---- C: the random-rank null
+    ("daily re-flip instead of monthly (the coin for the advisor)", RUN,
+     "                          skill_free=nulls.draw)", "                          skill_free=None)",
+     TC, "same_call"),
+    ("ranks re-drawn on every bar", N, "    return np.array([draw[int(m)] for m in month])",
+     "    return np.random.default_rng(np.random.SeedSequence([seed, bet])).random(len(month))", TC,
+     "only_from_one_month"),
+    ("null without costs", F, "*null(s), interval, stress, final)", "*null(s), interval, 0.0, final)",
+     TC, "same_call"),
+    ("different k", N, "        return advisor_book.build(self.settings, names, values, vix=self.vix)",
+     "        return advisor_book.build(replace(self.settings, top=0.1), names, values, vix=self.vix)",
+     TC, "k_slots"),
+    ("null ignores eligibility", N,
+     "        values = {n.symbol: np.where(mask[n.symbol], ranks(seed, n.bet, months(n.bars)), np.nan)",
+     "        values = {n.symbol: ranks(seed, n.bet, months(n.bars))", TC, "cannot_rank"),
+    ("look-ahead in the null", N,
+     "        return {s: np.isfinite(v) for s, v in rule_values(self.rule, names).items()}",
+     "        return {s: np.r_[np.isfinite(v)[21:], np.zeros(21, dtype=bool)] for s, v in "
+     "rule_values(self.rule, names).items()}", TC, "look_ahead"),
+    ("the null's look-ahead check never runs", N, "        if not self.checked:", "        if False:",
+     TC, "look_ahead"),
+    ("S6/P19 lose the coin", F, "skill_free or (lambda s: (_coin(s), data))",
+     "skill_free or (lambda s: (make, data))", TC, "keep_the_coin"),
+]
+failures = 0
+for label, path, old, new, test, key in M:
+    raw = path.read_bytes()                  # bytes: a restore never changes line endings
+    text = raw.decode("utf-8")
+    if text.count(old) != 1:
+        print(f"SKIPPED (snippet not found once): {label}")
+        failures += 1
+        continue
+    try:
+        path.write_bytes(text.replace(old, new).encode("utf-8"))
+        done = subprocess.run([sys.executable, "-m", "pytest", test, "-q", "-p", "no:cacheprovider",
+                               "-k", key], capture_output=True, text=True)
+        red = done.returncode != 0
+        print(f"{'RED  ' if red else 'GREEN'} {label}  ({test} -k {key})", flush=True)
+        failures += 0 if red else 1
+    finally:
+        path.write_bytes(raw)
+print(f"{len(M) - failures} of {len(M)} mutants RED")
+sys.exit(1 if failures else 0)

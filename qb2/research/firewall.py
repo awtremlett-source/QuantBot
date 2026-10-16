@@ -1,6 +1,4 @@
-"""Firewall v2: score one pre-registered candidate across a universe (S4).
-
-The one scoring path a candidate goes through, in order:
+"""Firewall v2: score one pre-registered candidate across a universe (S4). In order:
 
 1. the registered token (preregister) -- an unregistered candidate stops here;
 2. each name's UNSEALED bars (holdout), costed as that instrument (costs.py), its
@@ -8,12 +6,12 @@ The one scoring path a candidate goes through, in order:
 3. walk-forward per name, with delay rule (c), P4 and every fill costed;
 4. the names combined equal-weight per BET (bet_groups) -- gross, net, marked down;
 5. Gate 1: the turnover-matched null (matched_null.py, QT-16 A1) decides p < 0.05,
-   AND the net mean per bar must be positive (QT-17 A2); the coin-flip null runs the
-   IDENTICAL pipeline, as a description and the Deflated Sharpe's variance input;
+   AND the net mean per bar must be positive (QT-17 A2); a skill-free null -- the coin
+   flip, or the caller's ``skill_free`` books (QT-21: the advisor's random-rank books,
+   rank_null.py) -- runs the IDENTICAL pipeline as the Deflated Sharpe's variance input;
 6. the Deflated Sharpe over qb2's whole trial count (drills excluded);
-7. the benchmark (D3) through the door, same dates and bar size; the verdict; ONE
-   trial-log line. Brakes (P12) are a live layer and NOT applied here (QT-17 A3):
-   the report gives the maximum drawdown instead.
+7. D3 through the door; the verdict (one bar > 25% of the variance = INSUFFICIENT,
+   QT-21 B); ONE trial-log line. Brakes (P12) are live-only (QT-17 A3): max drawdown.
 
 A held dollar bar with no GBPUSD rate (candidate or null) = INSUFFICIENT. QT-15:
 ``n_trials`` floors the Deflated Sharpe's N at the batch's FULL count; ``final`` is
@@ -39,6 +37,7 @@ from qb2.research import (backtest, bet_groups, benchmark, deflation, fills, hol
 from qb2.research.strategy import Strategy
 
 Transform = Callable[[pd.DataFrame, costs.Instrument, str], pd.DataFrame]
+SkillFree = Callable[[int], tuple[Callable[[Any], Strategy], Sequence[Any]]]   # seed -> one book
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +69,7 @@ def load(interval: str, *, entries: Sequence[Mapping[str, Any]] | None = None,
     rates = pounds.load_fx(interval, clean_root)
     out, skipped = [], []
     for entry in rows:
-        symbol, market, instrument = str(entry["yfinance"]), universe.market_of(entry),             instrument_of(entry)
+        symbol, market, instrument = str(entry["yfinance"]), universe.market_of(entry), instrument_of(entry)
         try:
             dollars = pounds.needs_rate(instrument.currency)
             bars = holdout.research_bars(symbol, interval, market, clean_root=clean_root)
@@ -193,7 +192,8 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
           skipped: Sequence[str] = (), n_null: int = monte_carlo.DEFAULT_TRIALS, seed: int = 0,
           bench: Callable[[date, date], benchmark.Benchmark] | None = None,
           log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG, n_trials: int = 0,
-          final: holdout.HoldoutPass | None = None) -> FirewallResult:
+          final: holdout.HoldoutPass | None = None, skill_free: SkillFree | None = None,
+          ) -> FirewallResult:
     registered = preregister.check(token)
     seen = portfolio(registered, make, data, interval, stress, final)
     flat = seen.marked.to_numpy(dtype=float)
@@ -206,13 +206,13 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
         portfolio(registered, make, data, interval, 1.0, final) if stress != 1.0 else None,
         None, None, None)
     if start and end:                         # D3 through the door, same bar size
-        result.benchmark = bench(start, end) if bench else benchmark.over(
-            start, end, interval=interval, final=final)
+        result.benchmark = bench(start, end) if bench else benchmark.over(start, end, interval=interval, final=final)
     gaps = [f"{seen.count('fx_gap')} held bar(s) of a dollar line have no GBPUSD rate, "
             "so there is no pound figure (P3)"] if seen.count("fx_gap") else []
     if not gaps and seen.trades >= verdict.MIN_OOS_TRADES and len(flat) >= verdict.MIN_OOS_BARS:
         seeds = monte_carlo.trial_seeds(seed, n_null)
-        coin = [_draw(portfolio(registered, _coin(s), data, interval, stress, final), interval) for s in seeds]
+        null: SkillFree = skill_free or (lambda s: (_coin(s), data))   # S6/P19: the coin, unchanged
+        coin = [_draw(portfolio(registered, *null(s), interval, stress, final), interval) for s in seeds]
         matched = _matched(seen, data, interval, seeds)
         if any(g for _, g in coin + matched):
             gaps.append("a luck-test path held a dollar line on a bar with no GBPUSD rate")
@@ -230,7 +230,7 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
     result.verdict = verdict.judge(
         oos_trades=seen.trades, oos_bars=len(flat), p_value=result.p_value,
         mean_per_bar=float(flat.mean()) if len(flat) else None,      # QT-17 A2
-        dsr=result.deflated.get("dsr"), gaps=gaps,
+        dsr=result.deflated.get("dsr"), gaps=gaps, top_share=verdict.top_bar_share(flat),
         strategy_return=stats.compute(flat, interval, market).total_return,  # compounded
         benchmark_return=result.benchmark.total_return if result.benchmark else np.inf)
     if log_path is not None:

@@ -80,6 +80,20 @@ class Book:
     stopped: int = 0
     filter_off_months: int = 0
     capped: dict[str, np.ndarray] = field(default_factory=dict)   # the 1% rule binds here
+    stops: list[tuple[str, int]] = field(default_factory=list)    # (symbol, bar sold) QT-21
+
+
+class Held:
+    """One name's targets from a book; refuses bars that are not a prefix of its own."""
+
+    def __init__(self, symbol: str, index: pd.DatetimeIndex, decisions: np.ndarray) -> None:
+        self.name, self.index, self.decisions = f"advisor_book:{symbol}", index, decisions
+
+    def weights(self, bars: pd.DataFrame) -> pd.Series:
+        n = len(bars)
+        if n > len(self.index) or not pd.DatetimeIndex(bars.index).equals(self.index[:n]):
+            raise ValueError(f"{self.name}: bars are not a prefix of the book's own")
+        return pd.Series(self.decisions[:n], index=bars.index)
 
 
 def month_of(day: date) -> int:
@@ -198,6 +212,7 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
                 target[i] = 0.0
                 stopped_on[i] = day
                 out.stopped += 1
+                out.stops.append((names[i].symbol, t))
             elif np.isfinite(atr[i][t]):
                 level[i] = max(level[i], c[i][t] - k_at(day) * atr[i][t])
         if decide_on.get(month_of(day)) == day:
