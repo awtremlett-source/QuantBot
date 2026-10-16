@@ -1,47 +1,56 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-12. History → docs/archive/STATE_2026-10-12_QT16.md (QT-16 state,
-verbatim). Box in hand: QT-17 → docs/reports/QT-17.md.
+Updated: 2026-10-16. History → docs/archive/STATE_2026-10-16_QT17.md (QT-17 state,
+verbatim). Box in hand: QT-18 → docs/reports/QT-18.md.
 
-Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN** (S3 close = QT-13 + QT-13b). P19:
-none of 18 survived (QT-15).
-Trial count N = 18. Bot sender still disarmed (S10).
+Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN** (S3 close = QT-13 + QT-13b).
+P19: none of 18 survived (QT-15). S6 batch 1: none of 24 survived (QT-18).
+Trial count N = 42. Sender disarmed (S10).
 
-## QT-17 operator's words (verbatim, 2026-10-12)
-- *"write QT-17"*
+## QT-18 operator's words (verbatim, 2026-10-16)
+- *"GO on P15 history: in back-tests only, a results date counts as known from
+  the results date before it, if that earlier date is before 2026-10-02; from
+  2026-10-02 only knowable_time counts; a share with no date on record stays
+  blocked."*
+- 08:07: *"I'm away while QT-18 runs. Don't ask me anything else. For any choice,
+  take your recommended option, log it ... as "decided while operator away"..."*
 
-## QT-17 in one screen — Part A done, Part B STOPPED before registering
-- STOP (box step 0 rule): P15 asked exactly as the sender asks it blocks EVERY
-  share on every unsealed hour — the store's earnings dates were first recorded
-  2026-10-02. US arm = nothing; London/Mix = the same 9 ETFs. No trial added.
-- A1 one door: holdout.research_bars / bars_through; wall
-  tests/wall/test_sealed_doors.py. Two sealed reads logged (kind seal_viewed,
-  SCARS #25): QT-16's stop description; the 5m benchmark (VWRP daily, QT-14–16).
-  Stop re-run, unsealed: 85% stopped within 63 days. 5m VWRP via door +2.62%.
-- A2 Gate 1 = matched p < 0.05 AND net mean per bar > 0. KN-INSTANT-5m: FAIL.
-- A3 1h: sealed from 2026-07-13; fill 2 bars later; held only if a bar ends by
-  the cut; P15 mask in every intraday back-test (p15.py); brakes not applied.
-- A4 1h known-null, real store: Gate 1 GREEN (red, delay off); Gate 2 GREEN, but
-  costs-off red-first did NOT show (39 of 47 bets in cash under P15).
-- GEV 1h backfilled via the front door (2024-10-14 →; Yahoo refuses "730d").
+## QT-18 in one screen — done
+- A1 qb2/research/p15_history.py (back-tests only; wall test_p15_history_wall.py):
+  known from the CLOSE of the date before; cumulative snapshots; D1 never early;
+  missing quarter = gap > 1.5 × median → blocked. p15.py uses it on 5m and 1h.
+- A2 buy allowed on: US 95.1% (holdout 95.3%), London shares 47.8%, ETFs 100%,
+  Mix 86.0%. Blocked throughout: RR.L, GLEN.L, RIO.L, AAL.L, ULVR.L (stale dates).
+- A3 known-null 1h: Gate 1 + Gate 2 GREEN; both red-firsts RED (costs off → the
+  below-cost drill PASSES +343% vs VWRP +50.7%: QT-17's gap closed).
+- B: register c89f2fd → rule code 343cff3 → 24 run as registered, 111 min, no
+  interruption, fingerprints (a)/(b) unchanged start to end. **24 FAIL**: best
+  gross S6-08-US +9.2%, after 2× costs −13% … −95% vs VWRP +47–51%. No holdout run.
+
+## Decided while operator away (QT-18) — starting figures
+- Missing-quarter median capped at 182 days (AAL.L: one 17-year gap).
+- Dates before 2006-10-16 dropped from the back-test copy (calendar starts there).
+- Next date after 2026-10-02 = the earliest real snapshot's.
+- S6 register clarifications: decisions at bar closes; S6-02/03/08 decide at bar
+  1's close → in at bar 3; a day skipped if a bar/prior close is missing, entry
+  would land at/after E, or P15 refuses the decision bar; XS = bets,
+  round(0.2 n), ties by name; Mix S6-06/07 per market, S6-08 whole arm; stop
+  k = 3 always, ATR from the bar before entry.
+- Interrupted lines go in the S6 journal (docs/research/S6_batch1_runs), not a
+  new trial-log kind. P19's runner now reads P19 ids only.
 
 ## Applied under standing GO — starting figures
 - QT-14/15: holdout daily from 2025-10-10, 5m from 2026-09-21 + after
   2026-10-10; D3 = VWRP; survivorship 1%/yr; INSUFFICIENT < 30; stake GBP 300;
   walk-forward 252/63, 10/5 sessions; nulls 200 runs; P4 15 min.
-- QT-16: FX same bar else previous ≤ 10 min (5m) / 4 days (daily); stop k = 3 ×
-  Wilder ATR(14), 2 if unsettled; brake clears within 5% of peak; bot pot 30%;
-  age flag 11 months; earnings: bot blocked session before → after, unknown
-  blocks, ETF N/A; advisor warns 5 sessions ahead; coverage RED < 90%.
-- QT-17: 1h sealed from 2026-07-13 for ever; 1h walk-forward 63/21 sessions; 1h
-  FX = open of the latest FX hour, ≤ 3 h; intraday benchmark = VWRP same bars.
+- QT-16: stop k = 3 × Wilder ATR(14), 2 if unsettled; bot pot 30%; age flag 11
+  months; earnings: bot blocked session before → after, unknown blocks, ETF N/A.
+- QT-17: 1h sealed from 2026-07-13 for ever; 1h walk-forward 63/21; 1h FX ≤ 3 h;
+  intraday benchmark = VWRP same bars.
 
 ## NEXT
-1. **QT-18 in progress** (docs/reports/QT-18_progress.md): Part A, then S6
-   batch 1 (8 rules × 3 arms) registered and run.
-2. Tue 13 Oct 07:00: after-hours step cleans Mon 12 Oct; status page should show
-   "Earnings: fresh to 2026-10-12 · … · OK" and no MISSED push.
-3. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
+1. **Mentor writes the next box.** S6 stays OPEN (no signal survived).
+2. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
 
 ## DECISION REQUESTED (open)
 - **Bot's brake** (the mentor's words, no GO yet). Default: as built. GO words:
@@ -51,12 +60,7 @@ Trial count N = 18. Bot sender still disarmed (S10).
 - Backups on the university OneDrive? Default: keep (2026-10-06 archive).
 
 ## Standing GOs (operator words, verbatim)
-- 2026-10-16: *"GO on P15 history: in back-tests only, a results date counts as
-  known from the results date before it, if that earlier date is before
-  2026-10-02; from 2026-10-02 only knowable_time counts; a share with no date on
-  record stays blocked."* (QT-18 A1, qb2/research/p15_history.py.)
-- 2026-10-16 08:07 (QT-18, away): any choice → the recommended option, logged as
-  "decided while operator away"; only the box's own STOPs stop the run.
+- 2026-10-16: P15 history (above; PLAN_V3 P15).
 - 2026-10-07: *"STANDING GO: For routine settings and thresholds, go with the
   recommended default and log it. Three things always need my own words: switching
   the bot on to trade, real money, and removing any safety fence."*
@@ -72,17 +76,14 @@ Trial count N = 18. Bot sender still disarmed (S10).
   UNKNOWN.
 - Parked: advisor trial counting (S9) · v1 revive-or-retire.
 
-## Recorder facts
-QB2-Recorder (Mon–Fri, 14 triggers 07:00…20:00). After-hours: raw → clean,
-censuses, labels; daily top-up; earnings refresh. Status page (QB2-StatusPush,
-:50) on the status branch. The PC SLEEPS overnight, it does not shut down.
-
 ## Open flags
-- 5m back-tests now carry P15 too: re-prove the 5m known-null before any 5m trial.
-- Brake replays' index series (outside the store) run through 2026: description,
-  P12 unchanged. Choosing stop k is an S9 trial on unsealed bars only.
+- **Live guard defect (found QT-18, not fixed — guard out of scope):**
+  earnings_window.bot_verdict raises on a date before 2006-10-16 (ULVR.L's file
+  holds 2004 dates). No buy can follow, but check 8 errors instead of answering.
+- 5m back-tests carry P15 history: re-prove the 5m known-null before any 5m trial.
+- Recorder missed 08:00 on 16 Oct (07:47 catch-up still running?).
 - anchors.py 1,422 lines (pinned): splitting = PROPOSE→GO. 52 mypy errors
-  silenced in 5 inherited modules. Recorder RED for 15m. No clock-sync task.
+  silenced in 5 inherited modules. No clock-sync task.
 
 ## Fingerprints
-v1 4add56ec…743b6 (unchanged 2026-10-12). qb2 7474466a…8fdafe after QT-17.
+v1 4add56ec…743b6 (unchanged 2026-10-16). qb2 see docs/reports/QT-18.md.

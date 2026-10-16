@@ -13,14 +13,14 @@ a finished step; never re-run a finished trial (docs/research/S6_batch1_runs/).
 | step | status | commit | time (UK) | note |
 |---|---|---|---|---|
 | 0 ground truth | done | ba620a6 (base) | 08:08–08:12 | qb2 636 (1 desel.) · v1 440 · plan+wall 239 · ruff clean · mypy the 4 known · v1 4add56ec…743b6 · qb2 7474466a…8fdafe · disk 3.6 GB · N = 18 |
-| A1 history rule | done | QT-18A | 08:12–08:24 | p15_history.py + p15.py wired; 14 tests + 3 wall tests; 12 mutants + 3 planted imports all RED |
-| A2 arms tradeable | done | QT-18A | 08:24–08:29 | US 95.1% / holdout 95.3% · London shares 47.8% (stale five blocked) · ETFs 100% · Mix 86.0% — no STOP |
-| A3 known-null 1h | done | QT-18A | 08:30–09:40 | honest Gate 1 GREEN · Gate 2 GREEN; red-first: delay removed → KN-INSTANT-1h PASS, costs off → KN-PLANT-SMALL-1h PASS (+343% vs VWRP +50.7%) — both RED as required |
-| B1 register | done | QT-18 register | 09:45 | 24 entries S6-01-US … S6-08-MIX; clarifications in each entry (decided while operator away) |
-| B1 rule code | done | QT-18 rule code | 10:20 | s6_rules.py (8 rules), s6_run.py (resumable runner), s6_results.py, data_fingerprint.py; 16 rule/fingerprint + 6 runner mutants all RED |
-| B2 trials | done |  | 10:02–11:55 | 24 of 24 finished (FAIL 24) |
-| B3 holdout | pending | | | |
-| B4–B5 results, end | pending | | | |
+| A1 history rule | done | 0521b98 | 08:12–08:24 | p15_history.py + p15.py wired; 14 tests + 3 wall tests; 12 mutants + 3 planted imports all RED |
+| A2 arms tradeable | done | 0521b98 | 08:24–08:29 | US 95.1% / holdout 95.3% · London shares 47.8% (stale five blocked) · ETFs 100% · Mix 86.0% — no STOP |
+| A3 known-null 1h | done | 0521b98 | 08:30–09:40 | honest Gate 1 GREEN · Gate 2 GREEN; red-first: delay removed → KN-INSTANT-1h PASS, costs off → KN-PLANT-SMALL-1h PASS (+343% vs VWRP +50.7%) — both RED as required |
+| B1 register | done | c89f2fd | 09:48 | 24 entries S6-01-US … S6-08-MIX; clarifications in each entry (decided while operator away) |
+| B1 rule code | done | 343cff3 | 10:01 | s6_rules.py (8 rules), s6_run.py (resumable runner), s6_results.py, data_fingerprint.py; 16 rule/fingerprint + 6 runner mutants all RED |
+| B2 trials | done | 9b2d454…94dc6c5 | 10:02–11:55 | 24 of 24 finished (FAIL 24) |
+| B3 holdout | done | — | 11:56 | no walk-forward PASS, so no holdout opened; sealed hours unread |
+| B4–B5 results, end | done | QT-18 | 12:05 | 24 FAIL, 0 survivors, S6 OPEN, N = 42; suites green; v1 fingerprint unchanged; fingerprints (a)/(b) unchanged at the end |
 
 Run 1 started 2026-10-16 09:02:27 UTC (10:02 UK), code commit 343cff3 (s6_run's code paths),
 18 selection trials counted before. Data fingerprints taken at the start of B:

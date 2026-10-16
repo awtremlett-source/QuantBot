@@ -33,7 +33,7 @@ drill beats VWRP once its costs are removed. QT-17's failure was P15's cash.
 
 The planted drills' huge figures are a planted trend in every session, compounded
 over 2½ years: a measuring instrument, not a result. The bench tells luck from an
-edge on hours, both ways. Gate run 48 min; red-firsts 22 min (store load included).
+edge on hours, both ways. Gate run 48 min; red-firsts 21 min (store load included).
 
 The six drill reports, as the gate wrote them:
 
