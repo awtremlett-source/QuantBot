@@ -61,6 +61,8 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [ ] S8 Bot evolution: challengers in shadow + machine search (stops on
       CORRECT/EXHAUSTED, never on profit)
 - [ ] S9 Advisor engine + scorecard (every suggestion recorded as if followed)
+      QT-19: batch 1 (A-01..06) registered + built, NOT run — known-null RED on the
+      Deflated Sharpe's coin-flip variance (fix that first, QT-20)
 - [ ] S10 Demo execution: batched open orders, stops held at T212 and raised
       daily, daily reconciliation, killswitch fire-drill. **Forward clock starts**
 - [ ] S11 One app: TradeScout rebuilt with advisor screens AND bot screens
@@ -75,7 +77,8 @@ Every stage ships an Exit gate (proven red-on-broken, #9), an Enforcer and a
 Built/Wired/Armed checklist.
 
 ## Awaiting the operator
-- [ ] D1 advisor risk rule (loss-at-stop cap vs the 1% rule) · D2 bot sizing ·
+- [ ] D1 advisor risk rule (loss-at-stop cap vs the 1% rule; QT-19: the 1% ceiling bound on
+      0.02% of held days in the random-picks drill — it barely binds at 34 slots) · D2 bot sizing ·
       D3 the benchmark — recommended defaults in PLAN_V3 "DECISION REQUESTED"
 - [x] PRACTICE API KEY in .env (2026-09-30) — smoke test connects and reads
 - [x] KEY REPLACED (2026-10-01) with all ten read endpoints granted, Execute OFF.

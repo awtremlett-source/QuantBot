@@ -1,0 +1,156 @@
+[
+ {
+  "gate": "gate1",
+  "drill": "KN-A-RANDOM-1d",
+  "stress": 1.0,
+  "broken": null,
+  "expect": "FAIL",
+  "verdict": "FAIL",
+  "failed": [
+   "luck",
+   "dsr",
+   "benchmark"
+  ],
+  "p": 0.5373134328358209,
+  "dsr": 0.0,
+  "trades": 3498,
+  "net": 0.815209197201664,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "seconds": 454
+ },
+ {
+  "gate": "gate1",
+  "drill": "KN-A-GAP-1d",
+  "stress": 1.0,
+  "broken": null,
+  "expect": "FAIL",
+  "verdict": "FAIL",
+  "failed": [
+   "luck",
+   "dsr",
+   "benchmark"
+  ],
+  "p": 0.945273631840796,
+  "dsr": 0.0,
+  "trades": 3278,
+  "net": 0.5588144710890146,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "seconds": 426
+ },
+ {
+  "gate": "gate2",
+  "drill": "KN-A-PLANT-v2-1d",
+  "stress": 1.0,
+  "broken": null,
+  "expect": "PASS",
+  "verdict": "PASS",
+  "failed": [],
+  "p": 0.004975124378109453,
+  "dsr": 0.999999919998547,
+  "trades": 3098,
+  "net": 601.6466631444594,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "seconds": 426
+ },
+ {
+  "gate": "gate2",
+  "drill": "KN-A-PLANT-v2-1d",
+  "stress": 2.0,
+  "broken": null,
+  "expect": "PASS",
+  "verdict": "FAIL",
+  "failed": [
+   "dsr"
+  ],
+  "p": 0.004975124378109453,
+  "dsr": 0.0,
+  "trades": 3098,
+  "net": 336.5509093064175,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "seconds": 429
+ },
+ {
+  "gate": "v1",
+  "drill": "KN-A-PLANT-1d",
+  "stress": 1.0,
+  "broken": null,
+  "expect": "PASS",
+  "verdict": "FAIL",
+  "failed": [
+   "dsr"
+  ],
+  "p": 0.004975124378109453,
+  "dsr": 1.5188997726234277e-08,
+  "trades": 3230,
+  "net": 8.899199875924742,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "seconds": 427
+ },
+ {
+  "gate": "v1",
+  "drill": "KN-A-PLANT-1d",
+  "stress": 2.0,
+  "broken": null,
+  "expect": "PASS",
+  "verdict": "FAIL",
+  "failed": [
+   "dsr"
+  ],
+  "p": 0.004975124378109453,
+  "dsr": 0.0,
+  "trades": 3230,
+  "net": 4.414295731868018,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "seconds": 429
+ },
+ {
+  "gate": "gate1",
+  "drill": "KN-A-GAP-1d",
+  "stress": 1.0,
+  "broken": "same_bar_fill",
+  "expect": "PASS",
+  "verdict": "FAIL",
+  "failed": [
+   "dsr"
+  ],
+  "p": 0.004975124378109453,
+  "dsr": 0.7425245860827975,
+  "trades": 3278,
+  "net": 150.79581921459373,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "red_first": true
+ },
+ {
+  "gate": "gate2",
+  "drill": "KN-A-PLANT-v2-1d",
+  "stress": 1.0,
+  "broken": "no_slot_weights",
+  "expect": "FAIL",
+  "verdict": "FAIL",
+  "failed": [
+   "benchmark"
+  ],
+  "p": 0.004975124378109453,
+  "dsr": 0.9999993887818273,
+  "trades": 3098,
+  "net": 2.155699432035972,
+  "d3": 2.6522445336115354,
+  "start": "2014-03-28",
+  "end": "2025-10-09",
+  "red_first": true
+ }
+]
