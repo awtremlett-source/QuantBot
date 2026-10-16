@@ -19,3 +19,20 @@ def test_twenty_four_trials_eight_rules_by_three_arms_in_register_order() -> Non
         assert e["parameters"]["arm"] == arm and e["parameters"]["sleeves"] == ARMS[arm]
         assert e["parameters"]["stop"] is (rule in ("s6_range_breakout", "s6_trailing_buy"))
         assert "42" in e["judged"] and "2026-07-13" in e["holdout"] and e["date"] == "2026-10-16"
+
+
+def test_the_register_was_committed_before_any_rule_code() -> None:
+    """Box B1: the 24 are registered in their own commit, before s6_rules.py exists."""
+    import subprocess
+    root = preregister.REPO_ROOT
+
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True,
+                              check=True).stdout.strip()
+    registered = preregister.require("S6-01-US").commit
+    added = git("log", "--diff-filter=A", "--format=%H", "--", "qb2/signals/s6_rules.py")
+    for commit in added.split():                     # empty until the rule code is committed
+        assert commit != registered
+        assert subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor",
+                               registered, commit]).returncode == 0
+    assert "s6_rules.py" not in git("show", "--name-only", "--format=", registered)

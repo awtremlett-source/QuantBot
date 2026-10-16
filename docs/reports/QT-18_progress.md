@@ -17,7 +17,7 @@ a finished step; never re-run a finished trial (docs/research/S6_batch1_runs/).
 | A2 arms tradeable | done | QT-18A | 08:24–08:29 | US 95.1% / holdout 95.3% · London shares 47.8% (stale five blocked) · ETFs 100% · Mix 86.0% — no STOP |
 | A3 known-null 1h | done | QT-18A | 08:30–09:40 | honest Gate 1 GREEN · Gate 2 GREEN; red-first: delay removed → KN-INSTANT-1h PASS, costs off → KN-PLANT-SMALL-1h PASS (+343% vs VWRP +50.7%) — both RED as required |
 | B1 register | done | QT-18 register | 09:45 | 24 entries S6-01-US … S6-08-MIX; clarifications in each entry (decided while operator away) |
-| B1 rule code | pending | | | |
+| B1 rule code | done | QT-18 rule code | 10:20 | s6_rules.py (8 rules), s6_run.py (resumable runner), s6_results.py, data_fingerprint.py; 16 rule/fingerprint + 6 runner mutants all RED |
 | B2 trials | pending | | | |
 | B3 holdout | pending | | | |
 | B4–B5 results, end | pending | | | |

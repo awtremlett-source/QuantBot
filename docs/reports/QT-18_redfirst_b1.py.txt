@@ -1,0 +1,90 @@
+"""Red-first for QT-18 B1 (rule code, runner, fingerprints): each mutant must turn its
+named test RED; files restored. Run from the repo root under .venv-qb2 (copied to .py)."""
+import subprocess
+import sys
+from pathlib import Path
+
+R = Path("qb2/signals/s6_rules.py")
+F = Path("qb2/data/data_fingerprint.py")
+T = "tests/qb2/test_qt18b_s6_rules.py"
+TF = "tests/qb2/test_qt18b_data_fingerprint.py"
+M = [
+    ("S6-01 enters one bar early", R, "self.plan.fills[j] == e - 1]", "self.plan.fills[j] == e - 2]",
+     T, "intraday_mom"),
+    ("S6-02 buys a gap UP", R, 'return s0 if gap <= self.p["gap_max"] else None',
+     'return s0 if gap >= -self.p["gap_max"] else None', T, "gap_fade"),
+    ("S6-03 ignores the first bar's direction", R,
+     'return s0 if gap >= self.p["gap_min"] and c[s0] > o[s0] else None',
+     'return s0 if gap >= self.p["gap_min"] else None', T, "gap_go"),
+    ("S6-04 breaks out of the first bar's LOW", R, "if c[k] > h[s0]:", "if c[k] > lo[s0]:",
+     T, "range_breakout"),
+    ("the stop never fires", R, "if c[i] <= level:", "if c[i] <= level - 1e9:", T, "stop_sells"),
+    ("S6-05 forgets the ATR", R, 'float(self.p["atr_mult_above_running_low"]) * atr[k]',
+     '0.0 * atr[k]', T, "trailing_buy"),
+    ("XS side flipped", R, 'ascending = p["side"] == "bottom"', 'ascending = p["side"] == "top"',
+     T, "bet_group_counts_once"),
+    ("XS ranks lines, not bets", R,
+     'frame["bet"] = [bet_groups.group_of(s, groups) for s in frame["symbol"]]',
+     'frame["bet"] = list(frame["symbol"])', T, "bet_group_counts_once"),
+    ("Mix ranks both markets together at bar 2", R,
+     'market = "" if rule == "s6_prior_day_reversal" else name.market', 'market = ""',
+     T, "mix_ranks_each_market"),
+    ("XS ranks on bar 3 (a later bar)", R, "value = float(close[s0 + 1]) / last - 1",
+     "value = float(close[min(s0 + 2, s1 - 1)]) / last - 1", T, "never_read_a_later_bar"),
+    ("S6-08 ranks on today's close", R, "value = last / before - 1",
+     "value = float(close[s1 - 1]) / last - 1", T, "mix_ranks_each_market"),
+    ("P15 refusal ignored", R,
+     "or (self.plan.may_enter is not None and not self.plan.may_enter[j]):", "or False:",
+     T, "p15_refusal"),
+    ("maker accepts changed values", R, "    wrong = {k: v for k, v in entry[\"parameters\"].items() if k in FIXED and v != FIXED[k]}",
+     "    wrong: dict[str, object] = {}", T, "refuses_anything"),
+    ("fingerprint (a) reads past the seal", F,
+     "    last = date.fromordinal(SEALED_FROM.toordinal() - 1)", "    last = HOLDOUT_END",
+     TF, "changed_holdout_bar_changes_b_and_not_a"),
+    ("fingerprint (b) reads the recorder's new days", F,
+     "    return bars_digest(list(symbols) + [FX], SEALED_FROM, HOLDOUT_END, clean_root)",
+     "    return bars_digest(list(symbols) + [FX], SEALED_FROM, None, clean_root)",
+     TF, "recorders_new_days"),
+    ("earnings without the cutoff", F,
+     '        known = raw[pd.to_datetime(raw["knowable_time"], utc=True) <= pd.Timestamp(EARNINGS_CUTOFF)]',
+     "        known = raw", TF, "recorders_new_days"),
+]
+ok = True
+for label, path, old, new, test, k in M:
+    src = path.read_text(encoding="utf-8")
+    assert src.count(old) == 1, (label, "pattern not unique/found")
+    try:
+        path.write_text(src.replace(old, new), encoding="utf-8")
+        r = subprocess.run([sys.executable, "-m", "pytest", test, "-q", "-p", "no:cacheprovider",
+                            "-k", k], capture_output=True, text=True)
+        red = r.returncode != 0
+        print(("RED    " if red else "GREEN! ") + f"{label} -> {k}")
+        ok &= red
+    finally:
+        path.write_text(src, encoding="utf-8")
+print("ALL RED" if ok else "SOME MUTANT SURVIVED")
+
+
+# ---- runner mutants (tests/qb2/test_qt18b_s6_run.py), all seen RED ----
+# import subprocess, sys
+# from pathlib import Path
+# R = Path("qb2/research/s6_run.py"); T = "tests/qb2/test_qt18b_s6_run.py"
+# M = [
+#  ("counted before saved", "            atomic_write(path, done)           # the result exists BEFORE it is counted\n            _log_line(done, token, number)\n",
+#   "            _log_line(done, token, number)\n            atomic_write(path, done)\n", "never_saved_is_never_counted"),
+#  ("no reconcile on restart", "            if not _logged(cid, number):\n", "            if False:\n", "saved_but_not_yet_counted"),
+#  ("no interrupted line", '                note(run_dir, event="interrupted", run=number, id=cid,', '                note(run_dir, event="interrupted_x", run=number, id=cid,', "interrupted_trial"),
+#  ("restart ignores moved data", "                 if now != then]", "                 if False]", "moved_commit_or_fingerprint"),
+#  ("holdout repeated / crashes", "    except holdout.Sealed as why:", "    except KeyError as why:", "never_repeated"),
+#  ("finished trials re-run", "        if path.is_file():                     # finished: skipped, never re-run", "        if False:", "restart_skips"),
+# ]
+# ok = True
+# for label, old, new, k in M:
+#     src = R.read_text(encoding="utf-8"); assert src.count(old) == 1, label
+#     try:
+#         R.write_text(src.replace(old, new), encoding="utf-8")
+#         r = subprocess.run([sys.executable, "-m", "pytest", T, "-q", "-p", "no:cacheprovider", "-k", k], capture_output=True, text=True)
+#         print(("RED    " if r.returncode else "GREEN! ") + f"{label} -> {k}"); ok &= r.returncode != 0
+#     finally:
+#         R.write_text(src, encoding="utf-8")
+# print("ALL RED" if ok else "SOME MUTANT SURVIVED")
