@@ -1,32 +1,32 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-16. History → docs/archive/STATE_2026-10-16_QT19.md (QT-19 state,
-verbatim). Box in hand: QT-20 → docs/reports/QT-20.md.
+Updated: 2026-10-17. History → docs/archive/STATE_2026-10-17_QT20.md (QT-20 state,
+verbatim). Box in hand: QT-21 → docs/reports/QT-21.md.
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN (paused); S9 OPEN** (S3 close = QT-13 + QT-13b).
-P19: none of 18 survived (QT-15). S6 batch 1: none of 24 (QT-18). S9 batch 1:
-registered + built, NOT run (QT-19 STOP, QT-20 STOP). Trial count N = 42. Sender disarmed.
+P19: none of 18 survived (QT-15). S6 batch 1: none of 24 (QT-18). **S9 batch 1: none of 6
+(QT-21).** Trial count N = 48. Sender disarmed. No holdout has ever been opened.
 
 ## Operator's words (verbatim)
-- 2026-10-16 19:28: *"QT-19 done"*. 2026-10-16 14:04: *"lets go with option 1."* =
-  the advisor next; S6 stays OPEN (paused, not closed).
+- 2026-10-16 23:42: *"QT-20 report read; proceed with QT-20's PROPOSE, in its order.
+  Record in STATE."* (done: QT-21, in that order).
+- 2026-10-16 14:04: *"lets go with option 1."* = the advisor next; S6 stays OPEN (paused).
 
-## QT-20 in one screen — STOPPED in Part A: a DATA DEFECT (box rule)
-- Step 0 green; the register untouched (10 entries hashed = their register commits).
-- Why the luck bar was 5–10× too wide: NOT cost noise (cost bills < 1% of the spread).
-  The coin-flip null ignores the book's eligibility, and SMEA.L's stored open on
-  2023-11-27 is ×114.6 its previous close (a unit break). 102 of 200 coins held it into
-  that open (+344% of the pot in one bar): that one fact = 99.9% of the spread. The book
-  can never hold SMEA.L then (its 90% coverage fails at every 2023 month-end).
-- The box's fix (i), random-rank books built by advisor_book (measured as a
-  description): none touched SMEA.L; spread 0.005 (1× and 2×) on raw and patched data alike →
-  SR0 ≈ 0.012 at N=48, far below the planted book (0.237 / 0.212). Coin on clean data:
-  SR0 0.006 / 0.009. Analytic (ii) ≈ 0.031 / 0.036: differs > 2× as expected (one book's own luck,
-  already in the PSR).
-- STOP because the census found broken rows a real book CAN hold: EDV.L's 848 rows
-  before its 2021-06-14 London listing (619 flat zero-volume, then a fake −41% day; three
-  QT-19 drill books held it into that day). Also FWRG.L's first 7 rows (warm-up only),
-  IITU.L's 2 launch rows. B–D not done: no code changed, nothing run or logged.
+## QT-21 in one screen
+- **Data:** the daily front door now quarantines unit breaks (open ≥ 3× or ≤ ⅓ the previous
+  close; the unit with the most rows is the line's own) and filler (rows before a line's
+  first traded bar; a share: its first 20 sessions in a row with trades). qb2/data/
+  cross_bar.py, on every daily write; sticky ledger quarantine/daily/<name>-crossbar.parquet
+  (a re-fetch never brings a row back). Clean-up: 6,685 rows, 27 names, reconciled; real
+  moves kept. D3's VWRL→VWRP chain now at 2019-08-13 (−0.16 points).
+- **Bench:** one bar > 25% of a result's variance = INSUFFICIENT; the advisor's luck bar
+  from 200 random-rank books built by each trial's own rules (rank_null.py); S6/P19 keep the
+  coin; 42 old verdicts unchanged. Both gates proved both ways (QT-21 D). 17 of 17 mutants RED.
+- **S9 batch 1, net 2× vs D3 +265.1% (2014-03 → 2025-10):** A-01 +24.7% · A-02 +12.4% ·
+  A-03 +34.8% · A-04 +5.4% · A-05 +2.1% · A-06 +19.5%. All FAIL (luck p 1.000, DSR
+  0.26–0.57, below D3). Each sits 3.6–5.1 sd BELOW random re-timings of its own holdings;
+  US halves positive, London halves negative (description only).
+- **The advisor's honest default stays "hold the index fund".**
 
 ## Book rules in force (QT-19 register, unchanged)
 Month-end decision bar on the exchange's last session; coverage ≥ 90%; no month-end bar
@@ -34,23 +34,21 @@ Month-end decision bar on the exchange's last session; coverage ≥ 90%; no mont
 > 30 or missing; 1% ceiling bar by bar; OOS 2014-03-31 → 2025-10-09; D3 VWRL → VWRP.
 
 ## NEXT
-1. **Mentor writes QT-21: data first**, then the box's fix (i) as QT-20 specified it,
-   re-prove both gates both ways, THEN A-01..A-06 as registered. Proposed (QT-20 report):
-   front-door daily check — a bar opening ≥ 3× or ≤ ⅓ its previous close = unit break; flat
-   zero-volume rows before a line's first trade = filler; the wrong side quarantined,
-   never corrected (starting figures, standing GO). Re-measure with
-   docs/reports/QT-20_partA_scripts.py.txt. Bench guard: one bar carrying > 25% of a
-   result's variance = INSUFFICIENT.
-2. For the mentor: the Deflated Sharpe centres its luck bar on 0; long-only books earn
-   the market's Sharpe without skill — centre on the null's mean? (firewall change).
-3. Flag: the 3×ATR stop sells ~half of buys within a month — change = PROPOSE→GO.
+1. **Mentor writes QT-22 for S9 batch 2** (none survived; the QT-22 suggestion engine waits
+   for a survivor). Leads (description, not results): the rules' timing loses to random
+   timing of the same holdings; the P10 stop sells 40–43% of buys within a month (M2;
+   change = PROPOSE→GO); London halves lost in all six.
+2. M1 idea for a FUTURE batch, registered before use: centre the DSR's luck bar on the
+   skill-free books' mean (random picks scored DSR 0.876 today; luck test + D3 stopped them).
+3. PROPOSE: per-ticker scale check vs Trading 212's own price (SCARS #3). SMEA.L's kept
+   2010–23 rows are £ ÷ 100 and its true-£ rows from 2024-04-25 sit quarantined.
 4. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
 
 ## DECISION REQUESTED (open)
 - **D1 advisor risk rule.** Default: the 1% rule stays the ceiling (stricter). GO
   words: "GO on D1: for the advisor, replace the 1% rule with a cap on how much the
-  account can lose if the stop is hit, figure chosen by S5's crash tests." QT-19: the
-  ceiling bound on 0.02% of held days (34 slots) — it barely matters at this size.
+  account can lose if the stop is hit, figure chosen by S5's crash tests." QT-21: the
+  ceiling bound on ≤ 0.02% of held days — it barely matters at this size.
 - **Bot's brake.** Default: as built. GO words: "GO on the bot's brake: the 10% brake
   clears itself after 5 sessions and restarts from there; the 15% pause stays
   measured from the true peak and only my words clear it."
@@ -77,11 +75,11 @@ Month-end decision bar on the exchange's last session; coverage ≥ 90%; no mont
 - Parked: v1 revive-or-retire. 5m known-null to re-prove before any 5m trial.
 
 ## Open flags
-- DATA DEFECT (above), not fixed. A line priced in the wrong currency throughout shows
-  no jump (SMEA.L's later rows look like € on a GBX line): needs a scale check vs T212.
-- Survivorship: the advisor list was chosen in 2026; 1%/yr mark-down is a starting figure.
+- Thin London ETF quotes left after each line's first trade (M3, description): SSLN.L
+  99.8% flat untraded rows, ACWI.L 56%, SMEA.L 35%. Survivorship: the list was chosen in 2026.
 - anchors.py 1,422 lines (pinned): splitting = PROPOSE→GO. 52 mypy errors silenced in
   5 inherited modules. No clock-sync task. Recorder missed 08:00 on 16 Oct.
 
 ## Fingerprints
-v1 4add56ec…743b6 (unchanged). Advisor daily (a) 7d43bd09…16a1e, (b) 100065377…6e8d.
+v1 4add56ec…743b6 (unchanged). Advisor daily (a) 0f3a960c…f1f9, (b) f7aae670…768e
+(after QT-21's clean-up; was 7d43bd09…16a1e / 10006537…6e8d).

@@ -47,7 +47,8 @@ this logic leaves NVDA or this laptop.
     · (QT-17) holdout.py is the ONE door to bars (tests/wall/test_sealed_doors.py) ·
     p15.py (the sender's earnings check inside back-tests) · (QT-18) p15_history.py
     (back-tests only, test_p15_history_wall.py) · p15_coverage.py · s6_run.py +
-    s6_results.py (S6 batch 1) · signals/s6_rules.py · data/data_fingerprint.py
+    s6_results.py (S6 batch 1) · signals/s6_rules.py · data/data_fingerprint.py ·
+    (QT-21) data/cross_bar.py (daily unit-break/filler quarantine) · rank_null.py
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
     (which samples count: full calendar sessions, each bar once; the meter that

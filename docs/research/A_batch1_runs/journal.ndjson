@@ -1,0 +1,14 @@
+{"at": "2026-10-17T00:08:05+00:00", "code_commit": "28e0b8ed5b931bb56c6debacc4467d09b7472578", "counted_before": 42, "event": "start", "fp_a": "0f3a960cfa58785e029415890463ac4755f7a2fd1b3781c61412cf7ca91df1f9", "fp_b": "f7aae6706cc6ff661f073c70c6756b9955b357b5c1703536cce5242e0c02768e", "reason": "first run", "run": 1}
+{"at": "2026-10-17T00:08:09+00:00", "event": "started", "id": "A-01", "run": 1}
+{"at": "2026-10-17T00:25:48+00:00", "event": "done", "id": "A-01", "run": 1, "seconds": 1059.5, "verdict": "FAIL"}
+{"at": "2026-10-17T00:25:48+00:00", "event": "started", "id": "A-02", "run": 1}
+{"at": "2026-10-17T00:44:11+00:00", "event": "done", "id": "A-02", "run": 1, "seconds": 1102.8, "verdict": "FAIL"}
+{"at": "2026-10-17T00:44:11+00:00", "event": "started", "id": "A-03", "run": 1}
+{"at": "2026-10-17T01:04:43+00:00", "event": "done", "id": "A-03", "run": 1, "seconds": 1232.0, "verdict": "FAIL"}
+{"at": "2026-10-17T01:04:44+00:00", "event": "started", "id": "A-04", "run": 1}
+{"at": "2026-10-17T01:23:42+00:00", "event": "done", "id": "A-04", "run": 1, "seconds": 1138.0, "verdict": "FAIL"}
+{"at": "2026-10-17T01:23:42+00:00", "event": "started", "id": "A-05", "run": 1}
+{"at": "2026-10-17T01:41:57+00:00", "event": "done", "id": "A-05", "run": 1, "seconds": 1095.1, "verdict": "FAIL"}
+{"at": "2026-10-17T01:41:57+00:00", "event": "started", "id": "A-06", "run": 1}
+{"at": "2026-10-17T02:18:40+00:00", "event": "done", "id": "A-06", "run": 1, "seconds": 2203.0, "verdict": "FAIL"}
+{"at": "2026-10-17T02:18:51+00:00", "event": "fingerprints_end", "fp_a": "0f3a960cfa58785e029415890463ac4755f7a2fd1b3781c61412cf7ca91df1f9", "fp_b": "f7aae6706cc6ff661f073c70c6756b9955b357b5c1703536cce5242e0c02768e", "run": 1}

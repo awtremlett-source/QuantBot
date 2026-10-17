@@ -326,3 +326,27 @@ for st in (1.0, 2.0):
     print(f"{st:g}x: {len(s)} coins, Sharpe/bar mean {s.mean():+.4f}, spread {sd:.4f}, "
           f"SR0(N=48) {deflation.expected_max_sharpe(48, sd ** 2):.4f}; biggest bar median {np.median(top):.2%}, max {top.max():.2%}")
 
+# ==================== m3_quotes.py ====================
+"""QT-21 M3 (description only): flat zero-volume rows LEFT in the cleaned store (after each line's
+first trade), per London ETF, unsealed rows -- quotes, not trades; nothing quarantined here."""
+from qb2.data import universe
+from qb2.research import holdout
+rows = []
+for e in universe.advisor_entries():
+    if e["kind"] != "ETF":
+        continue
+    b = holdout.research_bars(str(e["yfinance"]), "1d", universe.market_of(e))
+    dead = ((b.open == b.high) & (b.high == b.low) & (b.low == b.close) & (b.volume == 0))
+    same = (b.close.diff() != 0) & dead
+    rows.append((str(e["yfinance"]), len(b), round(float(dead.mean()), 3), round(float(same.mean()), 3), str(b.index[0].date())))
+for r in sorted(rows, key=lambda r: -r[2]):
+    print(r)
+
+# ==================== show.py (Part E summary) ====================
+import json, sys, glob
+for f in sorted(glob.glob("docs/research/A_batch1_runs/run1/A-*.json")):
+    if f.endswith(".holdout.json"): continue
+    r = json.load(open(f, encoding="utf-8"))
+    print(r["id"], r["verdict"], "net2x %+.1f%% net1x %+.1f%% gross %+.1f%% vwrp %+.1f%% dd %.1f%% p %.3f dsr %.3f sh %.4f sr0 %.4f sr0ii %.4f top %.1f%% turn %.1f hold %.0f stop1m %.0f%% trades %d" % (
+        100*r["marked_2x"], 100*r["marked_1x"], 100*r["gross"], 100*r["vwrp"], 100*r["max_dd_2x"], r["p"], r["dsr"], r["sharpe"], r["sr0_rank"], r["sr0_analytic"], 100*r["top_bar_share"], r["turnover_per_year"], r["avg_hold_days"], 100*r["stopped_in_a_month"], r["trades"]),
+          "| failed:", [x.split(":")[1].strip()[:30] for x in r["reasons"]], "| split", {k: round(v["marked_2x"], 3) for k, v in r["split"].items()}, "| holdout", (r.get("holdout") or {}).get("verdict"))
