@@ -1,0 +1,49 @@
+"""QT-21 D: the eight drill runs of qb2.research.advisor_drills (HONEST, then RED_FIRST), each in
+its own process -- the same drill() calls advisor_drills.main makes, on the cleaned store, 200
+null runs each. Honest runs log kind=drill (counted 0) to a per-process file; once all are done
+those lines are appended to data/qb2/trials.jsonl in HONEST order (never two writers on one log).
+The page and its .json are advisor_drills.write(runs), as main writes them.
+Run from the repo root:  PYTHONPATH=. .venv-qb2/Scripts/python <copy>.py"""
+import json
+import sys
+import tempfile
+import time
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
+from qb2.research import advisor_data, advisor_drills, trial_log
+
+
+def one(job):
+    gate, did, stress, broken, want, log = job
+    data, skipped, _ = advisor_data.load()
+    t0 = time.monotonic()
+    out = advisor_drills.drill(did, data, skipped, stress=stress, broken=broken, log_path=Path(log))
+    out = {"gate": gate, **out, "seconds": round(time.monotonic() - t0)}
+    if broken:
+        out.update(expect=want, red_first=True)
+    return out
+
+
+if __name__ == "__main__":
+    tmp = Path(tempfile.mkdtemp(prefix="qt21_drills_"))
+    jobs = [(g, d, s, None, None, str(tmp / f"{i}.jsonl"))
+            for i, (g, d, s) in enumerate(advisor_drills.HONEST)]
+    jobs += [(g, d, s, b, w, str(tmp / "red.jsonl")) for g, d, s, b, w in advisor_drills.RED_FIRST]
+    t0 = time.monotonic()
+    with ProcessPoolExecutor(max_workers=len(jobs)) as pool:
+        runs = list(pool.map(one, jobs))
+    for r in runs:
+        tag = f"BROKEN {r['broken']}" if r.get("red_first") else "honest"
+        print(f"{r['drill']} {r['stress']:g}x {tag}: {r['verdict']} (expect {r['expect']}) "
+              f"p {r['p']} dsr {r['dsr']} sr0 {r['sr0']} top {r['top_bar_share']:.4f} "
+              f"{r['seconds']}s", flush=True)
+    assert not (tmp / "red.jsonl").exists(), "a red-first run was logged"
+    logged = []
+    for i in range(len(advisor_drills.HONEST)):
+        logged += (tmp / f"{i}.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(logged) == len(advisor_drills.HONEST), logged
+    for line in logged:                                   # into the real log, in HONEST order
+        trial_log.log_trial(json.loads(line))
+    print(f"logged {len(logged)} drill lines; wall {round(time.monotonic() - t0)}s", flush=True)
+    sys.exit(advisor_drills.write(runs))
