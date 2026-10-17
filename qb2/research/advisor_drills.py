@@ -19,13 +19,16 @@ Honest runs are logged kind=drill (counted 0); red-first runs are not logged.
 
 QT-21 D: re-proved on the cleaned store (cross_bar.py) with the luck bar from random-rank
 books (rank_null.py) and the biggest-bar guard; each run also reports both luck bars.
+QT-22: batch 2's book (the big-fall stop) gets the same gates from its own three drills
+(KN-A2-*, ``--batch 2``) at N = 54; the v1 plant is not repeated.
 
-CLI: ``python -m qb2.research.advisor_drills`` -- writes docs/research/
-known_null_2026-10-17_QT21_advisor.md and its .json evidence.
+CLI: ``python -m qb2.research.advisor_drills [--batch 2]`` -- writes docs/research/
+known_null_2026-10-17_QT21_advisor.md (batch 2: ..._QT22_advisor.md) and its .json evidence.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import time
@@ -43,6 +46,7 @@ from qb2.signals.a_rules import SENTINEL_VOLUME
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT = REPO_ROOT / "docs" / "research" / "known_null_2026-10-17_QT21_advisor"
+OUTS = {1: OUT, 2: OUT.with_name("known_null_2026-10-17_QT22_advisor")}
 
 
 def marks(name: firewall.NameData) -> tuple[list[int], list[int]]:
@@ -97,7 +101,8 @@ def same_bar_fills(data: Sequence[firewall.NameData]) -> list[firewall.NameData]
 
 def drill(drill_id: str, data: Sequence[firewall.NameData], skipped: Sequence[str], *,
           stress: float = 1.0, broken: str | None = None, n_null: int = advisor_run.N_NULL,
-          log_path: Path = trial_log.DEFAULT_TRIAL_LOG) -> dict[str, Any]:
+          log_path: Path = trial_log.DEFAULT_TRIAL_LOG, n_trials: int = advisor_run.N_TRIALS,
+          ) -> dict[str, Any]:
     token = preregister.require(drill_id)
     planted = plant(data, token.entry["parameters"])
     book, weighted = advisor_run.book_for(token.entry, planted)
@@ -106,7 +111,8 @@ def drill(drill_id: str, data: Sequence[firewall.NameData], skipped: Sequence[st
     elif broken == "no_slot_weights":
         weighted = [replace(d, weight=None) for d in weighted]
     result = advisor_run.score(token, weighted, book, stress=stress, skipped=skipped,
-                               n_null=n_null, log_path=None if broken else log_path)
+                               n_null=n_null, log_path=None if broken else log_path,
+                               n_trials=n_trials)
     marked = result.observed.marked
     return {"drill": drill_id, "stress": stress, "broken": broken,
             "expect": str(token.entry["expect"]), "verdict": result.verdict.outcome,
@@ -117,7 +123,7 @@ def drill(drill_id: str, data: Sequence[firewall.NameData], skipped: Sequence[st
             "start": str(result.start), "end": str(result.end), "reasons": list(result.verdict.reasons),
             "top_bar_share": verdict.top_bar_share(marked.to_numpy(dtype=float)),
             "sharpe": stats.compute(marked, "1d").sharpe_per_bar, "sr0": result.deflated.get("sr0"),
-            "sr0_analytic": rank_null.analytic_sr0(marked.to_numpy(dtype=float), advisor_run.N_TRIALS),
+            "sr0_analytic": rank_null.analytic_sr0(marked.to_numpy(dtype=float), n_trials),
             "report_md": report.render(result) if result.benchmark else ""}
 
 
@@ -126,33 +132,41 @@ HONEST = (("gate1", "KN-A-RANDOM-1d", 1.0), ("gate1", "KN-A-GAP-1d", 1.0),
           ("v1", "KN-A-PLANT-1d", 1.0), ("v1", "KN-A-PLANT-1d", 2.0))   # v1: reported beside
 RED_FIRST = (("gate1", "KN-A-GAP-1d", 1.0, "same_bar_fill", "PASS"),
              ("gate2", "KN-A-PLANT-v2-1d", 1.0, "no_slot_weights", "FAIL"))
+DRILLS = {1: (HONEST, RED_FIRST),                # batch 2: the same gates on its own drills
+          2: (tuple((g, d.replace("KN-A-", "KN-A2-"), s) for g, d, s in HONEST if g != "v1"),
+              tuple((g, d.replace("KN-A-", "KN-A2-"), s, b, w) for g, d, s, b, w in RED_FIRST))}
+TITLES = {1: "QT-21 D, re-proved", 2: "QT-22, batch 2's book: the big-fall stop"}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
+    parser.add_argument("--batch", type=int, choices=sorted(DRILLS), default=1)
+    batch = parser.parse_args(argv).batch
+    n = advisor_run.BATCHES[batch][1]
     data, skipped, _ = advisor_data.load()
     runs: list[dict[str, Any]] = []
-    for gate, did, stress in HONEST:
+    for gate, did, stress in DRILLS[batch][0]:
         t0 = time.monotonic()
-        runs.append({"gate": gate, **drill(did, data, skipped, stress=stress),
+        runs.append({"gate": gate, **drill(did, data, skipped, stress=stress, n_trials=n),
                      "seconds": round(time.monotonic() - t0)})
         print(f"{did} {stress:g}x: {runs[-1]['verdict']} (expect {runs[-1]['expect']})", flush=True)
-    for gate, did, stress, broken, want in RED_FIRST:
-        out = drill(did, data, skipped, stress=stress, broken=broken)
+    for gate, did, stress, broken, want in DRILLS[batch][1]:
+        out = drill(did, data, skipped, stress=stress, broken=broken, n_trials=n)
         runs.append({"gate": gate, **out, "expect": want, "red_first": True})
         print(f"{did} BROKEN {broken}: {out['verdict']} (red-first needs {want})", flush=True)
-    return write(runs)
+    return write(runs, batch)
 
 
-def write(runs: Sequence[dict[str, Any]]) -> int:
+def write(runs: Sequence[dict[str, Any]], batch: int = 1) -> int:
     """The page and its evidence from finished runs (HONEST, then RED_FIRST, in order)."""
     green = {g: all(r["verdict"] == r["expect"] for r in runs if r["gate"] == g
                     and not r.get("red_first")) for g in ("gate1", "gate2", "v1")}
     shown = {g: all(r["verdict"] == r["expect"] for r in runs if r["gate"] == g
                     and r.get("red_first")) for g in ("gate1", "gate2")}
-    lines = ["# Known-null gate on the advisor's monthly book, daily bars (QT-21 D, re-proved)", "",
+    lines = [f"# Known-null gate on the advisor's monthly book, daily bars ({TITLES[batch]})", "",
              "Cleaned store (QT-21 A); luck bar SR0 from 200 random-rank books built by each "
              "drill's own rules (QT-21 C); one bar > 25% of the variance = INSUFFICIENT (QT-21 B).", ""]
-    for g in ("gate1", "gate2", "v1"):
+    for g in [x for x in ("gate1", "gate2", "v1") if any(r["gate"] == x for r in runs)]:
         lines += [f"## {g}: {'GREEN' if green[g] else 'RED'} · red-first "
                   f"{'shown' if shown[g] else 'NOT shown'}" if g != "v1" else
                   "## KN-A-PLANT-1d (0.1%/bar, superseded as Gate 2's instrument; reported)", ""]
@@ -168,8 +182,8 @@ def write(runs: Sequence[dict[str, Any]]) -> int:
         lines.append("")
     for r in runs:
         lines += [f"## {r['drill']} {r['stress']:g}× {r.get('broken') or 'honest'}", "", r["report_md"]]
-    OUT.with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")
-    OUT.with_suffix(".json").write_text(json.dumps(
+    OUTS[batch].with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")
+    OUTS[batch].with_suffix(".json").write_text(json.dumps(
         [{k: v for k, v in r.items() if k != "report_md"} for r in runs], indent=1), encoding="utf-8")
     print(f"gate1 {green['gate1']} red-first {shown['gate1']} · gate2 {green['gate2']} red-first "
           f"{shown['gate2']}")

@@ -1,0 +1,64 @@
+"""Red-first for QT-22 (the big-fall stop, batch 2's runner): each mutant must turn its named
+test RED; every file is restored byte for byte. Run from the repo root under .venv-qb2:
+python -I <copy>.py  -- results go to stdout."""
+import subprocess
+import sys
+from pathlib import Path
+
+B = Path("qb2/research/advisor_book.py")
+R = Path("qb2/research/advisor_run.py")
+T = "tests/qb2/test_qt22_big_fall.py"
+M = [
+    ("the big-fall stop ignored (k x ATR with k = 0.15)", B,
+     "    fall = s.stop_fall is not None ", "    fall = False ", "fourteen"),
+    ("the fill-bar level from the decision bar's ATR", B,
+     "(o[i][t] if fall else unit)", "(unit)", "fourteen"),
+    ("unsettled ignored: always 15%", B,
+     "            return s.stop_fall if calm else s.stop_fall_unsettled",
+     "            return s.stop_fall", "unsettled"),
+    ("the level lowered: no trailing max", B,
+     "level[i] = max(level[i], c[i][t] - k_at(day) * (c[i][t] if fall else atr[i][t]))",
+     "level[i] = c[i][t] - k_at(day) * (c[i][t] if fall else atr[i][t])", "never_lowered"),
+    ("the 1% ceiling at the ATR distance", B,
+     "risk = (np.full(len(c[i]), s.stop_fall) if fall else",
+     "risk = (np.full(len(c[i]), s.stop_fall) if False else", "ceiling"),
+    ("Settings.of drops the registered big-fall stop", B,
+     '        fall = (float(p["stop_fall"]), float(p["stop_fall_unsettled"])) if "stop_fall" in p else (None, None)',
+     "        fall = (None, None)", "settings_read or luck_bar"),
+    ("an entry with both stops (or neither) accepted", B,
+     '        if ("stop_k" in p) == ("stop_fall" in p):', "        if False:", "settings_read"),
+    ("batch 2 judged at N = 48", R, '2: ("A2-", 54,', '2: ("A2-", 48,', "fifty_four"),
+    ("batch 2 picks batch 1's entries", R,
+     'and str(e["id"]).startswith(prefix)]', 'and str(e["id"]).startswith("A-")]', "fifty_four"),
+    ("the runner drops the batch's N", R,
+     "skipped=skipped, n_trials=n_trials)", "skipped=skipped)", "fifty_four"),
+]
+
+
+def pytest(k: str) -> int:
+    return subprocess.run([sys.executable, "-m", "pytest", "-q", "-x", T, "-k", k, "-p",
+                           "no:cacheprovider"], capture_output=True, text=True).returncode
+
+
+def main() -> int:
+    assert pytest("not nothing") == 0, "tests not green before mutating"
+    red = 0
+    for why, path, old, new, k in M:
+        text = path.read_bytes()
+        src = text.decode("utf-8")
+        assert src.count(old) == 1, (why, src.count(old))
+        path.write_bytes(src.replace(old, new).encode("utf-8"))
+        try:
+            code = pytest(k)
+        finally:
+            path.write_bytes(text)
+        assert path.read_bytes() == text
+        red += code != 0
+        print(f"{'RED ' if code else 'GREEN (BAD)'} [{k}] {why}", flush=True)
+    assert pytest("not nothing") == 0, "tests not green after restoring"
+    print(f"{red} of {len(M)} RED; all files restored")
+    return 0 if red == len(M) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

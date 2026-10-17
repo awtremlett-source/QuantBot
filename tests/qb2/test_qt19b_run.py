@@ -76,7 +76,7 @@ def _fake(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, prints: list[dict[str
           boom: str | None = None) -> list[str]:
     ran: list[str] = []
     entries = [{"id": c, "kind": "trial", "rule": "a_momentum", "name": c} for c in ("A-01", "A-02")]
-    monkeypatch.setattr(advisor_run, "trials", lambda root=None: entries)
+    monkeypatch.setattr(advisor_run, "trials", lambda root=None, prefix="A-": entries)
     monkeypatch.setattr(advisor_run, "code_commit", lambda *a: "c0ffee")
     monkeypatch.setattr(advisor_data, "fingerprints", lambda *a: prints[0])
     monkeypatch.setattr(advisor_data, "load", lambda *a: ([], [], {"credited": 0,

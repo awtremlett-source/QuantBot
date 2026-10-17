@@ -1,0 +1,11 @@
+RED  [fourteen] the big-fall stop ignored (k x ATR with k = 0.15)
+RED  [fourteen] the fill-bar level from the decision bar's ATR
+RED  [unsettled] unsettled ignored: always 15%
+RED  [never_lowered] the level lowered: no trailing max
+RED  [ceiling] the 1% ceiling at the ATR distance
+RED  [settings_read or luck_bar] Settings.of drops the registered big-fall stop
+RED  [settings_read] an entry with both stops (or neither) accepted
+RED  [fifty_four] batch 2 judged at N = 48
+RED  [fifty_four] batch 2 picks batch 1's entries
+RED  [fifty_four] the runner drops the batch's N
+10 of 10 RED; all files restored

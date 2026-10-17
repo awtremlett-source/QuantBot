@@ -1,22 +1,24 @@
-"""S9 batch 1: the six advisor rules, run exactly as registered -- resumable (QT-19 B3-B4).
+"""S9's advisor batches, six rules each, run exactly as registered -- resumable (QT-19 B3-B4).
 
 Same rules of the run as S6 batch 1 (qb2/research/s6_run.py, whose helpers this uses):
 
-* register order (A-01..A-06); each judged by firewall.score at 2x costs (1x beside
-  it), N = 42 + 6 = 48 for the Deflated Sharpe; one arm, the whole advisor list; the
-  luck bar from random-rank books built by the trial's own rules (rank_null.py, QT-21 C);
-* the rule is a_rules.of(entry) and the book advisor_book.build -- each refuses what
-  it does not implement; the book is rebuilt on data cut at three mid-month dates and
-  refused if its past changed (advisor_book.causal);
-* SAVE AS IT GOES: a finished trial is written atomically to
-  docs/research/A_batch1_runs/run<N>/<id>.json with the code commit and fingerprint
-  (a), THEN its trial-log line (kind firewall, counted 1). A restart skips finished
-  trials; one started and never finished is logged "interrupted" (counted 0) and run
-  again. A code commit or fingerprint different from the run's start is a DEFECT;
-* HOLDOUT: only a walk-forward PASS gets its single run (sealed daily year to
-  2026-10-09, the book carried on from the unsealed years), fingerprint (b) first.
+* register order -- batch 1 A-01..A-06 (N = 42 + 6 = 48); batch 2 (``--batch 2``, QT-22)
+  A2-01..A2-06 = batch 1's six with the big-fall stop (N = 54, its own folder and page); each
+  judged by firewall.score at 2x costs (1x beside it), the batch's N for the Deflated Sharpe;
+  one arm, the whole advisor list; the luck bar from random-rank books built by the trial's
+  own rules (rank_null.py, QT-21 C);
+* the rule is a_rules.of(entry) and the book advisor_book.build -- each refuses what it does
+  not implement; the book is rebuilt on data cut at three mid-month dates and refused if its
+  past changed (advisor_book.causal);
+* SAVE AS IT GOES: a finished trial is written atomically to docs/research/A_batch<b>_runs/
+  run<N>/<id>.json with the code commit and fingerprint (a), THEN its trial-log line (kind
+  firewall, counted 1). A restart skips finished trials; one started and never finished is
+  logged "interrupted" (counted 0) and run again. A code commit or fingerprint different from
+  the run's start is a DEFECT;
+* HOLDOUT: only a walk-forward PASS gets its single run (sealed daily year to 2026-10-09, the
+  book carried on from the unsealed years), fingerprint (b) first.
 
-CLI: ``python -m qb2.research.advisor_run [--max N] [--new-run DEFECT] [--page-only]``
+CLI: ``python -m qb2.research.advisor_run [--batch 2] [--max N] [--new-run DEFECT] [--page-only]``
 """
 
 from __future__ import annotations
@@ -47,9 +49,17 @@ CODE_PATHS = ("qb2", "requirements-qb2.txt", "docs/research/preregistered.json",
               "docs/research/bet_groups.json", "docs/universe/advisor-universe-v1-2026-10-01.json")
 
 
-def trials(root: Path | None = None) -> list[dict[str, Any]]:
+BATCHES = {1: ("A-", N_TRIALS, "batch 1 — results, 2026-10 (built QT-19, run QT-21)"),  # prefix, N,
+           2: ("A2-", 54, "batch 2 (batch 1's six, the big-fall stop) — results, 2026-10 (QT-22)")}  # title
+
+
+def where(batch: int) -> tuple[Path, Path]:          # (run folder, page): 1 = RUN_DIR, PAGE
+    return RUN_DIR.with_name(f"A_batch{batch}_runs"), PAGE.with_name(f"A_batch{batch}_results_2026-10.md")
+
+
+def trials(root: Path | None = None, prefix: str = "A-") -> list[dict[str, Any]]:
     return [e for e in preregister.entries(root).values()
-            if e["kind"] == "trial" and str(e["id"]).startswith("A-")]
+            if e["kind"] == "trial" and str(e["id"]).startswith(prefix)]
 
 
 def cuts(data: Sequence[firewall.NameData]) -> list[date]:
@@ -79,14 +89,14 @@ def book_for(entry: Mapping[str, Any], data: Sequence[firewall.NameData], *,
 def score(token: preregister.Registered, data: Sequence[firewall.NameData],
           book: advisor_book.Book, *, stress: float = STRESS, skipped: Sequence[str] = (),
           final: holdout.HoldoutPass | None = None, log_path: Path | None = None,
-          n_null: int = N_NULL) -> firewall.FirewallResult:
+          n_null: int = N_NULL, n_trials: int = N_TRIALS) -> firewall.FirewallResult:
     index = {d.symbol: pd.DatetimeIndex(d.bars.index) for d in data}
 
     def make(name: firewall.NameData) -> Held:
         return Held(name.symbol, index[name.symbol], book.decisions[name.symbol])
     nulls = rank_null.Nulls(token.entry, data, vix=advisor_data.vix(final), cuts=cuts(data))
     return firewall.score(token, make, data, interval="1d", stress=stress, skipped=skipped,
-                          n_null=n_null, log_path=log_path, n_trials=N_TRIALS, final=final,
+                          n_null=n_null, log_path=log_path, n_trials=n_trials, final=final,
                           skill_free=nulls.draw)
 
 
@@ -115,7 +125,7 @@ def _logged(cid: str, run: int) -> bool:
 
 
 def _holdout(token: preregister.Registered, data: Sequence[firewall.NameData], folder: Path,
-             fp_b: str, run_dir: Path, run: int) -> dict[str, Any]:
+             fp_b: str, run_dir: Path, run: int, n_trials: int) -> dict[str, Any]:
     path = folder / f"{token.id}.holdout.json"
     if path.is_file():
         return dict(json.loads(path.read_text(encoding="utf-8")))
@@ -130,7 +140,7 @@ def _holdout(token: preregister.Registered, data: Sequence[firewall.NameData], f
     note(run_dir, event="holdout_opened", run=run, id=token.id)
     sealed = advisor_data.sealed(data, final)
     book, sealed = book_for(token.entry, sealed, final=final)
-    result = score(token, sealed, book, final=final)
+    result = score(token, sealed, book, final=final, n_trials=n_trials)
     out = summary(token, result, sealed, book)
     atomic_write(path, out)                    # saved before anything else is done
     trial_log.log_trial({
@@ -144,15 +154,16 @@ def _holdout(token: preregister.Registered, data: Sequence[firewall.NameData], f
     return out
 
 
-def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path = RUN_DIR,
-        say: Callable[[str], None] = print) -> int:
+def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path | None = None,
+        say: Callable[[str], None] = print, batch: int = 1) -> int:
+    (prefix, n_trials, _), run_dir = BATCHES[batch], run_dir or where(batch)[0]
     commit, prints = code_commit(REPO_ROOT, CODE_PATHS), advisor_data.fingerprints()
     number = start(run_dir, new_run, commit, prints)
     folder, rows = run_dir / f"run{number}", [r for r in journal(run_dir) if r.get("run") == number]
     data, skipped, counts = advisor_data.load()
     say(f"run {number}: {len(data)} names, {advisor_data.counts_text(counts)}")
     ran = 0
-    for entry in trials():
+    for entry in trials(prefix=prefix):
         cid, token = str(entry["id"]), preregister.require(str(entry["id"]))
         path = folder / f"{cid}.json"
         if path.is_file():                     # finished: skipped, never re-run
@@ -170,7 +181,7 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path =
             note(run_dir, event="started", run=number, id=cid)
             t0 = time.monotonic()
             book, weighted = book_for(token.entry, data)
-            result = score(token, weighted, book, skipped=skipped)
+            result = score(token, weighted, book, skipped=skipped, n_trials=n_trials)
             done = {**summary(token, result, weighted, book), "code_commit": commit,
                     "fp_a": prints["a"], "dividends": counts, "run": number,
                     "seconds": round(time.monotonic() - t0, 1)}
@@ -181,7 +192,7 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path =
             ran += 1
             say(f"  {cid}: {done['verdict']} ({done['seconds']:.0f}s)")
         if done["verdict"] == "PASS" and not done.get("holdout"):
-            done["holdout"] = _holdout(token, data, folder, prints["b"], run_dir, number)
+            done["holdout"] = _holdout(token, data, folder, prints["b"], run_dir, number, n_trials)
             atomic_write(path, done)
             note(run_dir, event="holdout_done", run=number, id=cid,
                  verdict=done["holdout"]["verdict"])
@@ -192,23 +203,25 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path =
     return number
 
 
-def write_page(run_dir: Path = RUN_DIR, target: Path = PAGE) -> str:
+def write_page(run_dir: Path | None = None, target: Path | None = None, batch: int = 1) -> str:
+    prefix, n_trials, title = BATCHES[batch]
+    run_dir, target = run_dir or where(batch)[0], target or where(batch)[1]
     starts = [r for r in journal(run_dir) if r["event"] == "start"]
     number = int(starts[-1]["run"]) if starts else 0
-    records = advisor_results.load(run_dir / f"run{number}", [str(e["id"]) for e in trials()])
+    ids = [str(e["id"]) for e in trials(prefix=prefix)]
+    records = advisor_results.load(run_dir / f"run{number}", ids)
     passed = [r["id"] for r in records if r["verdict"] == "PASS"
               and (r.get("holdout") or {}).get("verdict") == "PASS"]
-    intro = ["# S9 advisor batch 1 — results, 2026-10 (built QT-19, run QT-21)", "",
-             f"Run {number}; {len(records)} of {len(trials())} trials complete; register commit "
+    intro = [f"# S9 advisor {title}", "",
+             f"Run {number}; {len(records)} of {len(ids)} trials complete; register commit "
              f"`{str(records[0]['register_commit'])[:7] if records else '?'}`. Every trial run "
              "exactly as registered (docs/research/preregistered.json).", "",
              f"**Survived (walk-forward PASS and holdout PASS): {', '.join(passed) or 'none'}.**",
-             "", "Judged on net after 2× costs with the survivorship mark-down and dividends "
-             "credited, compounded, against D3 over the same dates (VWRP; VWRL with dividends "
-             "before VWRP's first traded close, 2019-08-13 since QT-21). PASS needs the luck test "
-             "(p < 0.05) and a positive net mean, Deflated Sharpe ≥ 0.95 at N = 48 (luck bar from "
-             "random-rank books), and beating D3; one bar over 25% of the variance = "
-             "INSUFFICIENT. Dividends: "
+             "", "Judged on net after 2× costs with the survivorship mark-down and dividends credited, "
+             "compounded, against D3 over the same dates (VWRP; VWRL with dividends before VWRP's first "
+             "traded close, 2019-08-13 since QT-21). PASS needs the luck test (p < 0.05) and a positive "
+             f"net mean, Deflated Sharpe ≥ 0.95 at N = {n_trials} (luck bar from random-rank books), and "
+             "beating D3; one bar over 25% of the variance = INSUFFICIENT. Dividends: "
              + (advisor_data.counts_text(records[0]["dividends"]) if records else "—") + "."]
     text = advisor_results.page(records, intro)
     target.write_text(text, encoding="utf-8")
@@ -220,15 +233,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--new-run", metavar="DEFECT", default=None)
     parser.add_argument("--max", type=int, default=None, help="run at most N new trials")
     parser.add_argument("--page-only", action="store_true")
+    parser.add_argument("--batch", type=int, choices=sorted(BATCHES), default=1)
     args = parser.parse_args(argv)
     try:
         if not args.page_only:
-            run(new_run=args.new_run, limit=args.max)
+            run(new_run=args.new_run, limit=args.max, batch=args.batch)
     except Defect as why:
         print(f"DEFECT -- STOP: {why}")
         return 2
-    write_page()
-    print(f"written {PAGE.relative_to(REPO_ROOT).as_posix()}")
+    write_page(batch=args.batch)
+    print(f"written {where(args.batch)[1].relative_to(REPO_ROOT).as_posix()}")
     return 0
 
 

@@ -1,26 +1,24 @@
 """The advisor's monthly book: what is held, bar by bar, exactly as registered (QT-19 B1).
 
-docs/research/preregistered.json (register 6332880), field "book" of A-01..A-06 and the
-KN-A drills, is the authority. In brief, at each month's last close:
+docs/research/preregistered.json, field "book" of A-01..A-06 (6332880), A2-01..A2-06 (196fd49,
+QT-22: P10's stop a big fall, f x price, not k x ATR(14)) and their drills, is the authority.
+In brief, at each month's last close:
 
 1. stops first (every close): a name stopped at its decision bar is not bought then;
-2. P13: held 12+ months -> kept only if in the top k (a re-justified buy: fresh stop,
-   no trade), else sold;
+2. P13: held 12+ months -> kept only if in the top k (re-justified: fresh stop, no trade);
 3. other held names kept if eligible and in the top 30% (the buffer), else sold;
 4. more than k kept -> the lowest-ranked beyond k sold;
-5. free slots filled with the best-ranked eligible names not held (none while A-06's
-   market filter is off: then everything is sold).
+5. free slots get the best-ranked eligible names not held (A-06's filter off: all sold).
 
-A name's decision bar is its bar on its exchange's LAST session of the month; the
-arm decides once both markets have closed that month (a London decision bar can be
-a day earlier than New York's -- it still fills at London's next open, after the
-decision). No bar there: a held name is sold, decided at its next bar.
+A name's decision bar is its bar on its exchange's LAST session of the month; the arm decides
+once both markets have closed that month (a London decision bar can be a day before New York's
+-- it still fills at London's next open). No bar there: a held name is sold at its next bar.
 
-Pure logic: bars, values, VIX and the A-06 filter are handed in. The output is each
-name's 0/1 target at every close (``decisions``, the firewall's Strategy weights) and
-its share of the pot at every bar (``weights``: 1/k, capped by the 1% rule).
-:func:`causal` rebuilds on data cut at mid-month dates and refuses a book whose past
-changed -- the look-ahead check the per-name Strategy contract cannot make here.
+Pure logic: bars, values, VIX and the A-06 filter are handed in. The output is each name's 0/1
+target at every close (``decisions``, the firewall's Strategy weights) and its share of the pot
+at every bar (``weights``: 1/k, capped by the 1% rule). :func:`causal` rebuilds on data cut at
+mid-month dates and refuses a book whose past changed -- the look-ahead check the per-name
+Strategy contract cannot make here.
 """
 
 from __future__ import annotations
@@ -63,12 +61,17 @@ class Settings:
     coverage: float = 0.9
     risk_per_trade: float = 0.01
     advisor_share: float = 0.7
+    stop_fall: float | None = None           # QT-22's big-fall stop: f x price (k unused)
+    stop_fall_unsettled: float | None = None
 
     @classmethod
     def of(cls, p: Mapping[str, Any], lookback: int, ascending: bool) -> Settings:
+        if ("stop_k" in p) == ("stop_fall" in p):
+            raise ValueError("an advisor entry registers exactly one stop: stop_k or stop_fall")
+        fall = (float(p["stop_fall"]), float(p["stop_fall_unsettled"])) if "stop_fall" in p else (None, None)
         return cls(lookback, ascending, float(p["top"]), float(p["buffer"]), int(p["age_months"]),
-                   float(p["stop_k"]), float(p["stop_k_unsettled"]), float(p["vix_unsettled"]),
-                   float(p["coverage"]), float(p["risk_per_trade"]), float(p["advisor_share"]))
+                   float(p.get("stop_k", 3.0)), float(p.get("stop_k_unsettled", 2.0)), float(p["vix_unsettled"]),
+                   float(p["coverage"]), float(p["risk_per_trade"]), float(p["advisor_share"]), *fall)
 
 
 @dataclass(slots=True)
@@ -127,10 +130,13 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
     atr = [indicators.atr_wilder(n.bars, 14).to_numpy(dtype=float) for n in names]
     vix_days = np.asarray([] if vix is None else pd.DatetimeIndex(vix.index).date)
     vix_close = np.asarray([] if vix is None else vix.to_numpy(dtype=float))
+    fall = s.stop_fall is not None           # QT-22: the distance is f x price, not k x ATR
 
-    def k_at(day: date) -> float:            # P10: 2 when unsettled (VIX before the day > 30)
+    def k_at(day: date) -> float:            # P10: unsettled = VIX before the day > 30 or none
         j = int(np.searchsorted(vix_days, np.asarray(day), side="left")) - 1
         calm = j >= 0 and bool(np.isfinite(vix_close[j])) and vix_close[j] <= s.vix_unsettled
+        if s.stop_fall is not None and s.stop_fall_unsettled is not None:
+            return s.stop_fall if calm else s.stop_fall_unsettled
         return s.stop_k if calm else s.stop_k_unsettled
 
     timeline: dict[date, list[tuple[int, int]]] = {}
@@ -145,14 +151,10 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
     months = set().union(*(e.keys() for e in ends.values()))
     decide_on = {m: max(e[m] for e in ends.values() if m in e) for m in months}
     out = Book({n.symbol: np.zeros(len(n.bars)) for n in names}, {})
-    target = np.zeros(len(names))
-    held: set[int] = set()
-    level = np.full(len(names), np.nan)
-    pending: dict[int, float] = {}           # name -> the decision bar's ATR (stop at fill)
-    bought: dict[int, int] = {}              # name -> month its buy was decided
-    sell_next: set[int] = set()
-    stopped_on: dict[int, date] = {}
-    k_by_month: dict[int, int] = {}
+    target, level = np.zeros(len(names)), np.full(len(names), np.nan)
+    pending, bought = dict[int, float](), dict[int, int]()   # name -> decision bar's ATR / buy month
+    held, sell_next = set[int](), set[int]()
+    stopped_on, k_by_month = dict[int, date](), dict[int, int]()
 
     def decide(m: int) -> None:
         now = {i: b[m] for i, b in enumerate(decbar) if m in b}
@@ -205,16 +207,16 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
                 continue
             if i not in held or target[i] == 0.0:
                 continue
-            if i in pending:                              # the fill bar: the stop is set
-                level[i] = o[i][t] - k_at(day) * pending.pop(i)
+            if (unit := pending.pop(i, None)) is not None:   # the fill bar: the stop is set
+                level[i] = o[i][t] - k_at(day) * (o[i][t] if fall else unit)
             if c[i][t] <= level[i]:                       # P10: crossed -> sold next open
                 held.discard(i)
                 target[i] = 0.0
                 stopped_on[i] = day
                 out.stopped += 1
                 out.stops.append((names[i].symbol, t))
-            elif np.isfinite(atr[i][t]):
-                level[i] = max(level[i], c[i][t] - k_at(day) * atr[i][t])
+            elif fall or np.isfinite(atr[i][t]):          # raised only, never lowered
+                level[i] = max(level[i], c[i][t] - k_at(day) * (c[i][t] if fall else atr[i][t]))
         if decide_on.get(month_of(day)) == day:
             decide(month_of(day))
         for i, t in timeline[day]:
@@ -222,7 +224,8 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
     for i, n in enumerate(names):
         slot = np.array([1.0 / k_by_month[m - 1] if k_by_month.get(m - 1) else 0.0
                          for m in (month_of(d) for d in dates[i])])
-        risk = np.r_[np.nan, s.stop_k * atr[i][:-1] / c[i][:-1]]
+        risk = (np.full(len(c[i]), s.stop_fall) if fall else    # the calm stop's distance
+                np.r_[np.nan, s.stop_k * atr[i][:-1] / c[i][:-1]])
         with np.errstate(divide="ignore", invalid="ignore"):
             cap = np.where(np.isfinite(risk) & (risk > 0),
                            s.risk_per_trade / s.advisor_share / risk, np.inf)

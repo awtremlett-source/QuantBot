@@ -1,0 +1,7 @@
+A-01: IDENTICAL -- 2,213 buys, 1,967 stops, 170 names (5s)
+A-02: IDENTICAL -- 2,575 buys, 2,033 stops, 170 names (4s)
+A-03: IDENTICAL -- 2,178 buys, 1,934 stops, 170 names (4s)
+A-04: IDENTICAL -- 2,240 buys, 1,880 stops, 170 names (4s)
+A-05: IDENTICAL -- 1,943 buys, 1,895 stops, 170 names (4s)
+A-06: IDENTICAL -- 1,787 buys, 1,509 stops, 170 names (4s)
+6 of 6 identical
