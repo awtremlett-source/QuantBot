@@ -154,7 +154,7 @@ def page(records: Sequence[Mapping[str, Any]], intro: Sequence[str]) -> str:
 
 
 def load(folder: Path, order: Sequence[str]) -> list[dict[str, Any]]:
-    found = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in folder.glob("A-*.json")
+    found = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in folder.glob("*.json")
              if not p.stem.endswith(".holdout")}
     return [found[c] for c in order if c in found]
 

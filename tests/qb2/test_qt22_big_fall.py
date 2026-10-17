@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from dataclasses import replace
 from pathlib import Path
@@ -12,7 +13,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from qb2.research import advisor_book, advisor_drills, advisor_run, preregister, rank_null
+from qb2.research import (advisor_book, advisor_drills, advisor_results, advisor_run, preregister,
+                          rank_null)
 from tests.qb2.test_qt19b_advisor import DAYS, S, _book, _flat, _month_end, _ranked
 from tests.qb2.test_qt19b_run import FakeResult, _fake
 
@@ -142,6 +144,14 @@ def test_batch_two_runs_its_own_six_at_n_fifty_four(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(advisor_run, "score", score)
     advisor_run.run(run_dir=tmp_path, say=lambda s: None, batch=2)
     assert seen == [("A-01", 54), ("A-02", 54)]                    # the fake's two entries, N 54
+
+
+def test_the_page_loads_batch_two_results_and_skips_holdout_files(tmp_path: Path) -> None:
+    for cid in ("A2-01", "A2-02", "A-01"):
+        (tmp_path / f"{cid}.json").write_text(json.dumps({"id": cid}), encoding="utf-8")
+    (tmp_path / "A2-01.holdout.json").write_text("{}", encoding="utf-8")
+    got = advisor_results.load(tmp_path, ["A2-01", "A2-02"])
+    assert [r["id"] for r in got] == ["A2-01", "A2-02"]
 
 
 def test_batch_two_drills_are_the_three_new_entries_gated_the_same_way() -> None:

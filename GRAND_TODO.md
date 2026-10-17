@@ -61,8 +61,8 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [ ] S8 Bot evolution: challengers in shadow + machine search (stops on
       CORRECT/EXHAUSTED, never on profit)
 - [ ] S9 Advisor engine + scorecard (every suggestion recorded as if followed)
-      QT-21: data cleaned at the front door, bench re-proved; batch 1 (A-01..06) run:
-      none survived (best +34.8% vs D3 +265% at 2×). Next: batch 2 (mentor)
+      QT-22: batch 2 = batch 1's six, big-fall stop: none survived (A2-03 +284.6% beat
+      D3 +265% at 2×, failed the luck test). Next: QT-23 (mentor)
 - [ ] S10 Demo execution: batched open orders, stops held at T212 and raised
       daily, daily reconciliation, killswitch fire-drill. **Forward clock starts**
 - [ ] S11 One app: TradeScout rebuilt with advisor screens AND bot screens

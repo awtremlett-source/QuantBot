@@ -1,0 +1,69 @@
+{
+ "id": "A2-06",
+ "bars": "1d",
+ "names": 170,
+ "effective_n": 170,
+ "skipped": [
+  "MTLN.L: no EUR->GBP rate in the store, so a EUR line cannot be measured in pounds (P3)"
+ ],
+ "oos_start": "2014-03-28",
+ "oos_end": "2025-10-09",
+ "n_bars": 5815,
+ "trades": 956,
+ "marked_2x": 1.313348332291692,
+ "marked_1x": 1.736742238294469,
+ "net_2x": 1.5154698491727232,
+ "gross": 2.519856723548669,
+ "max_dd_2x": -0.27998068555424704,
+ "sharpe": 0.031200144439430446,
+ "vwrp": 2.6506632815466182,
+ "vwrp_symbol": "VWRP.L",
+ "p": 1.0,
+ "dsr": 0.9431966738973434,
+ "n_trials": 54.0,
+ "null_mean": 0.045309226035744894,
+ "null_std": 0.004650492022791365,
+ "verdict": "FAIL",
+ "reasons": [
+  "failed: beats the turnover-matched luck test (p 1.0000 < 0.05)",
+  "failed: Deflated Sharpe 0.943 >= 0.95",
+  "failed: beats the benchmark (+131.33% vs +265.07%)"
+ ],
+ "sleeves": {},
+ "report_md": "### A2-06 -- FAIL\n\n- Registered in commit `196fd496f1c0`; bars: 1d; costs at 2x; out-of-sample 2014-03-28 to 2025-10-09\n- Names: 170 (170 independent bets; 1 left out)\n\n| | total return | Sharpe / bar | annualised | max drawdown |\n|---|---|---|---|---|\n| strategy, gross (no costs) | +251.99% | 0.0456 | 0.72 | -23.17% |\n| strategy, net at 2x costs | +151.55% | 0.0341 | 0.54 | -27.56% |\n| strategy, net after survivorship mark-down | +131.33% | 0.0312 | 0.50 | -28.00% |\n| strategy, net at 1x costs | +197.59% | 0.0398 | 0.63 | -25.39% |\n| **benchmark VWRP.L** (same period) | **+265.07%** | | | |\n\n- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)); before 2019-08-13 (VWRP's first close) VWRL.L with its dividends added back, chained there\n- Mark-down: before +151.55%, after +131.33% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)\n- Out-of-sample trades: 956; bars: 5815; net mean per bar +0.01569% (Gate 1 needs it above zero)\n- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them\n- Luck test (turnover-matched null: the rule's own trades at random times): p = 1.0000 (null Sharpe/bar 0.0453 \u00b1 0.0047)\n- Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar 0.0106 \u00b1 0.0045)\n- Pounds: 938 held dollar bar(s) took the previous GBPUSD bar (within pounds.TOLERANCE)\n- Deflated Sharpe: 0.943 over 54 trials (luck ceiling 0.0103 per bar)\n- Verdict: FAIL -- failed: beats the turnover-matched luck test (p 1.0000 < 0.05); failed: Deflated Sharpe 0.943 >= 0.95; failed: beats the benchmark (+131.33% vs +265.07%)\n",
+ "turnover_per_year": 2.730525782741101,
+ "avg_hold_days": 96.82426778242677,
+ "split": {
+  "US": {
+   "marked_2x": 0.9413192510727517,
+   "trades": 532
+  },
+  "LSE": {
+   "marked_2x": 0.19163724926406456,
+   "trades": 424
+  }
+ },
+ "stopped": 416,
+ "requalified": 10,
+ "filter_off_months": 43,
+ "ceiling_binds": 0.0,
+ "warnings": {
+  "buys": 956,
+  "within_5_days": 40,
+  "date_unknown": 317
+ },
+ "top_bar_share": 0.008983570378885867,
+ "stopped_in_a_month": 0.11715481171548117,
+ "sr0_rank": 0.010271000673891922,
+ "sr0_analytic": 0.030499011322601754,
+ "rule_name": "A-06 with the big-fall stop (advisor batch 2): Momentum 12-1 with a market filter: A-01, but only when VWRP closes above its 200-day average",
+ "register_commit": "196fd496f1c062e140da0f77534184c36b7ed84d",
+ "code_commit": "35a6e5129d695bbde61268d63a407777c807c0b3",
+ "fp_a": "0f3a960cfa58785e029415890463ac4755f7a2fd1b3781c61412cf7ca91df1f9",
+ "dividends": {
+  "credited": 4751,
+  "not_ok": 8
+ },
+ "run": 1,
+ "seconds": 829.2
+}
