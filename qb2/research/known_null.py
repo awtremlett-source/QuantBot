@@ -39,6 +39,7 @@ import pandas as pd
 from qb2.execution import costs
 from qb2.research import fills, firewall, monte_carlo, preregister, report, simulate, trial_log
 from qb2.research.strategy import Strategy
+from qb2.tools.governor import assert_capped
 
 SENTINEL_VOLUME = 777_777_777.0          # the planted marker; no real bar has it
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -194,6 +195,7 @@ def colour(runs: Sequence[DrillRun]) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     hourly = "--interval" in (args := list(argv or [])) and args[args.index("--interval") + 1] == "1h"
     base, skipped = {}, {}
     for interval in (("1h",) if hourly else ("5m", "1d")):

@@ -37,6 +37,7 @@ from qb2.data import access, universe
 from qb2.guard import stops
 from qb2.research import holdout
 from qb2.signals.indicators import atr_wilder
+from qb2.tools.governor import assert_capped
 
 EVERY, WATCH, AFTER = 21, 63, 20
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -127,6 +128,7 @@ def report(by_market: Mapping[str, Sequence[Outcome]], skipped: Sequence[str],
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     entries = universe.advisor_entries()
     by_market, skipped = run(entries)
     spans = [holdout.research_bars(str(e["yfinance"]), "1d", universe.market_of(e))

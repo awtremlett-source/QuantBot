@@ -842,3 +842,18 @@ def test_state_carries_the_s4_flag_and_the_renumbered_s3_close() -> None:
     assert "S3 close = QT-13" in flat
     assert ("GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot "
             "trades") in flat
+
+
+# ------------------------------------------ QT-23R: the resource cap, a fence ---
+
+CAP_WORDS = ("I stopped QT23 halfway through, there needs to be a limit on the amount of memory "
+             "and CPU it takes up. like 80% limit for each. otherwise the PC cannot take it and "
+             "will crash.")
+
+
+def test_the_resource_cap_is_a_standing_rule_in_his_own_words() -> None:
+    """Operator, 2026-10-20: raising or removing the cap needs his words, so the plan keeps them."""
+    assert " ".join(CAP_WORDS.split()) in flattened()
+    flat = " ".join(plan_text().split())
+    assert "STANDING RULE, 2026-10-20 (QT-23R): the resource cap — a FENCE." in flat
+    assert "tests/qb2/test_qt23r_cap.py" in flat

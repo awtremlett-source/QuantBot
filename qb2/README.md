@@ -45,7 +45,22 @@ to v1 and are frozen.
 | `sizing/` | position sizing, risk limits, the trailing-stop ledger |
 | `execution/` | the broker doorway: demo orders, throttle, killswitch, fill recorder |
 | `ui/` | the operator's screens |
-| `tools/` | scripts run by hand |
+| `tools/` | scripts run by hand; `capped.py` + `governor.py` = the operator's resource cap (QT-23R) |
+
+## The resource cap (operator, 2026-10-20 — a fence)
+
+Everything QuantBot runs, all its processes together, stays at or under **80% of the CPU and
+80% of the memory**. Heavy work (tests, research runs, drills, back-tests, page regeneration)
+runs only through the launcher, which puts it in one shared Windows Job Object:
+
+```
+.venv-qb2\Scripts\python.exe -m qb2.tools.capped -- .venv-qb2\Scripts\python.exe -m pytest tests/qb2 -q
+```
+
+Started any other way, a heavy entry point (and the qb2 test suite) refuses, in plain words.
+Pools come only from `governor.run_pool` (at most `governor.workers()` = 80% of the cores less
+one); the whole PC at ≥ 80% memory pauses new work, ≥ 90% for 60 s stops it cleanly.
+Raising or removing the cap needs the operator's own words.
 
 ## The walls around it
 

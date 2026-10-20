@@ -33,7 +33,9 @@ Month-end decision bar on the exchange's last session; coverage ≥ 90%; no mont
 > 30 or missing; 1% ceiling bar by bar; OOS 2014-03-31 → 2025-10-09; D3 VWRL → VWRP.
 
 ## NEXT
-1. **Mentor writes QT-23** (none survived). Leads (description, not results): in 12 rules the
+0. **QT-23R in hand:** Step 1 (the cap) DONE + pushed (docs/reports/QT-23R.md); then QT-23
+   Parts B–F. QT-23 A registered (8fb2c49); the interrupted B work is in stash "QT-23-interrupted".
+1. QT-22's leads (description, not results; QT-23 written from them): in 12 rules the
    month-end timing never beat random timing of the same holdings — the luck test now binds;
    the wide stop turned London halves positive; the DSR's random-rank bar centred on 0 cannot
    separate this book from luck (random picks 0.970).
@@ -55,6 +57,10 @@ Month-end decision bar on the exchange's last session; coverage ≥ 90%; no mont
 - Backups on the university OneDrive? Default: keep (2026-10-06 archive).
 
 ## Standing GOs (operator words, verbatim)
+- 2026-10-20, a FENCE (raising or removing it needs his words): *"I stopped QT23 halfway
+  through, there needs to be a limit on the amount of memory and CPU it takes up. like 80%
+  limit for each. otherwise the PC cannot take it and will crash."* = all QuantBot ≤ 80% CPU
+  and ≤ 80% RAM together, always. BUILT QT-23R Step 1: heavy runs via qb2.tools.capped.
 - 2026-10-16: P15 history — *"GO on P15 history: in back-tests only, a results date
   counts as known from the results date before it, if that earlier date is before
   2026-10-02; from 2026-10-02 only knowable_time counts; a share with no date on

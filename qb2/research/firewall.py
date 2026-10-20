@@ -35,6 +35,7 @@ from qb2.research import (backtest, bet_groups, benchmark, deflation, fills, hol
                           matched_null, monte_carlo, p15, pounds, preregister, stats,
                           trial_log, verdict, walk_forward)
 from qb2.research.strategy import Strategy
+from qb2.tools.governor import assert_capped
 
 Transform = Callable[[pd.DataFrame, costs.Instrument, str], pd.DataFrame]
 SkillFree = Callable[[int], tuple[Callable[[Any], Strategy], Sequence[Any]]]   # seed -> one book
@@ -55,14 +56,14 @@ class NameData:
 
 def instrument_of(entry: Mapping[str, Any]) -> costs.Instrument:
     return costs.Instrument(str(entry["t212_ticker"]), str(entry["quote_currency"]),
-                            universe.market_of(entry), str(entry["kind"]),
-                            bool(entry.get("aim", False)))
+                            universe.market_of(entry), str(entry["kind"]), bool(entry.get("aim", False)))
 
 
 def load(interval: str, *, entries: Sequence[Mapping[str, Any]] | None = None,
          transform: Transform | None = None, clean_root: Path | None = None,
          ) -> tuple[list[NameData], list[str]]:
     """Every agreed name's unsealed bars, or the reason it was left out."""
+    assert_capped()                    # QT-23R: never outside the operator's cap
     rows = list(entries if entries is not None else universe.bot_entries())
     groups = bet_groups.load()
     bets = sorted({bet_groups.group_of(str(e["yfinance"]), groups) for e in rows})
@@ -82,8 +83,7 @@ def load(interval: str, *, entries: Sequence[Mapping[str, Any]] | None = None,
             skipped.append(f"{symbol}: no unsealed {interval} bars")
             continue
         out.append(NameData(symbol, market, instrument, bars,     # P15 mask on intraday
-                            p15.schedule(symbol, instrument.kind, bars.index, interval,
-                                         market, clean_root),
+                            p15.schedule(symbol, instrument.kind, bars.index, interval, market, clean_root),
                             bets.index(bet_groups.group_of(symbol, groups)),
                             pounds.align(bars.index, rates, interval) if dollars else None))
     return out, skipped
@@ -115,10 +115,9 @@ def _graded(token: preregister.Registered, strategy: Strategy, name: NameData, i
             stress: float, final: holdout.HoldoutPass | None) -> matched_null.Graded | None:
     """One full run and its graded bars: the walk-forward TEST windows (contiguous and
     fixed parameters, so one slice = the folds stitched), or the sealed bars."""
-    full = backtest.run(token, strategy, name.bars, instrument=name.instrument,
-                        interval=interval, market=name.market, stress=stress,
-                        final=final, plan=name.plan, fx=name.fx, income=name.income,
-                        log_path=None)
+    full = backtest.run(token, strategy, name.bars, instrument=name.instrument, interval=interval,
+                        market=name.market, stress=stress, final=final, plan=name.plan, fx=name.fx,
+                        income=name.income, log_path=None)
     if final is not None:
         days = holdout.local_index(name.bars.index, name.market).date
         first = int((days < holdout.SEALED_FROM[interval]).sum())      # bars are in order
@@ -194,6 +193,7 @@ def score(token: preregister.Registered, make: Callable[[NameData], Strategy],
           log_path: Path | None = trial_log.DEFAULT_TRIAL_LOG, n_trials: int = 0,
           final: holdout.HoldoutPass | None = None, skill_free: SkillFree | None = None,
           ) -> FirewallResult:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     registered = preregister.check(token)
     seen = portfolio(registered, make, data, interval, stress, final)
     flat = seen.marked.to_numpy(dtype=float)

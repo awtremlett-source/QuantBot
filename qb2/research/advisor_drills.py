@@ -43,6 +43,7 @@ import pandas as pd
 from qb2.research import (advisor_book, advisor_data, advisor_run, fills, firewall, preregister,
                           rank_null, report, stats, trial_log, verdict)
 from qb2.signals.a_rules import SENTINEL_VOLUME
+from qb2.tools.governor import assert_capped
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT = REPO_ROOT / "docs" / "research" / "known_null_2026-10-17_QT21_advisor"
@@ -139,6 +140,7 @@ TITLES = {1: "QT-21 D, re-proved", 2: "QT-22, batch 2's book: the big-fall stop"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--batch", type=int, choices=sorted(DRILLS), default=1)
     batch = parser.parse_args(argv).batch

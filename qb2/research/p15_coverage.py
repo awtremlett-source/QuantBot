@@ -29,6 +29,7 @@ import pandas as pd
 
 from qb2.data import universe
 from qb2.research import fills, firewall, holdout, p15, p15_history
+from qb2.tools.governor import assert_capped
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PAGE = REPO_ROOT / "docs" / "research" / "p15_history_coverage_2026-10.md"
@@ -99,6 +100,7 @@ def stops(counts: Mapping[str, Mapping[str, tuple[int, int]]],
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     entries = universe.bot_entries()
     sleeves = {str(e["yfinance"]): str(e["sleeve"]) for e in entries}
     data, skipped = firewall.load("1h", entries=entries)

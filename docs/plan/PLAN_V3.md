@@ -63,6 +63,19 @@ re-wrapping or tidying a quote turns evidence into paraphrase. The typos are his
 
 > "the bot trades very short (same day), holds nothing when the PC is off or overnight, sells before shutdown including pre-market; add power-off detection, UPS, auto-restart and an outside watchdog to the home-PC stage (S13); test BOTH markets to the limit after costs — US shares (live yfinance prices, currency fee), London (cheap, prices 20 min late) and a mix — every attempt counted."
 
+**STANDING RULE, 2026-10-20 (QT-23R): the resource cap — a FENCE.** Raising or removing it needs
+his own words; lowering it does not. Verbatim:
+
+> "I stopped QT23 halfway through, there needs to be a limit on the amount of memory and CPU it takes up. like 80% limit for each. otherwise the PC cannot take it and will crash."
+
+Everything QuantBot runs, all its processes together, stays at or under 80% of the PC's CPU and
+80% of its memory, always: one shared Windows Job Object (qb2/tools/capped.py, job_object.py —
+a hard CPU rate cap of 80% AND at most 12 of 16 processors, 80% of RAM, below-normal priority);
+every heavy entry point refuses outside it (governor.assert_capped); pools only through
+governor.run_pool; the whole PC at ≥ 80% memory pauses new work, ≥ 90% for 60 s stops it cleanly.
+*Enforcer:* tests/qb2/test_qt23r_cap.py (live and wall tests, each seen RED) and the qb2 suite's
+own refusal to start outside the cap.
+
 ---
 
 ## The two parts

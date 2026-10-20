@@ -14,10 +14,11 @@ py -3.13 -m venv .venv-qb2
 .venv-qb2\Scripts\python.exe -m pip install -r requirements-qb2.txt
 ```
 
-Run qb2's tests with that interpreter, never v1's:
+Run qb2's tests with that interpreter, never v1's, and inside the operator's resource cap
+(QT-23R: outside it the suite refuses to start):
 
 ```
-.venv-qb2\Scripts\python.exe -m pytest tests/qb2 -q
+.venv-qb2\Scripts\python.exe -m qb2.tools.capped -- .venv-qb2\Scripts\python.exe -m pytest tests/qb2 -q
 ```
 
 **Never install this into `.venv` or `.venv-ui`.** Those are v1's, they are
@@ -44,6 +45,19 @@ environments and qb2 needs only one.
 | `mypy` | 2.1.0 | 2.1.0 |
 
 Pins checked: **13**. Disagreements: **none — every pin resolved exactly**.
+
+### Added 2026-10-20 (QT-23R, the operator's resource cap)
+
+Installed with `.venv-qb2\Scripts\python.exe -m pip install psutil==7.2.2 pywin32==312`
+(read back from `pip freeze`; `pip show` lists no requirements for either, so nothing else came):
+
+| package | pinned in requirements-qb2.txt | installed | used by |
+|---|---|---|---|
+| `psutil` | 7.2.2 | 7.2.2 | qb2/tools/governor.py (the whole PC's memory), capped.py |
+| `pywin32` | 312 | 312 | qb2/tools/capped.py (the Windows Job Object) |
+
+`exchange_calendars` 4.13.2 and `lxml` 6.1.3 are pinned too (added after this page was first
+generated); the env smoke test checks every pin in requirements-qb2.txt, these included.
 
 ## What came with them
 

@@ -58,6 +58,25 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers", "network: reaches a real server; off unless -m network")
 
 
+# --------------------------------------------- the suite runs inside the cap ---
+#
+# QT-23R (operator, 2026-10-20): everything QuantBot runs stays inside 80% of the
+# CPU and 80% of the memory. The suite is heavy, so it refuses to start outside
+# the cap -- one plain message, not hundreds of refusals from the heavy front
+# doors it calls. Run it as:
+#   .venv-qb2\Scripts\python -m qb2.tools.capped -- .venv-qb2\Scripts\python -m pytest tests/qb2 -q
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    if (importlib.util.find_spec(QB2_ONLY[0]) is None
+            and not _explicitly_requested(session.config)):
+        return                 # v1's interpreter, qb2 not asked for: nothing of qb2 runs
+    from qb2.tools import capped, governor
+    try:
+        governor.assert_capped()
+    except governor.NotCapped as why:
+        pytest.exit(str(why), returncode=capped.REFUSED)
+
+
 def pytest_collection_modifyitems(config: pytest.Config,
                                   items: list[pytest.Item]) -> None:
     if config.getoption("markexpr"):

@@ -1,0 +1,104 @@
+"""QT-23R Step 1, proof (c): RED-FIRST, without endangering the PC.
+
+Phase 1, from a plain console. The launcher under test is the mutant, so this phase cannot sit
+inside the real cap; its only child is one tiny assert_capped() call, never a hog:
+  M1 = capped.py that never puts the command in the Job Object -> the child's assert_capped()
+       must REFUSE.
+Phase 2, inside the REAL cap (its launcher started before any mutation, so it is the real one):
+  M1 again -> the live tests that launch a private (lowered) cap go RED: the probe is not inside
+       it, and the bounded hog is NOT stopped by it. The hog stays inside the real shared cap all
+       the while (it inherits it), so nothing is ever run uncapped;
+  M2 = advisor_run.main without its assert_capped() -> the door wall goes RED;
+  M3 = a planted driver with a pool as wide as its job list -> the pool wall goes RED;
+  then everything restored (hash checked) and the whole cap test file GREEN.
+Run from the repo root:
+    .venv-qb2\\Scripts\\python <copy>.py phase1
+    .venv-qb2\\Scripts\\python -m qb2.tools.capped -- .venv-qb2\\Scripts\\python <copy>.py phase2
+"""
+import contextlib
+import hashlib
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path.cwd()
+PY = sys.executable
+T = "tests/qb2/test_qt23r_cap.py"
+CAPPED = ROOT / "qb2" / "tools" / "capped.py"
+ADVISOR_RUN = ROOT / "qb2" / "research" / "advisor_run.py"
+PLANT = ROOT / "docs" / "reports" / "QT-23R_planted_driver.py.txt"
+M1 = ("            win32job.AssignProcessToJobObject(job, handle)\n",
+      "            pass                                     # MUTANT M1: skips the Job Object\n")
+M2 = ("    assert_capped()                    # QT-23R: never outside the operator's cap\n", "")
+
+
+def sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@contextlib.contextmanager
+def mutant(path: Path, old: str, new: str):
+    original, before = path.read_bytes(), sha(path)
+    text = original.decode("utf-8")
+    if "\r\n" in text:                                   # a CRLF checkout: match its endings
+        old, new = old.replace("\n", "\r\n"), new.replace("\n", "\r\n")
+    assert text.count(old) == 1, f"{path.name}: the mutation point is not unique"
+    path.write_bytes(text.replace(old, new).encode("utf-8"))
+    try:
+        yield
+    finally:
+        path.write_bytes(original)
+        assert sha(path) == before, f"{path.name} NOT restored"
+        print(f"  restored {path.relative_to(ROOT).as_posix()} (sha256 {before[:12]}... matches)")
+
+
+def tests(k: str | None = None) -> subprocess.CompletedProcess[str]:
+    args = [PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", T] + (["-k", k] if k else [])
+    return subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=600)
+
+
+def tail(done: subprocess.CompletedProcess[str]) -> str:
+    keep = [line for line in done.stdout.splitlines() if line.startswith(("FAILED", "E  "))
+            or " passed" in line or " failed" in line]
+    return "\n".join("    " + line[:150] for line in keep[-8:])
+
+
+def phase1() -> None:
+    env = {k: v for k, v in os.environ.items() if k != "QB2_CAP_JOB"}
+    child = "from qb2.tools import governor; governor.assert_capped(); print('NOT REFUSED')"
+    with mutant(CAPPED, *M1):
+        done = subprocess.run([PY, "-m", "qb2.tools.capped", "--", PY, "-c", child], cwd=ROOT,
+                              env=env, capture_output=True, text=True, timeout=60)
+    print(f"M1 (no Job Object): exit {done.returncode}\n    " + "\n    ".join(done.stderr.splitlines()[-3:]))
+    assert done.returncode == 1 and "REFUSED" in done.stderr and "NOT REFUSED" not in done.stdout
+    print("PHASE 1: the mutant's child REFUSED, as it must")
+
+
+def phase2() -> None:
+    from qb2.tools import capped
+    assert capped.verify() == [] and os.environ[capped.ENV] == capped.JOB_NAME, "not inside the REAL cap"
+    with mutant(CAPPED, *M1):
+        m1 = tests("grandchildren or memory_hog")
+    print(f"M1 (no Job Object), live tests: exit {m1.returncode}\n{tail(m1)}")
+    with mutant(ADVISOR_RUN, *M2):
+        m2 = tests("every_heavy_entry_point")
+    print(f"M2 (advisor_run.main without the cap): exit {m2.returncode}\n{tail(m2)}")
+    banned = "ProcessPool" + "Executor(max_workers=" + "len(jobs))"   # split: this record is scanned too
+    PLANT.write_text(f"with {banned} as pool:\n    pass\n", encoding="utf-8")
+    try:
+        m3 = tests("no_pool_outside")
+    finally:
+        PLANT.unlink()
+        print(f"  removed {PLANT.name}")
+    print(f"M3 (a pool as wide as its job list): exit {m3.returncode}\n{tail(m3)}")
+    green = tests()
+    print(f"RESTORED, the whole file: exit {green.returncode}\n{tail(green)}")
+    assert m1.returncode == m2.returncode == m3.returncode == 1 and green.returncode == 0
+    assert "advisor_run.py: main() does not refuse outside the cap first" in m2.stdout
+    assert "QT-23R_planted_driver.py.txt" in m3.stdout and "2 more items" in m3.stdout  # pool + width
+    print("PHASE 2: every mutant RED, restored GREEN")
+
+
+if __name__ == "__main__":
+    {"phase1": phase1, "phase2": phase2}[sys.argv[1]]()

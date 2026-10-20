@@ -38,6 +38,7 @@ from qb2.data import data_fingerprint, universe
 from qb2.research import (firewall, holdout, p19_results, p19_run, preregister, s6_results,
                           trial_log)
 from qb2.signals import s6_rules
+from qb2.tools.governor import assert_capped
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUN_DIR = REPO_ROOT / "docs" / "research" / "S6_batch1_runs"
@@ -223,13 +224,13 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path =
         if done["verdict"] == "PASS" and not done.get("holdout"):
             done["holdout"] = _holdout(token, entry, arm(entry)[0], run_dir, number, prints["b"])
             atomic_write(path, done)
-            note(run_dir, event="holdout_done", run=number, id=cid,
-                 verdict=done["holdout"]["verdict"])
+            note(run_dir, event="holdout_done", run=number, id=cid, verdict=done["holdout"]["verdict"])
             say(f"  {cid}: holdout {done['holdout']['verdict']}")
     return number
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--new-run", metavar="DEFECT", default=None)
     parser.add_argument("--max", type=int, default=None, help="run at most N new trials")

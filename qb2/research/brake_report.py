@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from qb2.research import brake_replay as br
+from qb2.tools.governor import assert_capped
 
 TARGET = br.REPO_ROOT / "docs" / "research" / "brake_replay_2026-10.md"
 
@@ -86,6 +87,7 @@ def episodes(found: Mapping[str, Sequence[br.Episode]]) -> list[str]:
 
 def main(argv: Sequence[str] | None = None, *, folder: Path = br.FOLDER,
          target: Path = TARGET) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     parser = argparse.ArgumentParser()
     parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args(argv)

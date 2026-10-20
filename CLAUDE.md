@@ -4,24 +4,25 @@
 Trading 212 PRACTICE account, judged in % GBP total return (FX + dividends) after
 costs vs a do-nothing index fund (D3). BOT 30%: automatic, SAME DAY, flat overnight
 (P4), Simons' method. ADVISOR 70%: suggests only, operator trades, weeks–12 months.
-v1 = frozen baseline v2 must beat out-of-sample at 2× costs (its daily task fails
-since 28 Jul; revive/retire open). Laptop sometimes off → loops catch-up-safe.
+v1 = frozen baseline v2 must beat out-of-sample at 2× costs. Laptop sometimes
+off → loops catch-up-safe.
 Operator is a beginner: teach first, define terms on first use, decisions as
 `DECISION REQUESTED` + default. Phase: v2 build → STATE.md.
 Resume cheaply: STATE.md → PLAN_V3 grep P#/S#, read that range → FACTS grep row.
 FOUNDING_DIRECTIVE and docs/sessions/ only when asked.
 
 ## Commands
-- Tests: .venv/Scripts/python -m pytest -q (v1) · .venv-qb2/Scripts/python -m pytest tests/qb2 -q
-- Lint: ruff check . && mypy --strict . · Anchors: python -m qb2.execution.anchors [--live]
+- Heavy runs ONLY via C = .venv-qb2/Scripts/python -m qb2.tools.capped --
+- Tests: C .venv/Scripts/python -m pytest -q (v1) · C .venv-qb2/Scripts/python -m pytest tests/qb2 -q
+- Lint: ruff check . && C mypy --strict . · Anchors: python -m qb2.execution.anchors [--live]
 
 ## Map (full → docs/MANIFEST.md)
-- v1 FROZEN, 9 folders (tools/engine_fingerprint.py): ingest/ (only writer) reconcile/
-  data_store/ research/ strategies/ risk/ execution/ monitors/ tools/
+- v1 FROZEN: the 9 folders in tools/engine_fingerprint.py
 - v2: qb2/ → qb2/README.md · manual/ operator's app · tests/ mirrors the tree
 - Envs never cross: .venv (v1) · .venv-ui (window) · .venv-qb2 (qb2).
 
 ## Laws (stories → docs/SCARS.md) — money first
+- CAP (his words, 2026-10-20): all QuantBot ≤80% CPU, ≤80% RAM together: a fence (capped.py).
 - Orders ONLY via qb2/execution/anchors.py (fences F1–F13 in its docstring). `--live`
   needs an operator GO; one GO covers top-ups to the £100 cap. Caps £3/order ·
   £100 lifetime · 50/UTC day: raising one = GO. Practice host only; v1 sender unarmed.
@@ -55,9 +56,8 @@ FOUNDING_DIRECTIVE and docs/sessions/ only when asked.
   Per-file +/− → commit message, not the report.
 
 ## Token rules
-Budgets (tests/plan/test_plan_v3.py): CLAUDE 4k · STATE 6k · GRAND_TODO 10k ·
-MANIFEST 8k. STATE = current only; history → docs/archive/. Surgical edits;
-grep-then-read-range; never cat data files.
+Budgets (tests/plan): CLAUDE 4k · STATE 6k · GRAND_TODO 10k · MANIFEST 8k.
+STATE = current only; history → docs/archive/. Surgical edits; grep-then-read-range; never cat data files.
 End of task: update STATE.md, commit, push, end the report with
 "CLEAR ME NOW (/clear) — state is saved."
 

@@ -33,6 +33,12 @@ exchange_calendars==4.13.2
 # get_earnings_dates raises ImportError and only the NEXT date is reachable.
 lxml==6.1.3
 
+# --- the operator's resource cap (QT-23R, 2026-10-20): 80% of the CPU, 80% of the memory ---
+# qb2/tools/capped.py puts every QuantBot run in a Windows Job Object (pywin32); qb2/tools/
+# governor.py reads the whole PC's memory (psutil). Neither pulls in another package.
+psutil==7.2.2
+pywin32==312
+
 # --- the interface ---
 PySide6==6.11.1
 

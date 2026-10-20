@@ -1,0 +1,139 @@
+"""QT-23R Step 1, proofs (a) and (b): the operator's cap measured on this PC, not assumed.
+
+(a) CPU: `burn` starts one spinning process per logical core -- it TRIES to take 100% of the
+    machine -- inside the shared cap. An observer OUTSIDE the cap samples every second for 60 s:
+    the job's own share of the machine (Windows' accounting for the job: user + kernel time over
+    elapsed x cores), the whole machine's CPU (psutil), and its own timer lateness (does the
+    desktop still get the CPU on time?). The cap holds if the job's share stays <= 80%.
+(b) Memory: `hog` takes memory 16 MB at a time inside a cap LOWERED to 3% of RAM (never the real
+    80%: with the PC's other apps at ~77% of RAM, an 80% hog is exactly the crash he stopped). The
+    launcher must stop it with its plain-words message; the observer samples the whole PC's
+    memory and its own lateness every 0.25 s.
+Run from the repo root (the observer and the orchestration are light; every load is capped):
+    .venv-qb2\\Scripts\\python <copy>.py cpu [0.30]    .venv-qb2\\Scripts\\python <copy>.py memory
+The burner is a deliberate test load, not QuantBot work: its 16 processes are plain Popen
+children, all inside the job; real work uses governor.run_pool (at most workers()).
+"""
+import json
+import os
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+import psutil
+import win32job
+
+from qb2.tools import capped, job_object
+
+PY = sys.executable
+
+
+def spin(seconds: float) -> None:
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        pass
+
+
+def job_seconds(job) -> float:
+    acct = win32job.QueryInformationJobObject(job, win32job.JobObjectBasicAccountingInformation)
+    return (int(acct["TotalUserTime"]) + int(acct["TotalKernelTime"])) / 1e7   # 100 ns ticks
+
+
+def cpu_measured(share: str | None) -> None:
+    """share None: the real cap (the shared job). share "0.30": a LOWERED private test cap, so the
+    ceiling is seen binding even while his own apps keep the machine busy."""
+    cores, said = psutil.cpu_count(), Path(tempfile.mkdtemp(prefix="qt23r_")) / "job.txt"
+    lower = ["--cpu-share", share] if share else []
+    launcher = subprocess.Popen([PY, "-m", "qb2.tools.capped", *lower, "--", PY, __file__, "burn", "75",
+                                 str(said)])
+    deadline = time.monotonic() + 30
+    while not said.exists():                       # the burner, inside, names its job
+        if time.monotonic() > deadline:
+            raise TimeoutError("the burner never named its job")
+        time.sleep(0.2)
+    name = said.read_text(encoding="utf-8").strip()
+    job = win32job.OpenJobObject(win32job.JOB_OBJECT_QUERY, False, name)
+    time.sleep(5)                                  # let every spinner start
+    psutil.cpu_percent(None)
+    job_pct, machine_pct, late = [], [], []
+    t_prev, j_prev = time.monotonic(), job_seconds(job)
+    start = t_prev
+    for i in range(1, 61):
+        target = start + i
+        time.sleep(max(0.0, target - time.monotonic()))
+        late.append(max(0.0, time.monotonic() - target) * 1000)
+        t_now, j_now = time.monotonic(), job_seconds(job)
+        job_pct.append(100 * (j_now - j_prev) / ((t_now - t_prev) * cores))
+        machine_pct.append(psutil.cpu_percent(None))
+        t_prev, j_prev = t_now, j_now
+    code = launcher.wait(timeout=60)
+    print(json.dumps({
+        "job": name, "cpu_rate_of_10000": job_object.read(job).cpu_rate,
+        "processors_allowed": job_object.read(job).affinity.bit_count(),
+        "cores": cores, "samples": len(job_pct), "launcher_exit": code,
+        "job_pct_peak": round(max(job_pct), 1), "job_pct_mean": round(statistics.mean(job_pct), 1),
+        "job_pct_min": round(min(job_pct), 1),
+        "machine_pct_peak": round(max(machine_pct), 1),
+        "machine_pct_mean": round(statistics.mean(machine_pct), 1),
+        "observer_late_ms_max": round(max(late), 1), "observer_late_ms_mean": round(statistics.mean(late), 1),
+        "job_pct_each_second": [round(x, 1) for x in job_pct]}, indent=1))
+
+
+def burn(seconds: float, said: str) -> None:
+    Path(said).write_text(os.environ[capped.ENV], encoding="utf-8")
+    kids = [subprocess.Popen([PY, __file__, "spin", str(seconds)]) for _ in range(psutil.cpu_count())]
+    sys.exit(max(k.wait() for k in kids))
+
+
+def memory() -> None:
+    share = 0.03
+    before = psutil.virtual_memory().percent
+    if before >= 80:
+        sys.exit(f"the whole PC is at {before}% memory: no hog today")
+    launcher = subprocess.Popen([PY, "-m", "qb2.tools.capped", "--mem-share", str(share), "--",
+                                 PY, __file__, "hog"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
+    pc, late, tick = [], [], time.monotonic()
+    while launcher.poll() is None:
+        tick += 0.25
+        time.sleep(max(0.0, tick - time.monotonic()))
+        late.append(max(0.0, time.monotonic() - tick) * 1000)
+        pc.append(psutil.virtual_memory().percent)
+    out, err = launcher.communicate()
+    print(json.dumps({
+        "mem_share": share, "limit_gb": round(share * psutil.virtual_memory().total / 2**30, 2),
+        "launcher_exit": launcher.returncode, "hog_said": out.strip(),
+        "launcher_said": [line for line in err.splitlines() if line.startswith("[cap]")],
+        "pc_memory_pct_before": before, "pc_memory_pct_peak": max(pc, default=before),
+        "pc_memory_pct_after": psutil.virtual_memory().percent,
+        "observer_late_ms_max": round(max(late, default=0), 1), "samples": len(pc)}, indent=1))
+
+
+def hog() -> None:
+    held, mb = [], 0
+    try:
+        while mb < 8 * 1024:                       # bounded at 8 GB: a broken cap cannot run away
+            held.append(bytearray(16 * 2**20))
+            mb += 16
+    except MemoryError:
+        print(f"hog: Windows refused more memory at {mb} MB; holding it 3 s, then stopping")
+        time.sleep(3)
+        sys.exit(1)
+    print(f"hog: NOT STOPPED at {mb} MB")
+
+
+if __name__ == "__main__":
+    what = sys.argv[1]
+    if what == "spin":
+        spin(float(sys.argv[2]))
+    elif what == "burn":
+        burn(float(sys.argv[2]), sys.argv[3])
+    elif what == "cpu":
+        cpu_measured(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif what == "memory":
+        memory()
+    elif what == "hog":
+        hog()

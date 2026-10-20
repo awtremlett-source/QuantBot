@@ -40,6 +40,7 @@ from qb2.data import access, universe
 from qb2.research import (benchmark, firewall, holdout, monte_carlo, p15, p19_results,
                           pounds, preregister, trial_log)
 from qb2.signals import p19_rules
+from qb2.tools.governor import assert_capped
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUN_DIR = REPO_ROOT / "data" / "qb2" / "p19_run"
@@ -150,11 +151,9 @@ def run(*, new_batch: str | None = None, run_dir: Path = RUN_DIR,
         if result.verdict.passed:
             record["holdout"] = _holdout(token, make, data, interval, n_null, n_full,
                                          open_final, bench, log_path, clean_root, score)
-        record.update(batch=batch, seconds=round(time.monotonic() - t0, 1),
-                      register_commit=token.commit)
+        record.update(batch=batch, seconds=round(time.monotonic() - t0, 1), register_commit=token.commit)
         out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / f"{cid}.json").write_text(json.dumps(record, indent=1, default=str),
-                                             encoding="utf-8")
+        (out_dir / f"{cid}.json").write_text(json.dumps(record, indent=1, default=str), encoding="utf-8")
         _note(run_dir, event="done", batch=batch, id=cid, verdict=record["verdict"],
               holdout=(record.get("holdout") or {}).get("verdict"),
               seconds=record["seconds"])
@@ -231,6 +230,7 @@ def write_page(run_dir: Path = RUN_DIR, target: Path = RESULTS_PAGE,
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--new-batch", metavar="DEFECT", default=None,
                         help="re-run all 18 from the start, naming the defect fixed")

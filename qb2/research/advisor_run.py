@@ -40,6 +40,7 @@ from qb2.research import (advisor_book, advisor_data, advisor_results, firewall,
 from qb2.research.advisor_book import Held as Held      # re-exported: advisor_run.Held
 from qb2.research.s6_run import Defect, atomic_write, code_commit, journal, note, start
 from qb2.signals import a_rules
+from qb2.tools.governor import assert_capped
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUN_DIR = REPO_ROOT / "docs" / "research" / "A_batch1_runs"
@@ -113,8 +114,7 @@ def _log_line(record: Mapping[str, Any], token: preregister.Registered, run: int
         "strategy_name": str(token.entry["rule"]),
         "params": {"stress": STRESS, "n_null": N_NULL, "seed": 0, "verdict": record["verdict"],
                    "p_value": record["p"], "null": "turnover-matched", "dsr": record["dsr"],
-                   "trades": record["trades"], "benchmark": record["vwrp_symbol"],
-                   "advisor_run": run},
+                   "trades": record["trades"], "benchmark": record["vwrp_symbol"], "advisor_run": run},
         "metric_name": "oos_sharpe_per_bar_marked", "metric_value": record["sharpe"],
         "n_bars": record["n_bars"]})
 
@@ -194,8 +194,7 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path |
         if done["verdict"] == "PASS" and not done.get("holdout"):
             done["holdout"] = _holdout(token, data, folder, prints["b"], run_dir, number, n_trials)
             atomic_write(path, done)
-            note(run_dir, event="holdout_done", run=number, id=cid,
-                 verdict=done["holdout"]["verdict"])
+            note(run_dir, event="holdout_done", run=number, id=cid, verdict=done["holdout"]["verdict"])
     if advisor_data.fingerprints() != prints:
         note(run_dir, event="defect", run=number, moved=["fingerprint at the end"])
         raise Defect("a data fingerprint moved during the run")
@@ -229,6 +228,7 @@ def write_page(run_dir: Path | None = None, target: Path | None = None, batch: i
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    assert_capped()                    # QT-23R: never outside the operator's cap
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--new-run", metavar="DEFECT", default=None)
     parser.add_argument("--max", type=int, default=None, help="run at most N new trials")
