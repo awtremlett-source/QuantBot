@@ -353,3 +353,13 @@ def test_the_advisor_reads_bars_only_through_its_live_door() -> None:
     found = {p.name: [r for r in raw if r in p.read_text(encoding="utf-8")]
              for p in ADVISOR_DIR.glob("*.py") if p.name != "live.py"}
     assert {k: v for k, v in found.items() if v} == {}
+
+
+def test_the_pieces_the_live_advisor_shares_with_research_are_one_copy() -> None:
+    """QT-23 F: moved out of firewall / advisor_data / adv0_describe so the live advisor never
+    reaches the back-test-only P15 history rule (tests/wall/test_p15_history_wall.py); research
+    still reads them through explicit re-exports -- the same objects, not copies."""
+    from qb2.research import adv0_describe, advisor_rules, names
+    assert firewall.NameData is names.NameData and firewall.instrument_of is names.instrument_of
+    assert advisor_data.income is advisor_rules.income and advisor_data.filter_of is advisor_rules.filter_of
+    assert adv0_describe.rebuy_signal is advisor_rules.rebuy_signal

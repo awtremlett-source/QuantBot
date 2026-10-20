@@ -4,7 +4,7 @@
   opens after it was issued (:func:`fill_session`); a refused one is not followed.
 * VALUE: simulate.run -- the one trade arithmetic -- on VWRL's final bars from the arm date:
   costs.py on every fill (a London ETF in GBP: spread and slippage, no stamp duty, no FX), 1x
-  with 2x beside; dividends (P3) as in every back-test here (advisor_data.income: OK payouts /
+  with 2x beside; dividends (P3) as in every back-test here (advisor_rules.income: OK payouts /
   the previous close, on the first bar on or after the ex-date); compounded from the arm date
   and marked as if sold at THAT day's close. In % with a notional pound figure beside: the pot
   is 70% of a notional GBP 10,000 account = GBP 7,000 (a display scale, a STARTING FIGURE).

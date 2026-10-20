@@ -31,32 +31,15 @@ import pandas as pd
 
 from qb2.data import access, universe
 from qb2.execution import costs
-from qb2.research import (backtest, bet_groups, benchmark, deflation, fills, holdout,
+from qb2.research import (backtest, bet_groups, benchmark, deflation, holdout,
                           matched_null, monte_carlo, p15, pounds, preregister, stats,
                           trial_log, verdict, walk_forward)
+from qb2.research.names import NameData as NameData, instrument_of as instrument_of   # QT-23
 from qb2.research.strategy import Strategy
 from qb2.tools.governor import assert_capped
 
 Transform = Callable[[pd.DataFrame, costs.Instrument, str], pd.DataFrame]
 SkillFree = Callable[[int], tuple[Callable[[Any], Strategy], Sequence[Any]]]   # seed -> one book
-
-
-@dataclass(frozen=True, slots=True)
-class NameData:
-    symbol: str
-    market: str
-    instrument: costs.Instrument
-    bars: pd.DataFrame
-    plan: fills.Schedule
-    bet: int                                  # index of its bet group
-    fx: pounds.Rates | None = None            # GBPUSD on these bars (dollar lines only)
-    income: np.ndarray | None = None          # QT-19: payout / previous close (P3)
-    weight: pd.Series | None = None           # QT-19: its share of the pot per bar (slots)
-
-
-def instrument_of(entry: Mapping[str, Any]) -> costs.Instrument:
-    return costs.Instrument(str(entry["t212_ticker"]), str(entry["quote_currency"]),
-                            universe.market_of(entry), str(entry["kind"]), bool(entry.get("aim", False)))
 
 
 def load(interval: str, *, entries: Sequence[Mapping[str, Any]] | None = None,

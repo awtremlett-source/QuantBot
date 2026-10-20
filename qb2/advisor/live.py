@@ -27,9 +27,10 @@ import pandas as pd
 from qb2.data import daily_step, universe
 from qb2.data.front_door import CLEAN
 from qb2.ingest import daily
-from qb2.research import advisor_data, bet_groups, fills, firewall, holdout, pounds
+from qb2.research import advisor_rules, bet_groups, fills, holdout, pounds
+from qb2.research.names import NameData, instrument_of
 
-VIX = advisor_data.VIX
+VIX = advisor_rules.VIX
 VIX_MAX_AGE_DAYS = 5          # ADV-0: no VIX close within 5 calendar days before the day = missing
 COLUMNS = ["open", "high", "low", "close", "volume"]
 
@@ -90,7 +91,7 @@ def fx(through: date, *, since: date | None = None, clean_root: Path | None = No
 
 
 def names(entries: Sequence[Mapping[str, Any]], through: date, *, since: date,
-          clean_root: Path | None = None) -> tuple[list[firewall.NameData], list[str]]:
+          clean_root: Path | None = None) -> tuple[list[NameData], list[str]]:
     """The advisor list as the books' NameData on live final bars: firewall.load's assembly
     (instrument, P3 pounds, bet index, dividend income), through this door."""
     groups = bet_groups.load()
@@ -100,7 +101,7 @@ def names(entries: Sequence[Mapping[str, Any]], through: date, *, since: date,
     out, skipped = [], []
     for entry in rows:
         symbol, market = str(entry["yfinance"]), universe.market_of(entry)
-        instrument = firewall.instrument_of(entry)
+        instrument = instrument_of(entry)
         try:
             dollars = pounds.needs_rate(instrument.currency)
         except pounds.NoRate as why:
@@ -110,8 +111,8 @@ def names(entries: Sequence[Mapping[str, Any]], through: date, *, since: date,
         if len(b) < 2:
             skipped.append(f"{symbol}: no final daily bars")
             continue
-        income, _ = advisor_data.income(symbol, market, b, clean_root)
-        out.append(firewall.NameData(symbol, market, instrument, b, fills.schedule(b.index, "1d", market),
+        income, _ = advisor_rules.income(symbol, market, b, clean_root)
+        out.append(NameData(symbol, market, instrument, b, fills.schedule(b.index, "1d", market),
                                      bets.index(bet_groups.group_of(symbol, groups)),
                                      pounds.align(b.index, rates, "1d") if dollars else None, income))
     return out, skipped

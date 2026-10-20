@@ -19,8 +19,9 @@ ROOT = Path.cwd()
 PY = sys.executable
 T = "tests/qb2/test_qt23_described.py"
 A = ROOT / "qb2" / "research" / "adv0_describe.py"
+R = ROOT / "qb2" / "research" / "advisor_rules.py"     # R6 moved here (QT-23 F): one copy
 MUTANTS = [
-    ("ME1", A, "    return round(close, 6) >= round(low * (1 + REBUY), 6)",
+    ("ME1", R, "    return round(close, 6) >= round(low * (1 + REBUY), 6)",
      "    return close >= low * (1 + REBUY)", "exactly_ten_percent"),
     ("ME2", A, '                if t + 1 < n:\n                    pending[t + 1] = "SELL"',
      "                on, low = False, np.inf\n                out.held[t] = 0.0", "crosses_sells"),

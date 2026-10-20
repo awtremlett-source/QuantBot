@@ -22,24 +22,24 @@ import numpy as np
 import pandas as pd
 
 from qb2.advisor import live
-from qb2.research import advisor_book, backtest, bet_groups, fills, firewall, pounds, rank_null, simulate
+from qb2.research import advisor_book, backtest, bet_groups, fills, names, pounds, rank_null, simulate
 from qb2.signals import a_rules
 
 SHADOWS = tuple(f"S-0{j}" for j in range(1, 7))
 STRESSES = (1.0, 2.0)
 
 
-def book(entry: Mapping[str, Any], names: Sequence[firewall.NameData], vix: pd.Series, arm: date,
+def book(entry: Mapping[str, Any], names: Sequence[names.NameData], vix: pd.Series, arm: date,
          market_on: Mapping[int, bool]) -> advisor_book.Book:
     """The shadow's book on live bars, deciding nothing before the arm date. ``market_on``: the
-    A-06 filter (advisor_data.filter_of) on live closes, read only by a filtered rule (S-06)."""
+    A-06 filter (advisor_rules.filter_of) on live closes, read only by a filtered rule (S-06)."""
     rule = a_rules.of(entry)
     s = advisor_book.Settings.of(entry["parameters"], rule.lookback, rule.ascending)
     return advisor_book.build(s, names, rank_null.rule_values(rule, names), vix=vix,
                               market_on=market_on if rule.market_filter else None, start=arm)
 
 
-def returns(b: advisor_book.Book, names: Sequence[firewall.NameData], arm: date,
+def returns(b: advisor_book.Book, names: Sequence[names.NameData], arm: date,
             stress: float) -> pd.Series:
     """The pot's per-bar return from the arm date on: slots combined by the book's weights."""
     parts, weights = {}, {}
@@ -56,7 +56,7 @@ def returns(b: advisor_book.Book, names: Sequence[firewall.NameData], arm: date,
     return bet_groups.combine(parts, None, weights) if parts else pd.Series(dtype=float)
 
 
-def score(entry: Mapping[str, Any], names: Sequence[firewall.NameData], vix: pd.Series, arm: date,
+def score(entry: Mapping[str, Any], names: Sequence[names.NameData], vix: pd.Series, arm: date,
           market_on: Mapping[int, bool]) -> dict[float, pd.Series]:
     """Each stress's compounded value (1.0 = the pot at the arm date), bar by bar, from the arm."""
     b = book(entry, names, vix, arm, market_on)

@@ -35,7 +35,7 @@ from qb2.advisor import engine, live, page, scorecard, shadow, state
 from qb2.data import clean_step, universe
 from qb2.execution.safety import ADVISOR, Blocked
 from qb2.guard import brakes, stops
-from qb2.research import adv0_describe, advisor_book, advisor_data, benchmark, firewall, preregister
+from qb2.research import advisor_book, advisor_rules, benchmark, names, preregister
 from qb2.tools.governor import assert_capped
 
 ISIN, HISTORY_DAYS = "IE00B3RBWM25", 730      # R1; the shadows' lookback window before the arm
@@ -78,10 +78,10 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
     if arm is None or through is None:
         return ["advisor not armed" if arm is None else "no final daily bars yet (the top-up never ran)"]
     entry, ledger, brake_log = vwrl(), stops.Ledger(paths.stops), brakes.Brakes(paths.brakes)
-    instrument = firewall.instrument_of(entry)
+    instrument = names.instrument_of(entry)
     bars = live.bars(engine.TICKER, "LSE", through, since=arm, clean_root=clean_root)
     sessions = list(live.days_of(bars.index, "LSE"))          # none yet on the arm day: fine
-    income, _ = advisor_data.income(engine.TICKER, "LSE", bars, clean_root)
+    income, _ = advisor_rules.income(engine.TICKER, "LSE", bars, clean_root)
     written = state.rows(paths.log("days"))
     todo = [d for d in sessions if d.isoformat() not in {r["session"] for r in written}]
     lines: list[str] = []
@@ -119,7 +119,7 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
         elif held is None and fills and fills[-1].side == scorecard.SELL:   # d. the re-buy watch
             since = sessions.index(fills[-1].session)
             low = float(bars["close"].iloc[since:k + 1].min())
-            if adv0_describe.rebuy_signal(close, low) and engine.pending(paths) != scorecard.BUY:   # R6
+            if advisor_rules.rebuy_signal(close, low) and engine.pending(paths) != scorecard.BUY:   # R6
                 engine.issue(paths, ctx, action=scorecard.BUY, kind="re-buy", now=now,
                              stop=engine.preview(close, uns),
                              reason=(f"Buy VWRL back: since the exit on {fills[-1].session} its lowest "
@@ -149,7 +149,7 @@ def shadows_for(paths: state.Paths, todo: Sequence[date], arm: date, through: da
     vix, close = live.vix_series(through, clean_root), {
         s: live.bars(s, "LSE", through, clean_root=clean_root)["close"].astype(float)
         for s in (benchmark.D3, benchmark.D3_FALLBACK)}
-    on = advisor_data.filter_of(close[benchmark.D3], close[benchmark.D3_FALLBACK])
+    on = advisor_rules.filter_of(close[benchmark.D3], close[benchmark.D3_FALLBACK])
     scored = {sid: shadow.score(preregister.require(sid).entry, names, vix, arm, on)
               for sid in shadow.SHADOWS}
     for d in todo:

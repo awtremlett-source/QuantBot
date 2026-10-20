@@ -32,11 +32,12 @@ import pandas as pd
 from qb2.execution import costs
 from qb2.guard import stops
 from qb2.research import advisor_data, benchmark, firewall, holdout, preregister, simulate, stats, trial_log
+from qb2.research.advisor_rules import REBUY as REBUY, rebuy_signal as rebuy_signal   # QT-23: R6, one copy
 from qb2.tools.governor import assert_capped
 
 REPO_ROOT = holdout.REPO_ROOT
 OUT = REPO_ROOT / "docs" / "research" / "ADV-0_described_2026-10"
-REBUY, VIX_DAYS, STRESSES = 0.10, 5, (1.0, 2.0)
+VIX_DAYS, STRESSES = 5, (1.0, 2.0)
 SPANS = {"2014-03-31 -> 2025-10-09": (date(2014, 3, 31), date(2025, 10, 9)),
          "2020": (date(2020, 1, 1), date(2020, 12, 31)), "2022": (date(2022, 1, 1), date(2022, 12, 31))}
 
@@ -46,12 +47,6 @@ class Path:
     held: np.ndarray                                   # 1.0 = held through that bar's close
     fills: list[tuple[int, str]] = field(default_factory=list)       # (bar, BUY/SELL) at its open
     fired: int = 0                                     # the stop crossed at a close
-
-
-def rebuy_signal(close: float, low: float) -> bool:
-    """R6, its ONE copy (the live job's too): a close at least 10% above the lowest close since the
-    exit -- compared to the micro-penny, so a 2-decimal price exactly 10% up counts (95.00 -> 104.50)."""
-    return round(close, 6) >= round(low * (1 + REBUY), 6)
 
 
 def unsettled(days: Sequence[date], vix_days: np.ndarray, vix: np.ndarray) -> np.ndarray:

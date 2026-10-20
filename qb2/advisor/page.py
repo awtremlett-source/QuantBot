@@ -40,7 +40,10 @@ def build(now: datetime, *, arm: date | None, days: Sequence[Mapping[str, Any]],
             f"default is to hold the whole-world index fund, {NAME}. Below, every suggestion is "
             f"followed *as if* you had (P9), on a notional pot of £{POT_GBP:,.0f}, so you can see "
             "whether it is any good.", ""]
-    out += ["## Today", "", f"- {status.get('line', 'no line today')}"]
+    told = status.get("line", "no line")
+    out += ["## Today", "", "- " + (told if days or told != "no line" else
+                                    "No session since the arm date yet: the first one arrives with the "
+                                    "next daily top-up (after London and New York have both closed).")]
     out += [f"- {x}" for x in status.get("warnings", [])] + [""]
     weekly = [s for s in suggestions if s.get("kind") in ("weekly", "re-justify")]
     out += ["## This week's suggestion", ""]

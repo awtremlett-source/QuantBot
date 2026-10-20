@@ -21,20 +21,18 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from qb2.data import data_fingerprint, universe
 from qb2.execution import costs
-from qb2.ingest import dividends
-from qb2.research import advisor_book, benchmark, firewall, holdout, total_return
+from qb2.research import benchmark, firewall, holdout
+from qb2.research.advisor_rules import (FILTER_BARS as FILTER_BARS, VIX as VIX,   # QT-23: one copy
+                                        filter_of as filter_of, income as income)
 
 OOS_FROM = date(2014, 4, 1)
 WARMUP = 253
 UNSEALED_END = date(2025, 10, 9)
 HOLDOUT_END = date(2026, 10, 9)
-VIX = "^VIX"
-FILTER_BARS = 200
 
 
 def trim(bars: pd.DataFrame, instrument: costs.Instrument | None = None,
@@ -42,29 +40,6 @@ def trim(bars: pd.DataFrame, instrument: costs.Instrument | None = None,
     """The register's cut: 253 of the name's own bars before its first on/after 2014-04-01."""
     j = int((pd.DatetimeIndex(bars.index).date < OOS_FROM).sum())          # bars are in order
     return bars.iloc[max(0, j - WARMUP):]
-
-
-def income(symbol: str, market: str, bars: pd.DataFrame, clean_root: Path | None = None,
-           ) -> tuple[np.ndarray, dict[str, int]]:
-    """Payout / previous close on the first bar on or after each OK ex-date."""
-    out = np.zeros(len(bars))
-    seen = {"credited": 0, "not_ok": 0}
-    rows = dividends.load(symbol, clean_root)
-    if rows is None or rows.empty or len(bars) < 2:
-        return out, seen
-    days = pd.DatetimeIndex(bars.index).date
-    close = bars["close"].to_numpy(dtype=float)
-    keep = 1.0 - total_return.WITHHOLDING.get(market, 0.0)
-    for _, row in rows.iterrows():
-        t = int((days < date.fromisoformat(str(row["ex_date"]))).sum())   # first bar on/after
-        if not 1 <= t < len(bars):
-            continue
-        if str(row["verdict"]) != "OK":
-            seen["not_ok"] += 1
-            continue
-        out[t] += float(row["amount"]) / close[t - 1] * keep
-        seen["credited"] += 1
-    return out, seen
 
 
 def entries() -> list[dict[str, Any]]:
@@ -96,20 +71,6 @@ def market_filter(final: holdout.HoldoutPass | None = None,
     """A-06, per month: on when D3 closes above the mean of its last 200 closes."""
     return filter_of(closes(benchmark.D3, "LSE", final, clean_root),
                      closes(benchmark.D3_FALLBACK, "LSE", final, clean_root))
-
-
-def filter_of(vwrp: pd.Series, vwrl: pd.Series) -> dict[int, bool]:
-    """The rule itself, on any two close series: research's, or the advisor's live ones (QT-23)."""
-    last = max(pd.DatetimeIndex(vwrp.index).date[-1], pd.DatetimeIndex(vwrl.index).date[-1])
-    ends = advisor_book.last_sessions(advisor_book.sessions("LSE", date(2012, 1, 1), last))
-    out: dict[int, bool] = {}
-    for m, end in ends.items():
-        for series in (vwrp, vwrl):
-            upto = series[pd.DatetimeIndex(series.index).date <= end]
-            if len(upto) >= FILTER_BARS:
-                out[m] = bool(upto.iloc[-1] > upto.iloc[-FILTER_BARS:].mean())
-                break
-    return out
 
 
 def vix(final: holdout.HoldoutPass | None = None, clean_root: Path | None = None) -> pd.Series:
