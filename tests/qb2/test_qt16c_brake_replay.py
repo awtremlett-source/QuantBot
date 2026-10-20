@@ -26,7 +26,10 @@ def test_a_dip_that_regains_its_peak_first_is_a_false_alarm() -> None:
 def test_a_dip_that_falls_a_further_five_percent_first_is_not() -> None:
     eps = br.replay(_path("2016-03-01", [100, 89, 84, 90, 101]))
     assert [(e.level, e.false_alarm) for e in eps] == [("10%", False), ("15%", None)]
-    assert all(e.end == date(2016, 3, 7) for e in eps)
+    # QT-23, GO 2 (2026-10-19): the advisor's hold-off is cleared by his words only, so a replayed
+    # one never ends by itself. QT-16's rule ended both on 2016-03-07, back within 5% of the peak;
+    # docs/research/brake_replay_2026-10.md keeps that record (when the brake FIRES is unchanged).
+    assert all(e.end is None for e in eps)
 
 
 def test_inside_a_crisis_window_it_counts_as_firing_not_as_an_alarm() -> None:

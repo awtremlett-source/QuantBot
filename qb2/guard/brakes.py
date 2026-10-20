@@ -7,8 +7,11 @@
   with ``python -m qb2.tools.clear_pause --words "..."``, recorded verbatim (empty
   words refused). His words restart the bot's measuring: the peak becomes that
   day's value -- otherwise the pause would clear into a 10% brake that a bot which
-  cannot buy (it holds cash) could never climb out of. The ADVISOR's message
-  becomes "hold off" until it is back within 5% of its peak.
+  cannot buy (it holds cash) could never climb out of. The ADVISOR says "hold off",
+  and since QT-23 that too clears ONLY on his words (``--pot advisor``), restarting
+  its peak that day. Operator, 2026-10-19 (verbatim): "GO on the advisor's brake:
+  after an urgent exit, my own words clear the advisor's hold-off and restart its
+  peak from that day, as for the bot's pause; no code clears it." 
 * 10% and 15% are P12's own figures, tested against 2008, 2020 and 2022 in
   docs/research/brake_replay_2026-10.md; they are NOT changed here.
 
@@ -58,11 +61,11 @@ def step(prev: State | None, pot: str, value: float, at: str) -> State:
         raise Blocked(f"the {pot} pot's value {value!r} is not a value -- nothing measured")
     peak = value if prev is None else max(prev.peak, value)
     fall, was = value / peak - 1.0, OK if prev is None else prev.level
-    if pot == BOT and was == PAUSED:
-        level = PAUSED                                    # only his words clear it
+    if was == (PAUSED if pot == BOT else HOLD_OFF):
+        level = was                                       # only his words clear it (GO 2)
     elif fall <= -PAUSE:
         level = PAUSED if pot == BOT else HOLD_OFF
-    elif was in (BRAKED, HOLD_OFF) and fall < -CLEAR_WITHIN:
+    elif was == BRAKED and fall < -CLEAR_WITHIN:
         level = was                                       # not yet back within 5%
     elif fall <= -BRAKE:
         level = BRAKED
@@ -124,18 +127,20 @@ class Brakes:
                      "level": new.level, "at": new.at})
         return new
 
-    def clear_pause(self, words: str, at: datetime | None = None) -> State:
-        """The bot's 15% pause, cleared by the operator's own words -- nothing else."""
+    def clear_pause(self, words: str, at: datetime | None = None, pot: str = BOT) -> State:
+        """The bot's 15% pause -- or the advisor's hold-off (GO 2) -- cleared by the
+        operator's own words, nothing else; the pot's peak restarts at that day's value."""
         if not words or not words.strip():
             raise Blocked("empty words refused: only the operator's own words clear the pause")
-        now = self.state(BOT)
-        if now is None or now.level != PAUSED:
-            raise Blocked(f"the bot is not paused ({now.level if now else 'no state'}); "
+        held, what = (PAUSED, "paused") if pot == BOT else (HOLD_OFF, "held off")
+        now = self.state(pot)
+        if now is None or now.level != held:
+            raise Blocked(f"the {pot} pot is not {what} ({now.level if now else 'no state'}); "
                           "nothing to clear")
         stamp = (at or datetime.now(timezone.utc)).isoformat(timespec="seconds")
-        self._write({"event": "cleared", "pot": BOT, "words": words, "at": stamp,
+        self._write({"event": "cleared", "pot": pot, "words": words, "at": stamp,
                      "was_peak": now.peak})
-        fresh = State(BOT, now.value, now.value, OK, stamp)
-        self._write({"event": "restarted", "pot": BOT, "peak": fresh.peak,
+        fresh = State(pot, now.value, now.value, OK, stamp)
+        self._write({"event": "restarted", "pot": pot, "peak": fresh.peak,
                      "value": fresh.value, "level": OK, "at": stamp})
         return fresh

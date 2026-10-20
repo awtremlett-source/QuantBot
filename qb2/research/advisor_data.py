@@ -94,8 +94,12 @@ def closes(symbol: str, market: str, final: holdout.HoldoutPass | None = None,
 def market_filter(final: holdout.HoldoutPass | None = None,
                   clean_root: Path | None = None) -> dict[int, bool]:
     """A-06, per month: on when D3 closes above the mean of its last 200 closes."""
-    vwrp = closes(benchmark.D3, "LSE", final, clean_root)
-    vwrl = closes(benchmark.D3_FALLBACK, "LSE", final, clean_root)
+    return filter_of(closes(benchmark.D3, "LSE", final, clean_root),
+                     closes(benchmark.D3_FALLBACK, "LSE", final, clean_root))
+
+
+def filter_of(vwrp: pd.Series, vwrl: pd.Series) -> dict[int, bool]:
+    """The rule itself, on any two close series: research's, or the advisor's live ones (QT-23)."""
     last = max(pd.DatetimeIndex(vwrp.index).date[-1], pd.DatetimeIndex(vwrl.index).date[-1])
     ends = advisor_book.last_sessions(advisor_book.sessions("LSE", date(2012, 1, 1), last))
     out: dict[int, bool] = {}

@@ -1,0 +1,65 @@
+"""QT-23 C, checks on the real store (under the cap): the filter refactor, the live door, the shadows."""
+import importlib.util
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import date, timedelta
+from pathlib import Path
+
+import numpy as np
+
+from qb2.advisor import live, shadow
+from qb2.data import universe
+from qb2.research import advisor_data, benchmark, preregister
+from qb2.tools import governor
+
+governor.assert_capped()
+
+# 1. advisor_data.market_filter, refactored through filter_of, equals the committed one (924b287)
+src = subprocess.run(["git", "show", "924b287:qb2/research/advisor_data.py"], capture_output=True,
+                     text=True, check=True).stdout
+path = Path(tempfile.mkdtemp(prefix="qt23c_")) / "old_advisor_data.py"
+path.write_text(src, encoding="utf-8")
+spec = importlib.util.spec_from_file_location("old_advisor_data", path)
+old = importlib.util.module_from_spec(spec)
+sys.modules["old_advisor_data"] = old
+spec.loader.exec_module(old)
+new_f, old_f = advisor_data.market_filter(None), old.market_filter(None)
+print(f"1. market_filter: {len(new_f)} months, identical to 924b287's: {new_f == old_f}")
+
+# 2. the live door's NameData equals firewall.load's on the unsealed years (bars, plan, bet, income)
+through, cut = live.final_through(), advisor_data.UNSEALED_END
+research, _, _ = advisor_data.load()
+by = {n.symbol: n for n in research}
+names, skipped = live.names(universe.advisor_entries(), through, since=date(2000, 1, 1))
+same, checked = 0, 0
+for n in names:
+    r = by.get(n.symbol)
+    if r is None:
+        continue
+    keep = live.days_of(n.bars.index, n.market) <= cut
+    k0 = int(np.flatnonzero(keep)[0]) if keep.any() else 0
+    rb = r.bars
+    lb = n.bars[keep].iloc[-len(rb):] if keep.sum() >= len(rb) else n.bars[keep]
+    ok = (lb.index.equals(rb.index) and np.allclose(lb[["open", "close"]].to_numpy(float),
+                                                     rb[["open", "close"]].to_numpy(float), equal_nan=True)
+          and n.bet == r.bet and n.instrument == r.instrument and (n.fx is None) == (r.fx is None))
+    li = n.income[np.flatnonzero(keep)][-len(rb):] if n.income is not None else None
+    ok = ok and li is not None and r.income is not None and np.allclose(li, r.income)
+    same += ok
+    checked += 1
+print(f"2. live door: {same} of {checked} names identical to firewall.load on the unsealed bars "
+      f"(through {cut}); live store final through {through}; {len(skipped)} skipped live, "
+      f"{len(research)} loaded by research")
+
+# 3. the shadows on the real store: armed today, nothing scored; time it
+t0, arm = time.monotonic(), date.today()
+live_names, _ = live.names(universe.advisor_entries(), through, since=arm - timedelta(days=730))
+vix = live.vix_series(through)
+close = {s: live.bars(s, "LSE", through)["close"].astype(float) for s in (benchmark.D3, benchmark.D3_FALLBACK)}
+on = advisor_data.filter_of(close[benchmark.D3], close[benchmark.D3_FALLBACK])
+for sid in shadow.SHADOWS:
+    by_s = shadow.score(preregister.require(sid).entry, live_names, vix, arm, on)
+    print(f"3. {sid}: {len(by_s[2.0])} scored bars from {arm} (expected 0 before any session after it)")
+print(f"   six shadows on {len(live_names)} live names: {time.monotonic() - t0:.0f}s")

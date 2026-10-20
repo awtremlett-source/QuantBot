@@ -141,7 +141,9 @@ def test_the_advisor_says_hold_off_at_15_and_no_new_buys_at_10(tmp_path: Path) -
     assert brakes.advisor_message(b.update(ADVISOR, 89)).startswith("no new buys")
     assert brakes.advisor_message(b.update(ADVISOR, 84)).startswith("hold off")
     assert b.update(ADVISOR, 90).level == brakes.HOLD_OFF   # not yet within 5%
-    assert b.update(ADVISOR, 96).level == brakes.OK
+    # QT-23, GO 2 (2026-10-19): "no code clears it" -- back within 5%, still held off until his
+    # words (tests/qb2/test_qt23_advisor.py clears it with them)
+    assert b.update(ADVISOR, 96).level == brakes.HOLD_OFF
 
 
 def test_a_missing_brake_state_means_no_buys_and_tight_stops(tmp_path: Path) -> None:

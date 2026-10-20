@@ -1,0 +1,105 @@
+"""QT-23 C, red-first: each property of the advisor, broken on purpose, turns its test RED.
+
+MC1  the scorecard follows a REFUSED suggestion          MC10 a stale close is not said (UNCHECKED)
+MC2  a suggestion fills at the open it was issued after  MC11 R1 not checked (any VWRL line)
+MC3  dividends ignored by the scorecard                  MC12 code clears the advisor's hold-off (GO 2)
+MC4  the reconciliation always says OK                   MC13 a shadow scored before the arm date
+MC5  a suggestion written without check_suggestion       MC14 a shadow deciding before the arm date
+MC6  at 12 months no re-justify (a silent roll-over)     MC15 an order path imported by the advisor
+MC7  a crossed stop never says SELL                      MC16 a raw bar read outside live.py
+MC8  the re-buy ignores the brake                        MC17 the page leaks a path past the scan
+MC9  an older Friday's missed review not shown
+Each mutation is restored in a finally, sha256 checked; then the whole file must be GREEN.
+Run inside the cap from the repo root:
+    .venv-qb2\\Scripts\\python -m qb2.tools.capped -- .venv-qb2\\Scripts\\python <copy>.py
+"""
+import contextlib
+import hashlib
+import subprocess
+import sys
+from pathlib import Path
+
+from qb2.tools import governor
+
+ROOT = Path.cwd()
+PY = sys.executable
+T = "tests/qb2/test_qt23_advisor.py"
+A = ROOT / "qb2" / "advisor"
+SC, EN, DA, SH, PG = A / "scorecard.py", A / "engine.py", A / "daily.py", A / "shadow.py", A / "page.py"
+BR = ROOT / "qb2" / "guard" / "brakes.py"
+MUTANTS = [
+    ("MC1", SC, 'if not row.get("allowed") or side not in (BUY, SELL):', "if side not in (BUY, SELL):",
+     "fills_at_the_first_open"),
+    ("MC2", SC, "next((s for s in sessions if opens_at(s) > issued), None)",
+     "next((s for s in sessions if opens_at(s).date() >= issued.date()), None)", "fills_at_the_first_open"),
+    ("MC3", SC, "0.0,\n        income[:k + 1]).net)", "0.0,\n        None).net)", "hand_worked_week"),
+    ("MC4", SC, "    now = {d.session.isoformat(): d for d in fresh}\n    out = []",
+     "    now = {d.session.isoformat(): d for d in fresh}\n    return []\n    out = []", "moves_is_red"),
+    ("MC5", EN, "    checked = suggestion.check_suggestion(s, brake=ctx.brake, pot=pot_view(ctx.value_gbp),\n"
+                "                                          earnings=None, now=now)",
+     "    checked = suggestion.Checked(True, (), ())", "every_suggestion_is_checked"),
+    ("MC6", EN, "    if age.status(held.opened_at, now) == age.LIMIT:", "    if False:", "twelve_months"),
+    ("MC7", DA, "            if close <= held.level:", "            if close < held.level * 0.5:",
+     "crossed_stop"),
+    ("MC8", DA, "        ctx = engine.Context(d, close, uns, brake, day.value[1.0], held)",
+     "        ctx = engine.Context(d, close, uns, brakes.State(ADVISOR, 1.0, 1.0, brakes.OK, 'x'), "
+     "day.value[1.0], held)", "crossed_stop"),
+    ("MC9", DA, "    for f in open_[:-1]:", "    for f in []:", "week_away"),
+    ("MC10", DA, "    if through < last_finished(now):", "    if False:", "stale_close"),
+    ("MC11", DA, '    if len(rows) != 1 or (rows[0]["isin"], rows[0]["quote_currency"], universe.market_of(rows[0])) \\\n'
+                 '            != (ISIN, "GBP", "LSE"):', "    if False:", "vwrl_must_resolve"),
+    ("MC12", BR, "    if was == (PAUSED if pot == BOT else HOLD_OFF):", "    if pot == BOT and was == PAUSED:",
+     "only_his_words"),
+    ("MC13", SH, "        on = live.days_of(n.bars.index, n.market) >= arm",
+     "        on = live.days_of(n.bars.index, n.market) >= date.min", "no_shadow_return"),
+    ("MC14", SH, "market_on=market_on if rule.market_filter else None, start=arm)",
+     "market_on=market_on if rule.market_filter else None, start=None)", "no_shadow_return"),
+    ("MC15", EN, "from qb2.guard import age, brakes, pots, suggestion\n",
+     "from qb2.guard import age, brakes, pots, suggestion\nfrom qb2.execution import sender  # noqa: F401\n",
+     "imports_no_order_path"),
+    ("MC16", EN, 'TICKER, MARKET, KIND = "VWRL.L", "LSE", "ETF"\n',
+     'TICKER, MARKET, KIND = "VWRL.L", "LSE", "ETF"\nRAW = "read_parquet"\n', "only_through_its_live_door"),
+    ("MC17", PG, '    out = [f"# QuantBot advisor — {now.astimezone(UK):%A %d %B %Y, %H:%M} UK", ""]',
+     '    out = [f"# QuantBot advisor — {now.astimezone(UK):%A %d %B %Y, %H:%M} UK", "C:\\\\Users\\\\x", ""]',
+     "secret_scan"),
+]
+
+
+def sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@contextlib.contextmanager
+def mutant(path: Path, old: str, new: str):
+    original, before = path.read_bytes(), sha(path)
+    text = original.decode("utf-8")
+    if "\r\n" in text:                                   # a CRLF checkout: match its endings
+        old, new = old.replace("\n", "\r\n"), new.replace("\n", "\r\n")
+    assert text.count(old) == 1, f"{path.name}: the mutation point is not unique: {old[:60]!r}"
+    path.write_bytes(text.replace(old, new).encode("utf-8"))
+    try:
+        yield
+    finally:
+        path.write_bytes(original)
+        assert sha(path) == before, f"{path.name} NOT restored"
+
+
+def tests(k: str | None = None) -> subprocess.CompletedProcess[str]:
+    args = [PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", T] + (["-k", k] if k else [])
+    return subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=900)
+
+
+if __name__ == "__main__":
+    governor.assert_capped()
+    red = 0
+    for name, path, old, new, k in MUTANTS:
+        with mutant(path, old, new):
+            done = tests(k)
+        last = [x for x in done.stdout.splitlines() if " passed" in x or " failed" in x or "error" in x][-1:]
+        print(f"{name} ({path.name}, -k {k}): exit {done.returncode} -- {' '.join(last)}", flush=True)
+        red += done.returncode != 0
+    green = tests()
+    print(f"RESTORED, the whole file: exit {green.returncode} -- "
+          f"{[x for x in green.stdout.splitlines() if ' passed' in x][-1:]}")
+    print(f"{red} of {len(MUTANTS)} mutants RED")
+    sys.exit(0 if red == len(MUTANTS) and green.returncode == 0 else 1)

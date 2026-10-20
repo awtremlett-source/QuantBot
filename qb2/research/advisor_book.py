@@ -115,8 +115,8 @@ def last_sessions(days: np.ndarray) -> dict[int, date]:
     return out
 
 
-def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *,
-          vix: pd.Series | None = None, market_on: Mapping[int, bool] | None = None) -> Book:
+def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *, vix: pd.Series
+          | None = None, market_on: Mapping[int, bool] | None = None, start: date | None = None) -> Book:
     names = list(data)
     if len({n.bet for n in names}) != len(names):
         raise ValueError("a bet with two lines in the advisor arm: not implemented")
@@ -218,7 +218,7 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
             elif fall or np.isfinite(atr[i][t]):          # raised only, never lowered
                 level[i] = (stops.fall_level(c[i][t], k_at(day), level[i]) if fall      # R5: THE copy
                             else max(level[i], c[i][t] - k_at(day) * atr[i][t]))
-        if decide_on.get(month_of(day)) == day:
+        if decide_on.get(month_of(day)) == day and (start is None or day >= start):   # QT-23 shadows
             decide(month_of(day))
         for i, t in timeline[day]:
             out.decisions[names[i].symbol][t] = target[i]
