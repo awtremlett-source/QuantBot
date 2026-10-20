@@ -1,0 +1,17 @@
+from datetime import date
+import numpy as np
+from qb2.research import adv0_describe as a, advisor_data, holdout
+from qb2.guard import stops
+from qb2.tools import governor
+governor.assert_capped()
+bars = holdout.research_bars("VWRL.L", "1d", "LSE")
+days = list(holdout.local_index(bars.index, "LSE").date)
+vix = advisor_data.vix(None)
+jumpy = a.unsettled(days, np.asarray(holdout.local_index(vix.index, "US").date, dtype="datetime64[D]"), vix.to_numpy(float))
+keep = [i for i, d in enumerate(days) if d >= date(2014, 3, 31)]
+o, c = bars["open"].to_numpy(float)[keep], bars["close"].to_numpy(float)[keep]
+d = [days[i] for i in keep]
+p = a.path(d, o, c, jumpy[keep], date(2014, 3, 31))
+for t, side in p.fills:
+    peak = c[max(0, t - 260):t].max()
+    print(f"{d[t]} {side:4} at open {o[t]:8.2f} (close before {c[t-1]:8.2f}; 1y high close {peak:8.2f}; f {'10%' if jumpy[keep][t-1] else '15%'})")
