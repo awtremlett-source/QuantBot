@@ -9,6 +9,8 @@ of QuantBot together). This is the polite half, which keeps a run well inside it
 * assert_capped(): the first call of every heavy entry point. Outside the cap it refuses, in
   plain words (fail closed). Inside, a background watch applies the same stop rule while the
   run works: it interrupts the main thread, which unwinds as on Ctrl+C.
+* run_capped(module): a SCHEDULED entry point (its task starts Python directly) re-runs itself
+  through the launcher when it finds itself outside the cap -- never a loop (QT-23 D).
 * run_pool(fn, jobs): THE process pool -- at most workers() processes, gated, results in job
   order. Any other process pool or parallel test runner is banned, and so is a pool as wide as
   its job list (wall: tests/qb2/test_qt23r_cap.py).
@@ -20,9 +22,11 @@ import _thread
 import math
 import multiprocessing
 import os
+import subprocess
+import sys
 import threading
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from dataclasses import dataclass
 from typing import Literal, TypeVar
@@ -118,6 +122,22 @@ def assert_capped(*, verify: Callable[[], list[str]] = capped.verify,
     if start_watch and multiprocessing.parent_process() is None and not _watching.is_set():
         _watching.set()                                  # one watch, in the main process only
         threading.Thread(target=watch, daemon=True, name="qb2-memory-watch").start()
+
+
+def run_capped(module: str, argv: Sequence[str] | None = None, *,
+               verify: Callable[[], list[str]] = capped.verify,
+               run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run) -> int | None:
+    """Inside the cap: None, carry on. Outside: the same module again, through the launcher; its
+    exit code back. Started by the launcher yet still not inside: refused, never a loop."""
+    if not (reasons := verify()):
+        return None
+    if os.environ.get(capped.ENV):
+        capped.log("REFUSED (launched, yet not inside the cap): " + "; ".join(reasons))
+        raise NotCapped("REFUSED -- the launcher started this run but it is not inside the cap "
+                        f"(never a loop): {'; '.join(reasons)}")
+    args = list(sys.argv[1:] if argv is None else argv)
+    return int(run([sys.executable, "-m", "qb2.tools.capped", "--", sys.executable, "-m", module,
+                    *args], check=False).returncode)
 
 
 def run_pool(fn: Callable[[J], R], jobs: Iterable[J], *,

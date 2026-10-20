@@ -89,8 +89,12 @@ def test_the_daily_top_up_runs_first_then_earnings(monkeypatch: pytest.MonkeyPat
         return run
     monkeypatch.setattr(daily_step, "run_if_due", step("daily", "Daily store: x"))
     monkeypatch.setattr(earnings_step, "run_if_due", step("earnings", "Earnings: y"))
-    line = earnings_step.after_daily(MONDAY_NIGHT, clean_root=tmp_path, digest_dir=tmp_path)
-    assert order == ["daily", "earnings"] and line == "Daily store: x · Earnings: y"
+    def advisor(now: datetime, root: Path | None) -> str:
+        order.append("advisor")
+        return "Advisor: z"
+    line = earnings_step.after_daily(MONDAY_NIGHT, clean_root=tmp_path, digest_dir=tmp_path, advisor=advisor)
+    # QT-23 D: the advisor is the chain's third step, after the top-up and earnings
+    assert order == ["daily", "earnings", "advisor"] and line == "Daily store: x · Earnings: y · Advisor: z"
     assert "Earnings: y" in (tmp_path / "digest-2026-10-12.md").read_text(encoding="utf-8")
 
 

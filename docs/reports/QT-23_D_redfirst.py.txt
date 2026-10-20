@@ -1,0 +1,76 @@
+"""QT-23 D, red-first: each property of the schedule, broken on purpose, turns its test RED.
+
+MD1 record_now runs without wrapping itself in the cap     MD4 a refusal (a SystemExit) escapes the hook
+MD2 run_capped loops (no guard on a launched run)          MD5 the advisor page is pushed unscanned
+MD3 the hook swallows an advisor STOP (a quiet line)       MD6 the after-hours chain forgets the advisor
+Each mutation is restored in a finally, sha256 checked; then the whole file must be GREEN.
+Run inside the cap from the repo root:
+    .venv-qb2\\Scripts\\python -m qb2.tools.capped -- .venv-qb2\\Scripts\\python <copy>.py
+"""
+import contextlib
+import hashlib
+import subprocess
+import sys
+from pathlib import Path
+
+from qb2.tools import governor
+
+ROOT = Path.cwd()
+PY = sys.executable
+T = "tests/qb2/test_qt23_schedule.py"
+REC, GOV = ROOT / "qb2/tools/record_now.py", ROOT / "qb2/tools/governor.py"
+PUSH, HOOK = ROOT / "qb2/tools/status_push.py", ROOT / "qb2/data/earnings_step.py"
+MUTANTS = [
+    ("MD1", REC, '    if (code := governor.run_capped("qb2.tools.record_now", argv)) is not None:   # QT-23R: in the cap\n'
+                 "        return code\n", "", "wraps_itself_first"),
+    ("MD2", GOV, "    if os.environ.get(capped.ENV):\n", "    if False:\n", "never_a_loop"),
+    ("MD3", HOOK, '        raise RuntimeError(f"ADVISOR STOPPED: {why}") from why\n',
+     '        return f"Advisor: stopped ({why})"\n', "red_on_broken_the_daily_job"),
+    ("MD4", HOOK, '        raise RuntimeError(f"advisor refused: {why}") from None\n', "        raise\n",
+     "cannot_end_the_recorders_run"),
+    ("MD5", PUSH, "            for h in secret_hits(p.read_text(encoding=\"utf-8\"), env_values)]",
+     "            for h in secret_hits(p.read_text(encoding=\"utf-8\"), env_values) if p == status]",
+     "pushed_beside_the_status_page"),
+    ("MD6", HOOK, "    told = (advisor or _advisor)(now, clean_root)\n", '    told = "Advisor: skipped"\n',
+     "runs_the_advisor_after_the_top_up"),
+]
+
+
+def sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@contextlib.contextmanager
+def mutant(path: Path, old: str, new: str):
+    original, before = path.read_bytes(), sha(path)
+    text = original.decode("utf-8")
+    if "\r\n" in text:                                   # a CRLF checkout: match its endings
+        old, new = old.replace("\n", "\r\n"), new.replace("\n", "\r\n")
+    assert text.count(old) == 1, f"{path.name}: the mutation point is not unique: {old[:60]!r}"
+    path.write_bytes(text.replace(old, new).encode("utf-8"))
+    try:
+        yield
+    finally:
+        path.write_bytes(original)
+        assert sha(path) == before, f"{path.name} NOT restored"
+
+
+def tests(k: str | None = None) -> subprocess.CompletedProcess[str]:
+    args = [PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", T] + (["-k", k] if k else [])
+    return subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=900)
+
+
+if __name__ == "__main__":
+    governor.assert_capped()
+    red = 0
+    for name, path, old, new, k in MUTANTS:
+        with mutant(path, old, new):
+            done = tests(k)
+        last = [x for x in done.stdout.splitlines() if " passed" in x or " failed" in x or "error" in x][-1:]
+        print(f"{name} ({path.name}, -k {k}): exit {done.returncode} -- {' '.join(last)}", flush=True)
+        red += done.returncode != 0
+    green = tests()
+    print(f"RESTORED, the whole file: exit {green.returncode} -- "
+          f"{[x for x in green.stdout.splitlines() if ' passed' in x][-1:]}")
+    print(f"{red} of {len(MUTANTS)} mutants RED")
+    sys.exit(0 if red == len(MUTANTS) and green.returncode == 0 else 1)

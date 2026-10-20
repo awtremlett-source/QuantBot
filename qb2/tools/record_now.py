@@ -8,21 +8,19 @@ Two jobs, deliberately separated, because mixing them is what broke it:
   series. It is slow, so it runs once a day, after both markets have shut, inside
   the same scheduled task's last run of the day. No second task, no administrator.
 
-Why this split exists, in one sentence: on 2026-10-01 every hourly run tried to
-backfill 93 brand-new names as well as top up 128 old ones, took over an hour, and
-was killed before it finished -- the recorder log for that day is literally
-``^C``, three warnings, and ``^C^C``, with no summary line because no run ever
-reached the end. Names late in the list simply never got recorded.
+Why this split exists, in one sentence: on 2026-10-01 every hourly run tried to backfill 93
+brand-new names as well as top up 128 old ones, took over an hour, and was killed before it
+finished -- the recorder log for that day is literally ``^C``, three warnings, and ``^C^C``, with
+no summary line because no run ever reached the end. Names late in the list never got recorded.
 
 Three things every run now does, whatever mode it is in:
 
 * **Samples the quote delay FIRST**, before any fetch. It takes seconds. Doing it
   last meant it never happened, because the run never got that far -- which is why
   FACTS row o sat unmeasured for three attempts.
-* **Keeps a ledger.** Every name attempted must come out saved, lost, quarantined
-  or skipped-with-a-reason. A name in none of those categories fails the run
-  loudly. That is the guard that would have caught GOOG, AXP, APH and ADI being
-  walked past in silence.
+* **Keeps a ledger.** Every name attempted must come out saved, lost, quarantined or
+  skipped-with-a-reason. A name in none of those categories fails the run loudly. That is
+  the guard that would have caught GOOG, AXP, APH and ADI being walked past in silence.
 * **Reports its own duration** and raises an alarm past a threshold, because a run
   that overruns its hour blocks the next trigger and nobody finds out.
 """
@@ -39,6 +37,7 @@ from pathlib import Path
 
 from qb2.data.front_door import StoreLocked, WriterLock
 from qb2.ingest import fresh_run, recorder, tickers
+from qb2.tools import governor
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = REPO_ROOT / "logs" / "recorder"
@@ -257,6 +256,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     round. Two processes writing one parquet file can leave it truncated, and a
     truncated bar file is worse than a missing one because it still reads.
     """
+    if (code := governor.run_capped("qb2.tools.record_now", argv)) is not None:   # QT-23R: in the cap
+        return code
     parser = argparse.ArgumentParser(
         prog="record_now", description="Capture intraday bars once.")
     parser.add_argument("--interval", default="1m",

@@ -35,7 +35,7 @@ from zoneinfo import ZoneInfo
 
 from qb2.data import clean_step, daily_step, earnings_step
 from qb2.ingest import t212_fresh, xcheck_shadow
-from qb2.tools import delay_count, run_times, sample_delay
+from qb2.tools import delay_count, governor, run_times, sample_delay
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO_ROOT / "logs" / "status_push"
@@ -45,6 +45,7 @@ RECORDER_LOGS = REPO_ROOT / "logs" / "recorder"
 
 STATUS_REF = "refs/heads/status"           # never main: the only ref we push
 STATUS_PATH = ("status", "recorder_status.md")
+ADVISOR_PAGE = REPO_ROOT / "logs" / "advisor" / "advisor.md"    # QT-23 D: beside it, same scan
 REMOTE = "origin"
 
 UK = ZoneInfo("Europe/London")
@@ -186,10 +187,12 @@ def _run_git(args: list[str], *, cwd: Path, stdin: str | None = None) -> str:
     return done.stdout.decode("utf-8", errors="replace").strip()
 
 
-def publish(status: Path, log: Path, repo: Path, *,
-            env_values: Mapping[str, str], git: Git = _run_git) -> int:
-    """Scan, then push ``status`` alone to STATUS_REF. 0 = pushed."""
-    hits = secret_hits(status.read_text(encoding="utf-8"), env_values)
+def publish(status: Path, log: Path, repo: Path, *, env_values: Mapping[str, str],
+            git: Git = _run_git, extra: Sequence[Path] = ()) -> int:
+    """Scan, then push ``status`` (and each ``extra`` page that exists) alone to STATUS_REF."""
+    files = [(STATUS_PATH[1], status), *((p.name, p) for p in extra if p.is_file())]
+    hits = [h if name == STATUS_PATH[1] else f"{name}: {h}" for name, p in files
+            for h in secret_hits(p.read_text(encoding="utf-8"), env_values)]
     if hits:
         _log(log, "REFUSED to push: " + "; ".join(hits))
         return 2
@@ -198,8 +201,8 @@ def publish(status: Path, log: Path, repo: Path, *,
             return str(git(list(args), cwd=repo, stdin=stdin))
         # Plumbing only: objects are written, but no index, no checkout, no
         # branch switch -- main's working tree cannot be disturbed.
-        blob = out("hash-object", "--no-filters", "-w", str(status))  # exact bytes
-        inner = out("mktree", stdin=f"100644 blob {blob}\t{STATUS_PATH[1]}\n")
+        inner = out("mktree", stdin="".join(f"100644 blob {out('hash-object', '--no-filters', '-w', str(p))}"
+                                            f"\t{name}\n" for name, p in files))   # exact bytes
         tree = out("mktree", stdin=f"040000 tree {inner}\t{STATUS_PATH[0]}\n")
         commit = out("commit-tree", tree, "-m", "recorder status")   # no parent
         out("push", "--force", REMOTE, f"{commit}:{STATUS_REF}")
@@ -209,11 +212,13 @@ def publish(status: Path, log: Path, repo: Path, *,
                   else str(raw)).strip().splitlines()
         _log(log, f"PUSH FAILED: {detail[-1] if detail else type(exc).__name__}")
         return 1
-    _log(log, f"pushed {'/'.join(STATUS_PATH)} to {STATUS_REF}")
+    _log(log, f"pushed {', '.join(f'{STATUS_PATH[0]}/{name}' for name, _ in files)} to {STATUS_REF}")
     return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    if (code := governor.run_capped("qb2.tools.status_push", argv)) is not None:   # QT-23R: in the cap
+        return code
     from qb2.execution.t212_client import read_env_file
 
     args = list(sys.argv[1:] if argv is None else argv)
@@ -228,7 +233,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if "--no-push" in args:
         _log(PUSH_LOG, "status written, push skipped (--no-push)")
         return 0
-    return publish(STATUS_FILE, PUSH_LOG, REPO_ROOT, env_values=read_env_file())
+    return publish(STATUS_FILE, PUSH_LOG, REPO_ROOT, env_values=read_env_file(), extra=[ADVISOR_PAGE])
 
 
 if __name__ == "__main__":

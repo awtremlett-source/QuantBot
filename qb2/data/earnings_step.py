@@ -32,6 +32,7 @@ import pandas as pd
 
 from qb2.data import daily_step, universe
 from qb2.data.front_door import CLEAN
+from qb2.execution.safety import Blocked
 from qb2.ingest import earnings
 
 MARKER = "earnings_step.json"
@@ -97,12 +98,38 @@ def run_if_due(now: datetime, *, clean_root: Path | None = None, fetch: Fetch | 
     return line
 
 
-def after_daily(now: datetime, *, clean_root: Path | None = None,
-                digest_dir: Path | None = None) -> str:
-    """The after-hours chain after the front door: the daily top-up, THEN earnings."""
+def after_daily(now: datetime, *, clean_root: Path | None = None, digest_dir: Path | None = None,
+                advisor: Callable[[datetime, Path | None], str] | None = None) -> str:
+    """The after-hours chain after the front door: the daily top-up, THEN earnings, THEN the
+    advisor (QT-23 D: its daily job, and Friday's review, on the bars just topped up)."""
     daily = daily_step.run_if_due(now, clean_root=clean_root)
     line = run_if_due(now, clean_root=clean_root)
-    return f"{daily} · {line}{_digest(now, line, digest_dir)}"
+    told = (advisor or _advisor)(now, clean_root)
+    return f"{daily} · {line} · {told}{_digest(now, line, digest_dir)}"
+
+
+def _advisor(now: datetime, clean_root: Path | None) -> str:
+    if clean_root is not None:
+        return "Advisor: not run against a test store"
+    from qb2.advisor import state
+    return advise(now, None, state.Paths.default())
+
+
+def advise(now: datetime, clean_root: Path | None, paths: Any) -> str:
+    """The advisor's step, inside the cap. A STOP, a RED or an UNCHECKED stop is RAISED, so the
+    recorder's run is NOT CLEAN (record_now makes it a complaint) -- never a quiet line."""
+    from qb2.advisor import daily
+    from qb2.tools import governor
+    try:
+        governor.assert_capped()
+        lines = daily.run(now, paths, clean_root=clean_root)
+    except governor.NotCapped as why:        # a SystemExit: it must not end the recorder's run
+        raise RuntimeError(f"advisor refused: {why}") from None
+    except Blocked as why:
+        raise RuntimeError(f"ADVISOR STOPPED: {why}") from why
+    if loud := [x for x in lines if x.startswith(("RED", "UNCHECKED"))]:
+        raise RuntimeError("advisor: " + "; ".join(loud))
+    return "Advisor: " + " · ".join(lines)
 
 
 def _digest(now: datetime, line: str, digest_dir: Path | None = None) -> str:
