@@ -1,91 +1,81 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-17. History → docs/archive/STATE_2026-10-17_QT21.md (QT-21 state,
-verbatim). Box in hand: QT-22 → docs/reports/QT-22.md.
+Updated: 2026-10-20. History → docs/archive/STATE_2026-10-20_QT22.md (verbatim). Box done:
+QT-23R + QT-23 → docs/reports/QT-23R.md, docs/reports/QT-23.md.
 
-Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN (paused); S9 OPEN** (S3 close = QT-13 + QT-13b).
-P19: none of 18 (QT-15). S6 batch 1: none of 24 (QT-18). S9 batch 1: none of 6 (QT-21).
-**S9 batch 2: none of 6 (QT-22).** Trial count N = 54. Sender disarmed. No holdout ever opened.
+Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN (paused); S9 OPEN — the advisor is BUILT and ARMED
+(2026-10-20)** (S3 close = QT-13 + QT-13b). No pick has survived (S6 0/24, S9 0/12, P19 0/18).
+**Trial count N = 55** (ADV-0 described). Sender disarmed. No holdout ever opened.
 
-## Operator's words (verbatim)
-- 2026-10-17: *"QT-21 done"* · *"GO on QT-22: for advisor batch 2 only, the trailing stop is
-  widened to a big-fall stop, figure chosen by S5's crash tests; the stop stays on every
-  holding."* · batch 2's rules: *"Batch 1's six again (Recommended)"* (done: QT-22).
-- 2026-10-16 14:04: *"lets go with option 1."* = the advisor next; S6 stays OPEN (paused).
+## The resource cap (operator's words below: a FENCE)
+Every heavy run: `.venv-qb2/Scripts/python -m qb2.tools.capped -- <cmd>` — one shared Job
+Object: CPU rate cap 80% + 12 of 16 processors, 80% of RAM, below-normal priority; whole-PC
+memory ≥ 80% waits, ≥ 90% for 60 s (or ≥ 95%) stops cleanly. Heavy entry points and the qb2
+suite refuse outside it; QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
 
-## QT-22 in one screen
-- **Stop (batch 2 only):** 15% below the highest price since the fill, 10% when VIX (day
-  before) > 30 or missing — S5's crash-test figures (QT-16 brake replays). Raise-only; 1%
-  ceiling at 15%. Live advisor stop (guard/stops.py) still 3 × ATR.
-- **Register first:** A2-01..A2-06 = A-01..A-06 with only the stop changed, + KN-A2 drills,
-  committed alone (196fd49) before the code (35a6e51). Batch 1's books identical bar for bar.
-- **Gates re-proved** (ac4f367): random/gap FAIL, plant PASS 1× and 2×, both red-firsts shown.
-  Random picks score DSR 0.970 on this book (M1).
-- **Batch 2, net 2× vs D3 +265.1%:** A2-01 +256.8% · A2-02 +197.0% · A2-03 +284.6% (beat
-  D3) · A2-04 +143.2% · A2-05 +152.1% · A2-06 +131.3%. All FAIL the luck test (p 0.74–1.00;
-  0.6–3.0 sd below random timing of the same holdings). Stopped < 1 month 4–16% (was 40–43%);
-  London halves now positive (description only).
-- **The advisor's honest default stays "hold the index fund".**
-
-## Book rules in force (QT-19 register; batch 2 = big-fall stop)
-Month-end decision bar on the exchange's last session; coverage ≥ 90%; no month-end bar
-→ sold next bar; P13 re-justify = no trade, fresh stop; batch 1 k_s = 2 when VIX (day before)
-> 30 or missing; 1% ceiling bar by bar; OOS 2014-03-31 → 2025-10-09; D3 VWRL → VWRP.
+## The advisor, live (QT-23)
+- **ADV-0 = hold VWRL** (IE00B3RBWM25, GBP, London), the whole advisor pot; stop 15% below the
+  highest close (10% when unsettled), raise-only; crossed = URGENT-EXIT alert, never a sale;
+  re-buy at a close 10% above the low since the exit. Weekly review Friday (first recorder run
+  with Thursday's session); daily job every weekday — both ride the after-hours step.
+- **First review 2026-10-20: BUY VWRL, allowed** (close £139.02 on 19 Oct; stop ≈ £118.17); as
+  if filled at Wed 21 Oct's open. Notional pot £7,000. Page: status branch `status/advisor.md`.
+- **S-01..S-06** (= A2-01..A2-06) scored from 2026-10-20, counted 0; promotion only after 12
+  months + luck test + DSR, then only a PROPOSE.
+- **ADV-0 described (2014–2025, 2× costs):** +173.3% vs plain VWRL +268.7% (the stop −95 pts;
+  worst fall −25.5% vs −24.9%); 2020 +1.3 pts; 2022 −9.1 pts.
+- Files: data/qb2/advisor/ (arm.json, suggestions, days, shadows, runs), stops.jsonl,
+  brakes.jsonl. Clear the advisor's hold-off: `python -m qb2.tools.clear_pause --pot advisor
+  --words "..."` (his words only).
 
 ## NEXT
-0. **QT-23R in hand:** Step 1 (the cap) DONE + pushed (docs/reports/QT-23R.md); then QT-23
-   Parts B–F. QT-23 A registered (8fb2c49); the interrupted B work is in stash "QT-23-interrupted".
-1. QT-22's leads (description, not results; QT-23 written from them): in 12 rules the
-   month-end timing never beat random timing of the same holdings — the luck test now binds;
-   the wide stop turned London halves positive; the DSR's random-rank bar centred on 0 cannot
-   separate this book from luck (random picks 0.970).
-2. M1 idea for a FUTURE batch, registered before use: centre the DSR's luck bar on the
-   skill-free books' mean.
-3. If a big-fall rule ever survives, the live advisor stop must match it first: PROPOSE→GO.
-4. PROPOSE: per-ticker scale check vs Trading 212's own price (SCARS #3). SMEA.L's kept
-   2010–23 rows are £ ÷ 100 and its true-£ rows from 2024-04-25 sit quarantined.
-5. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
+1. **Mentor writes the next box.** Check first: tomorrow's ~07:00 UK recorder run (in the cap:
+   logs/cap/cap.log) fills the BUY at Wed's open, opens the stop, writes day 0 and day 1.
+2. The two DECISIONS below (the stop's cost; the 10% brake after an exit).
+3. PROPOSE: MANUAL's re-justify can still open lower (R4: unchanged, flagged).
+4. Watch ^VIX: the store's newest close is 16 Oct (older than 5 days = unsettled = 10% stop).
+5. PROPOSE: per-ticker scale check vs Trading 212's own price (SMEA.L, SCARS #3).
+6. OPERATOR: keep the PC on (or Sleep) 08:00–21:00 UK on weekdays.
 
 ## DECISION REQUESTED (open)
-- **D1 advisor risk rule.** Default: the 1% rule stays the ceiling (stricter). GO
-  words: "GO on D1: for the advisor, replace the 1% rule with a cap on how much the
-  account can lose if the stop is hit, figure chosen by S5's crash tests." QT-22: the
-  ceiling never bound with the 15% stop.
-- **Bot's brake.** Default: as built. GO words: "GO on the bot's brake: the 10% brake
-  clears itself after 5 sessions and restarts from there; the 15% pause stays
-  measured from the true peak and only my words clear it."
-- Backups on the university OneDrive? Default: keep (2026-10-06 archive).
+- **ADV-0's stop.** Default: kept (his GO; P10). GO words: "GO on ADV-0: hold VWRL with no
+  big-fall stop and no re-buy; the shadows keep theirs."
+- **The advisor's 10% brake after an exit** (cash never climbs back within 5%: the re-buy
+  waits for ever). Default: as registered. GO words: "GO on the advisor's 10% brake: after an
+  urgent exit, my own words also clear the advisor's 10% brake and restart its peak from that day."
+- **D1 advisor risk rule.** Default: the 1% rule stays the ceiling. GO words: "GO on D1: for
+  the advisor, replace the 1% rule with a cap on how much the account can lose if the stop is
+  hit, figure chosen by S5's crash tests."
+- **Bot's brake.** Default: as built. GO words: "GO on the bot's brake: the 10% brake clears
+  itself after 5 sessions and restarts from there; the 15% pause stays measured from the true
+  peak and only my words clear it."
+- v1's QuantBot-Daily/-Monthly tasks run outside the cap (frozen; daily failing since 28 Jul).
+  Default: leave, report. Backups on the university OneDrive? Default: keep.
 
 ## Standing GOs (operator words, verbatim)
 - 2026-10-20, a FENCE (raising or removing it needs his words): *"I stopped QT23 halfway
   through, there needs to be a limit on the amount of memory and CPU it takes up. like 80%
-  limit for each. otherwise the PC cannot take it and will crash."* = all QuantBot ≤ 80% CPU
-  and ≤ 80% RAM together, always. BUILT QT-23R Step 1: heavy runs via qb2.tools.capped.
-- 2026-10-16: P15 history — *"GO on P15 history: in back-tests only, a results date
-  counts as known from the results date before it, if that earlier date is before
-  2026-10-02; from 2026-10-02 only knowable_time counts; a share with no date on
-  record stays blocked."*
-- 2026-10-07: *"STANDING GO: For routine settings and thresholds, go with the
-  recommended default and log it. Three things always need my own words: switching
-  the bot on to trade, real money, and removing any safety fence."*
-- 2026-10-07: *"From now on, every box ends by saving its report in the repo and
-  pushing, so the mentor can read it from GitHub."* → docs/reports/<BOX>.md.
-- Live anchors, 2026-10-05: "One GO until the £100 cap". 2026-10-09: *"GO on
-  recorder triggers: 14 fixed hourly"* · *"GO on S4 delay: (c), measure T212
-  freshness"*.
+  limit for each. otherwise the PC cannot take it and will crash."*
+- 2026-10-19: *"GO on QT-23: build the advisor with "hold the index fund" as its default, the
+  15% big-fall stop (10% when markets are jumpy) as its live stop, and the rules scored in the
+  background on live prices only."* · *"GO on the advisor's brake: after an urgent exit, my own
+  words clear the advisor's hold-off and restart its peak from that day, as for the bot's
+  pause; no code clears it."*
+- 2026-10-16: P15 history (verbatim in docs/archive/STATE_2026-10-20_QT22.md).
+- 2026-10-07: *"STANDING GO: For routine settings and thresholds, go with the recommended
+  default and log it. Three things always need my own words: switching the bot on to trade,
+  real money, and removing any safety fence."* · reports saved in the repo and pushed.
+- Live anchors 2026-10-05: "One GO until the £100 cap". Recorder: 14 fixed hourly triggers.
 
 ## CARRIED
-- GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot trades
-  (bet_groups.json v1). FX 0.15% per leg on non-sterling lines; API order in USD?
-  UNKNOWN. MTLN.L (EUR line) skipped: no EUR rate in the store.
-- Parked: v1 revive-or-retire. 5m known-null to re-prove before any 5m trial.
+- GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot trades (bet_groups.json v1).
+  FX 0.15% per leg on non-sterling lines. MTLN.L (EUR) skipped: no EUR rate.
+- Parked: v1 revive-or-retire (its daily task fails since 28 Jul). 5m known-null to re-prove.
+- QT-23 stash "QT-23-interrupted" kept (superseded by B; never deleted).
 
 ## Open flags
-- Thin London ETF quotes left after each line's first trade (M3, description): SSLN.L
-  99.8% flat untraded rows, ACWI.L 56%, SMEA.L 35%. Survivorship: the list was chosen in 2026.
-- anchors.py 1,422 lines (pinned): splitting = PROPOSE→GO. 52 mypy errors silenced in
-  5 inherited modules. No clock-sync task. Recorder missed 08:00 on 16 Oct.
+- Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned). 52 mypy
+  errors silenced in 5 inherited modules; mypy's 4 known Qt-stub errors in manual/ui.
 
 ## Fingerprints
-v1 4add56ec…743b6 (unchanged). Advisor daily (a) 0f3a960c…f1f9, (b) f7aae670…768e
-(unchanged since QT-21's clean-up).
+v1 4add56ec…743b6 (unchanged). Advisor daily (a) 0f3a960c…f1f9, (b) f7aae670…768e.
