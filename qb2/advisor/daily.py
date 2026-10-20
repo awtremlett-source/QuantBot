@@ -1,8 +1,7 @@
 """The advisor's daily job and the weekly review's timing (QT-23 C, D). Catch-up safe.
 
-Run by the after-hours step once the daily top-up has run (Part D), inside the cap:
-1. ON WAKING (more than one new session): every open stop checked against the newest final
-   close, logged (stops.catch_up).
+Run by the after-hours step after the daily top-up (Part D), inside the cap. 1. ON WAKING (more
+than one new session): every open stop checked on the newest final close, logged (catch_up).
 2. Each final London session not yet processed, oldest first, from the arm date:
    a. fills: an allowed BUY or SELL fills at the open of the first session opening after it was
       issued -- a BUY opens the ADVISOR's stop at fill x (1 - f), a SELL closes it;
@@ -12,12 +11,12 @@ Run by the after-hours step once the daily top-up has run (Part D), inside the c
    d. the re-buy (R6) while out after an exit: L = the lowest close from the exit's fill session
       on; a close >= L x 1.10 -> BUY again, re-checked daily while the signal holds; refused while
       the advisor pot's brake is on, and the page then says it waits behind the brake.
-   f = 15%; 10% when unsettled = the brake on before the day, or VIX's latest close before the
-   day above 30, or none within 5 days.
-3. The shadows' new days (shadow.py). 4. The weekly review: the first run on a Friday once the
+   f = 15%; 10% when unsettled: the brake on before the day, or VIX's close before it above 30, or
+   none within 5 days. 3. The shadows' new days. 4. The weekly review: the first run on a Friday once the
    store holds the session before it; a later run catches it up and says so; an older Friday with
    no review: MISSED. 5. The reconciliation (RED if any written day moved) and the page.
-A newest final close older than the last finished session: the stop UNCHECKED, said so.
+A newest final close older than the last finished session: the stop UNCHECKED, said so; RED (loud)
+only once the top-up is overdue (clean_step.due_by: 10:00 UK next weekday) -- never every evening.
 CLI: python -m qb2.advisor.daily [--arm]   (inside the cap: python -m qb2.tools.capped -- ...)
 """
 
@@ -33,7 +32,7 @@ from typing import Any
 import pandas as pd
 
 from qb2.advisor import engine, live, page, scorecard, shadow, state
-from qb2.data import universe
+from qb2.data import clean_step, universe
 from qb2.execution.safety import ADVISOR, Blocked
 from qb2.guard import brakes, stops
 from qb2.research import adv0_describe, advisor_book, advisor_data, benchmark, firewall, preregister
@@ -52,7 +51,8 @@ def vwrl() -> dict[str, Any]:
 
 
 def lse_sessions(first: date, last: date) -> list[date]:
-    return [] if last < first else list(pd.DatetimeIndex(advisor_book.sessions("LSE", first, last)).date)
+    days = pd.DatetimeIndex(advisor_book.sessions("LSE", first - timedelta(days=7), last + timedelta(days=7))).date
+    return [d for d in days if first <= d <= last]          # (the calendar needs start < end)
 
 
 def last_finished(now: datetime) -> date:
@@ -80,13 +80,10 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
     entry, ledger, brake_log = vwrl(), stops.Ledger(paths.stops), brakes.Brakes(paths.brakes)
     instrument = firewall.instrument_of(entry)
     bars = live.bars(engine.TICKER, "LSE", through, since=arm, clean_root=clean_root)
-    sessions = list(live.days_of(bars.index, "LSE"))
-    if bars.empty:
-        raise Blocked(f"no final {engine.TICKER} bars from the arm date {arm} -- nothing to follow")
+    sessions = list(live.days_of(bars.index, "LSE"))          # none yet on the arm day: fine
     income, _ = advisor_data.income(engine.TICKER, "LSE", bars, clean_root)
     written = state.rows(paths.log("days"))
-    done = {r["session"] for r in written}
-    todo = [d for d in sessions if d.isoformat() not in done]
+    todo = [d for d in sessions if d.isoformat() not in {r["session"] for r in written}]
     lines: list[str] = []
     if len(todo) > 1:                                                  # 1. on waking
         acts = ledger.catch_up({engine.TICKER: float(bars["close"].iloc[-1])}) if advisor_stop(ledger) else []
@@ -133,7 +130,7 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
         state.append(paths.log("days"), {**scorecard.line(day), "stop": stop.level if stop else None,
                                          "unsettled": uns, "vix_before": vix, "brake": brake.level,
                                          "rebuy_low": low})
-    if shadows:
+    if shadows and todo:
         shadows_for(paths, todo, arm, through, clean_root)
     lines += weekly(paths, now, arm, through, ledger, brake_log, clean_root, first_review)
     fresh = scorecard.record(bars, sessions, scorecard.as_if(state.rows(paths.log("suggestions")), sessions),
@@ -147,8 +144,6 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
 
 def shadows_for(paths: state.Paths, todo: Sequence[date], arm: date, through: date,
                 clean_root: Path | None) -> None:
-    if not todo:
-        return
     names, _ = live.names(universe.advisor_entries(), through, since=arm - timedelta(days=HISTORY_DAYS),
                           clean_root=clean_root)
     vix, close = live.vix_series(through, clean_root), {
@@ -184,7 +179,10 @@ def weekly(paths: state.Paths, now: datetime, arm: date, through: date, ledger: 
         return out
     rows = state.rows(paths.log("days"))
     value = float(rows[-1]["value_1x"]) if rows else scorecard.POT_GBP
-    close = float(live.bars(engine.TICKER, "LSE", through, clean_root=clean_root)["close"].iloc[-1])
+    closes = live.bars(engine.TICKER, "LSE", through, clean_root=clean_root)["close"]
+    if closes.empty:
+        raise Blocked(f"no final {engine.TICKER} bars at all -- nothing to review")
+    close = float(closes.iloc[-1])
     brake = brake_log.state(ADVISOR) or brake_log.update(ADVISOR, value, at=now)
     uns, _ = unsettled_on(through + timedelta(days=1), brake, through, clean_root)
     ctx = engine.Context(through, close, uns, brake, value, advisor_stop(ledger))
@@ -202,9 +200,12 @@ def today_line(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd
                through: date, red: Sequence[str]) -> list[str]:
     rows, stop = state.rows(paths.log("days")), advisor_stop(ledger)
     out = []
-    if through < last_finished(now):
+    if through < (last := last_finished(now)):
         out.append(f"UNCHECKED: the newest final close is from {through} -- the stop was NOT checked "
-                   "against any later price. Look at VWRL yourself if markets moved.")
+                   f"against {last}'s close or any later price. Look at VWRL yourself if markets moved.")
+        if now > (due := clean_step.due_by(lse_sessions(through + timedelta(days=1), last)[0])):   # oldest missing
+            out.append(f"RED: the daily top-up is overdue (due {due:%a %d %b %H:%M} UK): the stop has "
+                       f"been unchecked since {through}")
     if rows:
         r = rows[-1]
         held = (f"holding VWRL as if bought (stop £{stop.level:,.2f})" if stop else "in cash")

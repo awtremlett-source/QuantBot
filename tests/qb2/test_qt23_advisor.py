@@ -214,7 +214,27 @@ def test_a_stale_close_leaves_the_stop_unchecked_and_says_so(tmp_path: Path) -> 
     _run(tmp_path, closes[:1], DAYS[0], at(DAYS[0], 19), first=True)
     lines = _run(tmp_path, closes, DAYS[2], at(DAYS[6], 19))             # the store stopped on day 2
     assert any(x.startswith("UNCHECKED") for x in lines)
+    assert any(x.startswith("RED: the daily top-up is overdue") for x in lines)   # loud: overdue
     assert "UNCHECKED" in state.Paths.under(tmp_path).page.read_text(encoding="utf-8")
+
+
+def test_the_evening_before_the_top_up_is_unchecked_but_not_red(tmp_path: Path) -> None:
+    closes = [100.0, 100.0, 101.0]
+    _run(tmp_path, closes[:1], DAYS[0], at(DAYS[0], 19), first=True)
+    lines = _run(tmp_path, closes, DAYS[2], at(DAYS[3], 19))             # day 3 closed; top-up tonight
+    assert any(x.startswith("UNCHECKED") for x in lines)
+    assert not any(x.startswith("RED") for x in lines)                   # not overdue: never cry wolf
+
+
+def test_arming_before_any_session_after_it_still_gives_the_first_review(tmp_path: Path) -> None:
+    clean = store(tmp_path, DAYS[:1], [100.0], [100.0], through=DAYS[0])
+    paths = state.Paths.under(tmp_path)
+    state.arm(paths, DAYS[1], at(DAYS[1], 6), "test")                     # armed today, before any bar
+    brakes.Brakes(paths.brakes).update(ADVISOR, scorecard.POT_GBP, at=at(DAYS[1], 6))
+    daily.run(at(DAYS[1], 6), paths, clean_root=clean, first_review=True, shadows=False)
+    made = state.rows(paths.log("suggestions"))
+    assert [(r["action"], r["allowed"], r["session"]) for r in made] == [("BUY", True, str(DAYS[0]))]
+    assert state.rows(paths.log("days")) == [] and paths.page.is_file()
 
 
 def test_vwrl_must_resolve_to_its_isin_gbp_and_london(monkeypatch: pytest.MonkeyPatch) -> None:

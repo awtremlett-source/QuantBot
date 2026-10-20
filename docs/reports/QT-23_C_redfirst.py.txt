@@ -45,7 +45,8 @@ MUTANTS = [
      "        ctx = engine.Context(d, close, uns, brakes.State(ADVISOR, 1.0, 1.0, brakes.OK, 'x'), "
      "day.value[1.0], held)", "crossed_stop"),
     ("MC9", DA, "    for f in open_[:-1]:", "    for f in []:", "week_away"),
-    ("MC10", DA, "    if through < last_finished(now):", "    if False:", "stale_close"),
+    ("MC10", DA, "    if through < (last := last_finished(now)):", "    if False and (last := last_finished(now)):",
+     "stale_close"),
     ("MC11", DA, '    if len(rows) != 1 or (rows[0]["isin"], rows[0]["quote_currency"], universe.market_of(rows[0])) \\\n'
                  '            != (ISIN, "GBP", "LSE"):', "    if False:", "vwrl_must_resolve"),
     ("MC12", BR, "    if was == (PAUSED if pot == BOT else HOLD_OFF):", "    if pot == BOT and was == PAUSED:",

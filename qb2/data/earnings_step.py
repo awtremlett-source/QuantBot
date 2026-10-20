@@ -116,8 +116,8 @@ def _advisor(now: datetime, clean_root: Path | None) -> str:
 
 
 def advise(now: datetime, clean_root: Path | None, paths: Any) -> str:
-    """The advisor's step, inside the cap. A STOP, a RED or an UNCHECKED stop is RAISED, so the
-    recorder's run is NOT CLEAN (record_now makes it a complaint) -- never a quiet line."""
+    """The advisor's step, inside the cap. A STOP or a RED (an overdue, unchecked stop included) is
+    RAISED, so the recorder's run is NOT CLEAN (record_now makes it a complaint) -- never quiet."""
     from qb2.advisor import daily
     from qb2.tools import governor
     try:
@@ -127,7 +127,7 @@ def advise(now: datetime, clean_root: Path | None, paths: Any) -> str:
         raise RuntimeError(f"advisor refused: {why}") from None
     except Blocked as why:
         raise RuntimeError(f"ADVISOR STOPPED: {why}") from why
-    if loud := [x for x in lines if x.startswith(("RED", "UNCHECKED"))]:
+    if loud := [x for x in lines if x.startswith("RED")]:
         raise RuntimeError("advisor: " + "; ".join(loud))
     return "Advisor: " + " · ".join(lines)
 
