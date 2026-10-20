@@ -78,19 +78,24 @@ def check_hold(stop: stop_ledger.Stop, now: datetime) -> None:
 
 
 def rebuy(ledger: stop_ledger.Ledger, position_id: str, *, new_position_id: str,
-          price: float, atr: float, reason: str, now: datetime) -> stop_ledger.Stop:
-    """The ONLY way past 12 months: a new record, a fresh stop, a new open date."""
+          price: float, atr: float | None, reason: str, now: datetime,
+          unsettled: bool | None = None) -> stop_ledger.Stop:
+    """The ONLY way past 12 months: a new record, a fresh stop, a new open date. The ADVISOR's
+    big-fall stop opens no lower than the record it replaces (P10 raise-only; QT-23 R7)."""
     if not reason or not reason.strip():
         raise Blocked("a re-justified buy needs its reason written down")
     if new_position_id == position_id:
         raise Blocked("the same record cannot restart its own clock: a re-justified buy "
                       "is a NEW position with a new id")
     old = ledger.get(position_id)
-    stop_ledger.plan(old.ticker, price, atr)              # refuse before closing anything
+    floor = old.level if old.rule == stop_ledger.FALL_RULE else None    # manual: unchanged (R4)
+    stop_ledger.plan_for(old.pot, old.ticker, price, atr, unsettled=unsettled,
+                         floor=floor)                     # refuse before closing anything
     ledger.close(position_id, f"re-justified as a new buy ({new_position_id}): {reason}")
     return ledger.open(position_id=new_position_id, pot=old.pot, ticker=old.ticker,
                        market=old.market, opened_at=_at(now).isoformat(), entry=price,
-                       atr=atr, reason=f"re-justified after {position_id}: {reason}")
+                       atr=atr, reason=f"re-justified after {position_id}: {reason}",
+                       unsettled=unsettled, floor=floor, replaces=position_id)
 
 
 def session_close(opened_at: str | datetime, market: str) -> pd.Timestamp:

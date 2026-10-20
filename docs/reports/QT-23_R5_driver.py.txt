@@ -1,0 +1,129 @@
+"""QT-23 B, R5: batch 1 and batch 2 regenerate BYTE-IDENTICAL with the one copy of the big-fall rule.
+
+books   -- the 12 trials' books (A-01..A-06 = the ATR path, A2-01..A2-06 = the big fall) and 10
+           random-rank (luck-test) books per trial, built by the NEW advisor_book and by the
+           committed one before Part B (8fb2c49), on the real store: every field equal.
+rescore -- A-05 and A2-05 (the fastest of each batch) scored end to end again, 200 null runs,
+           2x costs, exactly as advisor_run.run does, against a COPY of the trial log cut just
+           before the trial's own line (so the Deflated Sharpe's N is the one it had: 48, 54) --
+           the real log is never written -- every result field of the saved file equal. Not
+           compared: the run's own commit, data print, run number and seconds, and
+           register_commit (the newest commit touching the register FILE, which later batches
+           have appended to; preregister.require proves the ENTRY is unchanged).
+Under the cap; the two re-scores share governor.run_pool (2 workers, each gated).
+Run from the repo root:
+    .venv-qb2\\Scripts\\python -m qb2.tools.capped -- .venv-qb2\\Scripts\\python <copy>.py books|rescore
+"""
+import importlib.util
+import json
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+import numpy as np
+
+from qb2.research import advisor_book, advisor_data, advisor_run, preregister, rank_null
+from qb2.signals import a_rules
+from qb2.tools import governor
+
+BASE = "8fb2c49"
+TRIALS = [f"A-0{j}" for j in range(1, 7)] + [f"A2-0{j}" for j in range(1, 7)]
+SEEDS = range(10)
+RUN_ONLY = {"code_commit", "fp_a", "run", "seconds", "register_commit"}   # provenance, not results
+
+
+def old_module():
+    src = subprocess.run(["git", "show", f"{BASE}:qb2/research/advisor_book.py"], capture_output=True,
+                         text=True, check=True).stdout
+    path = Path(tempfile.mkdtemp(prefix="qt23_r5_")) / "old_advisor_book.py"
+    path.write_text(src, encoding="utf-8")
+    spec = importlib.util.spec_from_file_location("old_advisor_book", path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["old_advisor_book"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def same(new, was) -> bool:
+    return (all(np.array_equal(new.decisions[s], was.decisions[s]) for s in was.decisions)
+            and set(new.decisions) == set(was.decisions)
+            and all(new.weights[s].equals(was.weights[s]) for s in was.weights)
+            and all(np.array_equal(new.capped[s], was.capped[s]) for s in was.capped)
+            and (new.buys, new.stops, new.stopped, new.requalified, new.filter_off_months)
+            == (was.buys, was.stops, was.stopped, was.requalified, was.filter_off_months))
+
+
+def books() -> int:
+    old = old_module()
+    data, _, _ = advisor_data.load()
+    vix, on = advisor_data.vix(None), advisor_data.market_filter(None)
+    reg, bad, nulls_checked = preregister.entries(), 0, 0
+    for cid in TRIALS:
+        t0, e = time.monotonic(), reg[cid]
+        rule = a_rules.of(e)
+        s_new = advisor_book.Settings.of(e["parameters"], rule.lookback, rule.ascending)
+        s_old = old.Settings.of(e["parameters"], rule.lookback, rule.ascending)
+        values, flt = rank_null.rule_values(rule, data), on if rule.market_filter else None
+        new = advisor_book.build(s_new, data, values, vix=vix, market_on=flt)
+        was = old.build(s_old, data, values, vix=vix, market_on=flt)
+        ok = same(new, was)
+        nulls = rank_null.Nulls(e, data, vix=vix, cuts=advisor_run.cuts(data))
+        for seed in SEEDS:
+            v = {n.symbol: np.where(nulls.ok[n.symbol], rank_null.ranks(seed, n.bet, rank_null.months(n.bars)),
+                                    np.nan) for n in data}
+            ok = ok and same(advisor_book.build(nulls.settings, data, v, vix=vix),
+                             old.build(old.Settings.of(e["parameters"], rule.lookback, rule.ascending),
+                                       data, v, vix=vix))
+            nulls_checked += 1
+        bad += not ok
+        print(f"{cid}: {'IDENTICAL' if ok else 'DIFFERENT'} -- book + {len(SEEDS)} luck books; "
+              f"{len(was.buys):,} buys, {was.stopped:,} stops ({time.monotonic() - t0:.0f}s)", flush=True)
+    print(f"{len(TRIALS) - bad} of {len(TRIALS)} trials identical; {nulls_checked} luck books compared")
+    return 1 if bad else 0
+
+
+def rescore_one(cid: str) -> dict:
+    governor.assert_capped()
+    t0 = time.monotonic()
+    data, skipped, counts = advisor_data.load()
+    batch = 2 if cid.startswith("A2-") else 1
+    token = preregister.require(cid)
+    book, weighted = advisor_run.book_for(token.entry, data)
+    lines = (advisor_run.REPO_ROOT / "data" / "qb2" / "trials.jsonl").read_text(encoding="utf-8").splitlines()
+    own = next(i for i, x in enumerate(lines) if (r := json.loads(x)).get("candidate_id") == cid
+               and r.get("kind") == "firewall")
+    log = Path(tempfile.mkdtemp(prefix=f"qt23_r5_{cid}_")) / "trials.jsonl"   # the log as it was
+    log.write_text("".join(x + chr(10) for x in lines[:own]), encoding="utf-8")
+    result = advisor_run.score(token, weighted, book, skipped=skipped, log_path=log,
+                               n_trials=advisor_run.BATCHES[batch][1])
+    fresh = json.loads(json.dumps({**advisor_run.summary(token, result, weighted, book),
+                                   "dividends": counts}, default=str))
+    saved = json.loads((advisor_run.where(batch)[0] / "run1" / f"{cid}.json").read_text(encoding="utf-8"))
+    keys = sorted(set(saved) - RUN_ONLY - {"report_md"})
+    diff = [k for k in keys if fresh.get(k) != saved.get(k)]
+    a, b = str(saved["report_md"]).splitlines(), str(fresh["report_md"]).splitlines()
+    lines = [(x, y) for x, y in zip(a, b) if x != y] + ([("<length>", "")] if len(a) != len(b) else [])
+    commit_only = all(x.startswith("- Registered in commit `") and x[x.index("`", 26):] == y[y.index("`", 26):]
+                      for x, y in lines)
+    return {"id": cid, "fields": len(keys), "different": diff, "verdict": fresh.get("verdict"),
+            "report_lines": len(a), "report_diff": [f"{x}  ->  {y}" for x, y in lines],
+            "report_commit_only": commit_only, "seconds": round(time.monotonic() - t0)}
+
+
+def rescore() -> int:
+    out = governor.run_pool(rescore_one, ["A-05", "A2-05"])
+    for r in out:
+        print(f"{r['id']}: {r['fields'] - len(r['different'])} of {r['fields']} result fields identical "
+              f"(verdict {r['verdict']}; {r['seconds']}s){' DIFFERENT: ' + str(r['different']) if r['different'] else ''}")
+        print(f"  report: {r['report_lines']} lines; differing: {len(r['report_diff'])} "
+              f"({'only the register-commit line' if r['report_commit_only'] else 'NOT only the commit line'})")
+        for line in r["report_diff"]:
+            print(f"    {line[:200]}")
+    return 1 if any(r["different"] or not r["report_commit_only"] for r in out) else 0
+
+
+if __name__ == "__main__":
+    governor.assert_capped()
+    sys.exit({"books": books, "rescore": rescore}[sys.argv[1]]())

@@ -31,7 +31,8 @@ def _ledger(tmp_path: Path) -> S.Ledger:
 def _open(ledger: S.Ledger, pid: str = "p1", pot: str = BOT, ticker: str = "AAPL",
           opened: str = "2026-10-12T14:00:00+00:00") -> S.Stop:
     return ledger.open(position_id=pid, pot=pot, ticker=ticker, market="US",
-                       opened_at=opened, entry=100.0, atr=2.0, reason="test")
+                       opened_at=opened, entry=100.0, atr=2.0, reason="test",
+                       unsettled=False)                 # QT-23: the advisor's stop must be told
 
 
 # ------------------------------------------------------------- B1: stops --
@@ -93,7 +94,8 @@ def test_a_crossed_stop_sells_the_bots_and_only_alerts_his(tmp_path: Path) -> No
     _open(ledger, "m", MANUAL, "NVDA")
     _open(ledger, "q", ADVISOR, "AMZN")
     acts = {a.ticker: a.kind for a in
-            ledger.catch_up({"AAPL": 93.0, "MSFT": 90.0, "NVDA": 94.0})}
+            ledger.catch_up({"AAPL": 93.0, "MSFT": 84.0, "NVDA": 94.0})}   # QT-23 R3: MSFT's stop
+    # is the advisor's big fall now, 85 (100 x 0.85), so it is crossed at 84, not at 90
     assert acts == {"AAPL": S.SELL, "MSFT": S.URGENT_EXIT, "NVDA": S.URGENT_EXIT,
                     "AMZN": S.UNCHECKED}
     logged = [json.loads(x) for x in ledger.path.read_text().splitlines()]
@@ -198,8 +200,10 @@ def test_a_silent_roll_over_is_refused_and_a_rebuy_is_a_new_record(tmp_path: Pat
             age.rebuy(ledger, "a1", new_position_id=pid, price=120.0, atr=3.0, reason=why,
                       now=now)
     new = age.rebuy(ledger, "a1", new_position_id="a2", price=120.0, atr=3.0,
-                    reason="earnings up, still cheap", now=now)
-    assert set(ledger.stops()) == {"a2"} and new.level == pytest.approx(111.0)
+                    reason="earnings up, still cheap", now=now, unsettled=False)
+    # QT-23 R3/R7: the advisor's fresh stop is the big fall, 120 x 0.85 = 102 (never below the
+    # old 85); manual's re-justify stays 3 x ATR (tests/qb2/test_qt23_stops.py)
+    assert set(ledger.stops()) == {"a2"} and new.level == pytest.approx(102.0)
     assert age.status(new.opened_at, now) == age.OK
 
 

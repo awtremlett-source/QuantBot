@@ -1,8 +1,8 @@
 """The advisor's monthly book: what is held, bar by bar, exactly as registered (QT-19 B1).
 
 docs/research/preregistered.json, field "book" of A-01..A-06 (6332880), A2-01..A2-06 (196fd49,
-QT-22: P10's stop a big fall, f x price, not k x ATR(14)) and their drills, is the authority.
-In brief, at each month's last close:
+QT-22: the big-fall stop, whose one copy is guard/stops.fall_level -- QT-23 R5) and their drills
+is the authority. In brief, at each month's last close:
 
 1. stops first (every close): a name stopped at its decision bar is not bought then;
 2. P13: held 12+ months -> kept only if in the top k (re-justified: fresh stop, no trade);
@@ -14,12 +14,11 @@ A name's decision bar is its bar on its exchange's LAST session of the month; th
 once both markets have closed that month (a London decision bar can be a day before New York's
 -- it still fills at London's next open). No bar there: a held name is sold at its next bar.
 
-Pure logic: bars, values, VIX and the A-06 filter are handed in. The output is each name's 0/1
-target at every close (``decisions``, the firewall's Strategy weights) and its share of the pot
-at every bar (``weights``: 1/k, capped by the 1% rule). :func:`causal` rebuilds on data cut at
-mid-month dates and refuses a book whose past changed -- the look-ahead check the per-name
-Strategy contract cannot make here.
-"""
+Pure logic: bars, values, VIX and the A-06 filter are handed in. Out: each name's 0/1 target at
+every close (``decisions``, the firewall's Strategy weights) and its share of the pot at every bar
+(``weights``: 1/k, capped by the 1% rule). :func:`causal` rebuilds on data cut at mid-month dates
+and refuses a book whose past changed -- the look-ahead check the per-name Strategy contract
+cannot make here."""
 
 from __future__ import annotations
 
@@ -32,6 +31,7 @@ import exchange_calendars as xcals  # type: ignore[import-untyped]
 import numpy as np
 import pandas as pd
 
+from qb2.guard import stops
 from qb2.research import fills
 from qb2.research.strategy import LookAhead
 from qb2.signals import indicators
@@ -208,7 +208,7 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
             if i not in held or target[i] == 0.0:
                 continue
             if (unit := pending.pop(i, None)) is not None:   # the fill bar: the stop is set
-                level[i] = o[i][t] - k_at(day) * (o[i][t] if fall else unit)
+                level[i] = stops.fall_level(o[i][t], k_at(day)) if fall else o[i][t] - k_at(day) * unit
             if c[i][t] <= level[i]:                       # P10: crossed -> sold next open
                 held.discard(i)
                 target[i] = 0.0
@@ -216,7 +216,8 @@ def build(s: Settings, data: Sequence[Name], values: Mapping[str, np.ndarray], *
                 out.stopped += 1
                 out.stops.append((names[i].symbol, t))
             elif fall or np.isfinite(atr[i][t]):          # raised only, never lowered
-                level[i] = max(level[i], c[i][t] - k_at(day) * (c[i][t] if fall else atr[i][t]))
+                level[i] = (stops.fall_level(c[i][t], k_at(day), level[i]) if fall      # R5: THE copy
+                            else max(level[i], c[i][t] - k_at(day) * atr[i][t]))
         if decide_on.get(month_of(day)) == day:
             decide(month_of(day))
         for i, t in timeline[day]:
@@ -244,7 +245,6 @@ def causal(make: Callable[[Sequence[Any]], Book], data: Sequence[Any], full: Boo
         early = [n for n in early if len(n.bars) >= 2]
         again = make(early)
         for n in early:
-            if not np.array_equal(again.decisions[n.symbol],
-                                  full.decisions[n.symbol][:len(n.bars)]):
+            if not np.array_equal(again.decisions[n.symbol], full.decisions[n.symbol][:len(n.bars)]):
                 raise LookAhead(f"advisor book: {n.symbol}'s decisions before {cut} changed "
                                 "when later bars were removed -- it reads the future")

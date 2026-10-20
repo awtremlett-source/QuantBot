@@ -1,0 +1,83 @@
+"""QT-23 B, red-first: each property of the one stop rule, broken on purpose, turns its test RED.
+
+MB1 the one copy's arithmetic changed (price x (1 - f), not price - f x price: books would drift)
+MB2 the advisor's trail lowers on a VIX flip (raise-only dropped)
+MB3 a re-justified advisor buy opens below the old stop (age.rebuy's floor dropped)
+MB4 the replay trusts a re-justified record written lower
+MB5 a crossed advisor stop SELLS (P1 broken)
+MB6 the manual stop moves to the big fall (R4 broken)
+MB7 advisor_book keeps its own copy of the rule (R5 broken)
+MB8 an advisor stop opens without knowing whether markets are unsettled
+Each mutation is restored in a finally, sha256 checked; then the whole file must be GREEN.
+Run inside the cap from the repo root:
+    .venv-qb2\\Scripts\\python -m qb2.tools.capped -- .venv-qb2\\Scripts\\python <copy>.py
+"""
+import contextlib
+import hashlib
+import subprocess
+import sys
+from pathlib import Path
+
+from qb2.tools import governor
+
+ROOT = Path.cwd()
+PY = sys.executable
+T = "tests/qb2/test_qt23_stops.py"
+STOPS, AGE = ROOT / "qb2/guard/stops.py", ROOT / "qb2/guard/age.py"
+BOOK = ROOT / "qb2/research/advisor_book.py"
+MUTANTS = [
+    ("MB1", STOPS, "    level = price - f * price\n", "    level = price * (1 - f)\n", "trails_the_highest"),
+    ("MB2", STOPS, "        if candidate <= stop.level:\n            return stop\n        why",
+     "        if candidate == stop.level:\n            return stop\n        why", "vix_flip"),
+    ("MB3", AGE, "    floor = old.level if old.rule == stop_ledger.FALL_RULE else None",
+     "    floor = None", "opens_no_lower"),
+    ("MB4", STOPS, 'if rule == FALL_RULE and was is not None and row["level"] < last.get(was, 0.0):',
+     "if False:", "written_lower"),
+    ("MB5", STOPS, "SELL if s.pot == BOT else URGENT_EXIT", "SELL if s.pot != MANUAL else URGENT_EXIT",
+     "urgent_exit_never_a_sell"),
+    ("MB6", STOPS, "ADVISOR: FALL_RULE, MANUAL: ATR_RULE}", "ADVISOR: FALL_RULE, MANUAL: FALL_RULE}",
+     "bot_and_manual"),
+    ("MB7", BOOK, "(stops.fall_level(c[i][t], k_at(day), level[i]) if fall",
+     "(max(level[i], c[i][t] - k_at(day) * c[i][t]) if fall", "share_one_copy"),
+    ("MB8", STOPS, "== FALL_RULE) and unsettled is None:", "== FALL_RULE) and False:", "must_be_told"),
+]
+
+
+def sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@contextlib.contextmanager
+def mutant(path: Path, old: str, new: str):
+    original, before = path.read_bytes(), sha(path)
+    text = original.decode("utf-8")
+    if "\r\n" in text:                                   # a CRLF checkout: match its endings
+        old, new = old.replace("\n", "\r\n"), new.replace("\n", "\r\n")
+    assert text.count(old) == 1, f"{path.name}: the mutation point is not unique: {old[:50]!r}"
+    path.write_bytes(text.replace(old, new).encode("utf-8"))
+    try:
+        yield
+    finally:
+        path.write_bytes(original)
+        assert sha(path) == before, f"{path.name} NOT restored"
+
+
+def tests(k: str | None = None) -> subprocess.CompletedProcess[str]:
+    args = [PY, "-m", "pytest", "-q", "-p", "no:cacheprovider", T] + (["-k", k] if k else [])
+    return subprocess.run(args, cwd=ROOT, capture_output=True, text=True, timeout=600)
+
+
+if __name__ == "__main__":
+    governor.assert_capped()
+    red = 0
+    for name, path, old, new, k in MUTANTS:
+        with mutant(path, old, new):
+            done = tests(k)
+        last = [x for x in done.stdout.splitlines() if " passed" in x or " failed" in x][-1:]
+        print(f"{name} ({path.name}, -k {k}): exit {done.returncode} -- {' '.join(last)}", flush=True)
+        red += done.returncode == 1 and "failed" in done.stdout
+    green = tests()
+    print(f"RESTORED, the whole file: exit {green.returncode} -- "
+          f"{[x for x in green.stdout.splitlines() if ' passed' in x][-1:]}")
+    print(f"{red} of {len(MUTANTS)} mutants RED")
+    sys.exit(0 if red == len(MUTANTS) and green.returncode == 0 else 1)
