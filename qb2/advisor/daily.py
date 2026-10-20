@@ -36,10 +36,9 @@ from qb2.advisor import engine, live, page, scorecard, shadow, state
 from qb2.data import universe
 from qb2.execution.safety import ADVISOR, Blocked
 from qb2.guard import brakes, stops
-from qb2.research import advisor_book, advisor_data, benchmark, firewall, preregister
+from qb2.research import adv0_describe, advisor_book, advisor_data, benchmark, firewall, preregister
 from qb2.tools.governor import assert_capped
 
-REBUY_RISE = 0.10                      # R6 (ADV-0 parameters.rebuy_rise): a STARTING FIGURE
 ISIN, HISTORY_DAYS = "IE00B3RBWM25", 730      # R1; the shadows' lookback window before the arm
 
 
@@ -123,7 +122,7 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
         elif held is None and fills and fills[-1].side == scorecard.SELL:   # d. the re-buy watch
             since = sessions.index(fills[-1].session)
             low = float(bars["close"].iloc[since:k + 1].min())
-            if close >= low * (1 + REBUY_RISE) and engine.pending(paths) != scorecard.BUY:
+            if adv0_describe.rebuy_signal(close, low) and engine.pending(paths) != scorecard.BUY:   # R6
                 engine.issue(paths, ctx, action=scorecard.BUY, kind="re-buy", now=now,
                              stop=engine.preview(close, uns),
                              reason=(f"Buy VWRL back: since the exit on {fills[-1].session} its lowest "
