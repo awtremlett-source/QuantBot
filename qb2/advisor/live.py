@@ -3,7 +3,8 @@
 The advisor is live operation, not research, so it reads past the holdout seal: its forward
 record from the arm date IS its test (ADV-0's register; PLAN_V3 S12). Two rules keep that honest:
 * only bars FINAL when read -- dated on or before the daily top-up's ``fetched_through`` session
-  (data/clean/daily_step.json), never a session that may still be trading;
+  (data/clean/daily_step.json), never a session that may still be trading; and (QT-24) never a
+  session London has not closed by the run's own clock, whatever the marker says;
 * every figure carries its date, so a page can say its age; a figure older than its last
   finished session leaves the stop UNCHECKED (daily.py).
 The read mirrors holdout.research_bars' daily branch (the store's own loader, the exchange-clock
@@ -17,15 +18,17 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Mapping, Sequence
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+import exchange_calendars as xcals  # type: ignore[import-untyped]
 import numpy as np
 import pandas as pd
 
 from qb2.data import daily_step, universe
 from qb2.data.front_door import CLEAN
+from qb2.execution.safety import Blocked
 from qb2.ingest import daily
 from qb2.research import advisor_rules, bet_groups, fills, holdout, pounds
 from qb2.research.names import NameData, instrument_of
@@ -35,13 +38,23 @@ VIX_MAX_AGE_DAYS = 5          # ADV-0: no VIX close within 5 calendar days befor
 COLUMNS = ["open", "high", "low", "close", "volume"]
 
 
-def final_through(clean_root: Path | None = None) -> date | None:
-    """The newest session the daily top-up has fetched as FINAL; None before its first run."""
+def final_through(clean_root: Path | None = None, now: datetime | None = None) -> date | None:
+    """The newest session the daily top-up has fetched as FINAL; None before its first run. With
+    ``now``: a STOP if London's latest session on or before it has not closed by then -- a daily
+    bar's midnight stamp is a label, not when it became knowable (QT-24 A)."""
     path = (clean_root or CLEAN) / daily_step.MARKER
     if not path.is_file():
         return None
     seen = json.loads(path.read_text(encoding="utf-8")).get("fetched_through")
-    return date.fromisoformat(str(seen)) if seen else None
+    through = date.fromisoformat(str(seen)) if seen else None
+    if through is not None and now is not None:
+        cal = xcals.get_calendar(fills.CALENDARS["LSE"])
+        last = cal.date_to_session(pd.Timestamp(through), direction="previous")
+        if (close := cal.session_close(last)) > pd.Timestamp(now):
+            raise Blocked(f"the store calls {through} final, but London's {last.date()} session closes "
+                          f"{close:%Y-%m-%d %H:%M} UTC, after this run ({now:%Y-%m-%d %H:%M} UTC): a bar "
+                          "read now was taken before its session ended -- STOP")
+    return through
 
 
 def days_of(index: pd.Index, market: str) -> np.ndarray:

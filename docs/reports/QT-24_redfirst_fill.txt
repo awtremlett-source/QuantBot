@@ -1,0 +1,9 @@
+QT-24 A red-first: tests/qb2/test_qt24_first_fill.py on the OLD code (commit de1f675: daily.run trusts the marker's through), under the cap, 2026-10-22T23:39:50Z
+E       Failed: DID NOT RAISE Blocked
+E       Failed: DID NOT RAISE Blocked
+PASSED tests/qb2/test_qt24_first_fill.py::test_the_live_first_fill_reproduces_to_the_penny
+PASSED tests/qb2/test_qt24_first_fill.py::test_a_run_before_the_open_never_fills_from_a_pre_open_bar
+FAILED tests/qb2/test_qt24_first_fill.py::test_a_store_claiming_a_session_not_yet_closed_is_refused[before the open]
+FAILED tests/qb2/test_qt24_first_fill.py::test_a_store_claiming_a_session_not_yet_closed_is_refused[mid-session]
+2 failed, 2 passed in 22.77s
+old code at 07:00 UK Wed, marker claiming Wed: (138.22000122070312, '2026-10-21T07:00:00+00:00', 117.487)

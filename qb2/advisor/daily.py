@@ -74,7 +74,7 @@ def unsettled_on(day: date, brake: brakes.State | None, through: date,
 def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
         first_review: bool = False, shadows: bool = True) -> list[str]:
     """One run. Returns its plain-words lines (the page's today and any RED)."""
-    arm, through = state.arm_date(paths), live.final_through(clean_root)
+    arm, through = state.arm_date(paths), live.final_through(clean_root, now)       # QT-24 A
     if arm is None or through is None:
         return ["advisor not armed" if arm is None else "no final daily bars yet (the top-up never ran)"]
     entry, ledger, brake_log = vwrl(), stops.Ledger(paths.stops), brakes.Brakes(paths.brakes)
