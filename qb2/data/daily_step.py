@@ -12,22 +12,25 @@ filled by the next run. A name whose fetch fails is NAMED in the marker and only
 retried on the next run. Nothing here raises into the recorder.
 
 **What.** The bot universe, the advisor universe, VWRP (D3; VWRL, its fallback, is
-already an advisor name) and GBPUSD=X.
+already an advisor name), ^VIX (P10's "unsettled", QT-24) and GBPUSD=X.
 
 **Stale is loud.** "Daily store: fresh to ... · OK/RED" goes into the day's digest
 and onto the status page. RED: a market's newest daily bar is older than its last
-finished session (real calendars, so a holiday is never a missing day).
+finished session (real calendars, so a holiday is never a missing day), or ^VIX's newest
+close trails VWRL's newest session by more than ONE London session (QT-24: one hand load of
+^VIX went a week stale behind fresh US shares, and only the advisor's "unsettled" showed it).
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping, Sequence
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import exchange_calendars as xcals  # type: ignore[import-untyped]
 import pandas as pd
 
 from qb2.data import universe
@@ -39,13 +42,16 @@ DIGEST_DIR = REPO_ROOT / "logs" / "digest"
 PREFIX = "Daily store:"
 D3_SERIES: tuple[dict[str, Any], ...] = (
     {"yfinance": "VWRP.L", "quote_currency": "GBP", "exchange": "London Stock Exchange"},)
+GAUGE, LEAD, MAX_GAUGE_LAG = "^VIX", "VWRL.L", 1     # QT-24: London sessions ^VIX may trail VWRL
+GAUGE_SERIES: tuple[dict[str, Any], ...] = (
+    {"yfinance": GAUGE, "quote_currency": "USD", "exchange": "Cboe (New York clock)"},)
 Fetch = Callable[[str], pd.DataFrame | None]
 
 
 def wanted() -> list[dict[str, Any]]:
     """Every name the daily store must hold, once each (FX is added by daily.ingest)."""
     out: dict[str, dict[str, Any]] = {}
-    for entry in [*universe.bot_entries(), *universe.advisor_entries(), *D3_SERIES]:
+    for entry in [*universe.bot_entries(), *universe.advisor_entries(), *D3_SERIES, *GAUGE_SERIES]:
         out.setdefault(str(entry["yfinance"]), dict(entry))
     return list(out.values())
 
@@ -64,13 +70,29 @@ def newest_by_market(entries: Sequence[Mapping[str, Any]],
     return {m: d.isoformat() if d else None for m, d in newest.items()}
 
 
+def gauge_lag(clean_root: Path | None = None) -> str | None:
+    """Why ^VIX is too old to stand beside VWRL, or None. One London session behind is allowed
+    (a US-only holiday); more is RED in the top-up's own line, never only "unsettled"."""
+    lead = daily.load(LEAD, clean_root)
+    if lead is None or lead.empty:
+        return None                                      # nothing for ^VIX to keep pace with
+    gauge = daily.load(GAUGE, clean_root)
+    if gauge is None or gauge.empty:
+        return f"{GAUGE} never fetched"
+    have, want = (pd.Timestamp(f.index.max()).date() for f in (gauge, lead))
+    behind = len(xcals.get_calendar("XLON").sessions_in_range(
+        pd.Timestamp(have + timedelta(days=1)), pd.Timestamp(want))) if want > have else 0
+    return (f"{GAUGE} ends {have}, {behind} London sessions behind {LEAD}'s {want}"
+            if behind > MAX_GAUGE_LAG else None)
+
+
 def _read(marker: Path) -> dict[str, Any]:
     return dict(json.loads(marker.read_text(encoding="utf-8"))) if marker.is_file() else {}
 
 
 def status_line(now: datetime, *, clean_root: Path | None = None,
                 strict: bool = False) -> str:
-    """The one line for the digest and the status page. Reads only the marker."""
+    """The one line for the digest and the status page: the marker, and ^VIX against VWRL."""
     from qb2.data import clean_step            # clean_step imports this module
 
     seen = _read((clean_root or CLEAN) / MARKER)
@@ -83,6 +105,8 @@ def status_line(now: datetime, *, clean_root: Path | None = None,
         have = newest.get(market)
         if want is not None and (have is None or have < want.isoformat()):
             stale.append(f"{market} ends {have or 'never'}, {want} has finished")
+    if (lag := gauge_lag(clean_root)) is not None:
+        stale.append(lag)
     held = [d for d in newest.values() if d]
     fresh = min(held) if len(held) == len(newest) else "never"
     lost = list(seen.get("lost") or [])

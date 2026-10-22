@@ -29,9 +29,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from qb2.data import cross_bar
+from qb2.data import cross_bar, universe
 from qb2.data.front_door import (CLEAN, PENCE, WriterLock, _append_manifest,
                                  _write_parquet_atomically, impossible_rows, to_pounds)
+from qb2.ingest.recorder import EXCHANGE_TZ
 
 DAILY_DIR = CLEAN / "daily"
 FX_PAIR = "GBPUSD=X"
@@ -120,7 +121,7 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
 
     wanted = _wanted(entries, include_fx)
     with WriterLock((clean_root or CLEAN) / "daily.lock"):
-        for symbol, currency, kind in wanted:
+        for symbol, currency, kind, clock in wanted:
             outcome.attempted.append(symbol)
             try:
                 frame = getter(symbol)                    # type: ignore[operator]
@@ -159,6 +160,10 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
             stored = "GBP" if currency in PENCE else currency
             frame = frame.copy()
             frame["currency"] = stored
+            if clock is not None and getattr(frame.index, "tz", None) is not None:
+                # QT-24, as QT-15 A2 for the minute bars: the exchange's own clock, whatever
+                # label the provider carries (^VIX arrives on Chicago's)
+                frame.index = pd.DatetimeIndex(frame.index).tz_convert(clock)
             frame.index.name = "date"
             frame, moved = cross_bar.apply(frame, symbol, kind, now=moment,   # QT-21: every write
                                            clean_root=clean_root)
@@ -185,11 +190,13 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
 
 
 def _wanted(entries: Sequence[Mapping[str, object]], include_fx: bool,
-            ) -> list[tuple[str, str, str]]:
-    """(symbol, quote currency, kind) per entry; the pound/dollar rate has no kind."""
-    out = [(str(e["yfinance"]), str(e.get("quote_currency") or "USD"), str(e.get("kind") or ""))
-           for e in entries]
-    return out + [(FX_PAIR, "RATE", "")] if include_fx else out
+            ) -> list[tuple[str, str, str, str | None]]:
+    """(symbol, quote currency, kind, clock) per entry; the pound/dollar rate has no kind and
+    keeps its own stamp (pounds.FX_CLOCK)."""
+    out: list[tuple[str, str, str, str | None]] = [
+        (str(e["yfinance"]), str(e.get("quote_currency") or "USD"), str(e.get("kind") or ""),
+         EXCHANGE_TZ[universe.market_of(e)]) for e in entries]
+    return out + [(FX_PAIR, "RATE", "", None)] if include_fx else out
 
 
 def requarantine(entries: Sequence[Mapping[str, object]], *, clean_root: Path | None = None,
@@ -200,7 +207,7 @@ def requarantine(entries: Sequence[Mapping[str, object]], *, clean_root: Path | 
     moment = now or datetime.now(timezone.utc)
     outcome = DailyOutcome()
     with WriterLock((clean_root or CLEAN) / "daily.lock"):
-        for symbol, _, kind in _wanted(entries, include_fx):
+        for symbol, _, kind, _ in _wanted(entries, include_fx):
             outcome.attempted.append(symbol)
             frame = load(symbol, clean_root)
             if frame is None or frame.empty:

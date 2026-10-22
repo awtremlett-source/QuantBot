@@ -119,7 +119,7 @@ def test_the_after_hours_step_tops_up_after_the_front_door(
 
 def test_the_list_is_both_universes_plus_d3() -> None:
     names = [e["yfinance"] for e in daily_step.wanted()]
-    assert len(names) == len(set(names)) == 50 + 171        # VWRP is a bot name today
+    assert len(names) == len(set(names)) == 50 + 171 + 1    # VWRP is a bot name today; ^VIX (QT-24)
     assert daily_step.D3_SERIES[0]["yfinance"] == benchmark.D3  # ...and stays in if not
     assert {benchmark.D3, benchmark.D3_FALLBACK} <= set(names)
     assert {"US", "LSE"} == {universe.market_of(e) for e in daily_step.wanted()}

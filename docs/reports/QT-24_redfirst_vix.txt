@@ -1,0 +1,8 @@
+QT-24 B red-first: tests/qb2/test_qt24_vix_feed.py on the OLD code (commit 40825df), under the cap, 2026-10-22T23:27:52Z
+FAILED tests/qb2/test_qt24_vix_feed.py::test_the_daily_top_up_asks_for_vix - ...
+FAILED tests/qb2/test_qt24_vix_feed.py::test_vix_is_stored_on_new_yorks_clock_and_the_advisor_can_read_it
+FAILED tests/qb2/test_qt24_vix_feed.py::test_the_top_up_is_clean_when_vix_keeps_pace
+FAILED tests/qb2/test_qt24_vix_feed.py::test_one_london_session_behind_is_allowed
+FAILED tests/qb2/test_qt24_vix_feed.py::test_vix_more_than_one_session_behind_vwrl_is_red
+FAILED tests/qb2/test_qt24_vix_feed.py::test_vix_missing_beside_vwrl_is_red
+6 failed in 1.64s
