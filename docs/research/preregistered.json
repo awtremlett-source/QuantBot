@@ -2257,6 +2257,69 @@
    "date": "2026-10-19",
    "source": "QT-23 R8: A2-06 unchanged (same rule, the big-fall stop, the advisor list), scored in the background on live prices only; operator GO 2026-10-19, verbatim: 'GO on QT-23: build the advisor with \"hold the index fund\" as its default, the 15% big-fall stop (10% when markets are jumpy) as its live stop, and the rules scored in the background on live prices only.'",
    "shadow_of": "A2-06"
+  },
+  {
+   "id": "S-07",
+   "kind": "trial",
+   "rule": "trend_filter",
+   "name": "S-07: ADV-0 with a slow trend filter instead of the big-fall stop -- hold VWRL while its month-end close is above its 10-month average, else cash",
+   "hypothesis": "a slow trend filter cuts crash depth with fewer whipsaws than a 15% stop",
+   "bar_size": "1d",
+   "universe": "ADV-0's one line: VWRL.L = Vanguard FTSE All-World (Dist), London, GBP: Trading 212 VWRLl_EQ, ISIN IE00B3RBWM25, pinned by ISIN AND GBP AND London (R1). Described on UNSEALED daily bars; live, only bars final when read (qb2/advisor/live.py), the lookback reading history to DECIDE, never to SCORE (R8).",
+   "exit_rule": "No percentage stop and no 10% re-buy. At each MONTH-END close -- the bar on London's (XLON) last session of the calendar month -- hold VWRL if that close is ABOVE the simple moving average of the last 10 month-end closes (that close included), else hold cash: a close at or below the average -> SELL at the next open; out, a later month-end close above it -> BUY at the next open (the re-entry). Nothing else exits.",
+   "parameters": {
+    "line": "VWRL.L",
+    "t212_ticker": "VWRLl_EQ",
+    "isin": "IE00B3RBWM25",
+    "currency": "GBP",
+    "exchange": "LSE",
+    "weight": 1.0,
+    "filter": "month-end close > mean of the last 10 month-end closes (this one included)",
+    "sma_months": 10,
+    "decide": "each month-end close (XLON's last session of the calendar month)",
+    "first_decision": "ADV-0's first weekly review: the first week's last London session on or after the start; BUY at the next open if the filter's state at the latest month-end close on or before that session is above, else cash until a month-end close above",
+    "stop": null,
+    "rebuy_rise": null,
+    "age_months": 12,
+    "notional_account_gbp": 10000.0,
+    "advisor_share": 0.7,
+    "stress": [
+     1.0,
+     2.0
+    ],
+    "described_from": "2014-03-31",
+    "described_to": "2025-10-09",
+    "windows": [
+     [
+      "2020-01-01",
+      "2020-12-31"
+     ],
+     [
+      "2022-01-01",
+      "2022-12-31"
+     ]
+    ],
+    "scored_from": "2026-10-23"
+   },
+   "side": "long-only",
+   "book": "ONE holding, the whole advisor pot, exactly as ADV-0 (R1, R2) -- only its exit and re-entry differ (field exit_rule). AS IF FOLLOWED (P9), as ADV-0: every BUY or SELL fills at the open of the next bar (live: the first London session that opens after the decision); costs.py on every fill (a London ETF in GBP: spread and slippage, no stamp duty, no FX), 2x the figure that counts, 1x beside. DIVIDENDS (P3), as ADV-0: OK payouts / the previous close on the first bar on or after the ex-date (advisor_rules.income), compounded. VALUE: per-bar returns from simulate.run (the one trade arithmetic), compounded, marked as if sold at the latest close. P13's 12-month re-justify, as ADV-0: a record, no trade, no cost -- it changes no figure. No brake (back-tests apply none, the S6 rule; a shadow places no suggestion). Month-end decisions need 10 month-end closes: before that, no decision (cash).",
+   "holdout": "None: not a firewall trial, and no holdout is opened. DESCRIBED (QT-24 D) exactly as ADV-0 was (QT-23 E): unsealed bars, 2014-03-31 -> 2025-10-09 and the 2020 and 2022 calendar years, the same runner (qb2/research/adv0_describe.describe), the month-end averages reading unsealed history before each span to decide; then a SHADOW scored LIVE from 2026-10-23, its day 0 (the day it was registered): the live record is its test.",
+   "judged": "DESCRIBED, NOT GATED, at 1x and 2x costs: total return, worst fall (maximum drawdown), times it switched out and back in, sessions in cash, the 2020 and 2022 years -- beside plain VWRL hold (the same first fill, held throughout, the same dividends) and ADV-0's own described figures (QT-23 E, docs/research/ADV-0_described_2026-10.json), D3 beside. COUNTED: one trial-log line, kind backtest, when the description runs: N 55 -> 56. Then SHADOW, counted 0: scored forward from 2026-10-23 only, daily, on the live store (net of costs at 1x with 2x beside, dividends, in pounds); no scored return before that day.",
+   "promotion": {
+    "who": "S-07 alone, against ADV-0 -- the rule identical to S-01..S-06 (ADV-0's field promotion)",
+    "not_before": "12 months of live record from 2026-10-23: no promotion test before it",
+    "passes_only_if_all": [
+     "it beats ADV-0's live record over the same dates after 2x costs (both net, dividends included, in pounds)",
+     "it passes the luck test on the live record, p < 0.05, 200 runs, seed 0 -- for a one-line rule the random books are random month-end in/out paths with S-07's own number of month-ends in cash (rank_null has nothing to rank in one line)",
+     "Deflated Sharpe >= 0.95 at the then-N: the trial log's count when the test is run, the test itself included"
+    ],
+    "then": "even then it is only a PROPOSE: it replaces the default only on the operator's own words",
+    "counted": "shadow scoring adds no trial; each promotion test, when one is run, adds one (kind firewall)",
+    "honesty": "12 monthly decisions is little evidence: expect years, not months",
+    "fixed": "fixed 2026-10-23, before any S-07 code and any S-07 result"
+   },
+   "date": "2026-10-23",
+   "source": "QT-24 D (the mentor's box): ADV-0 with no percentage stop; a 10-month moving-average filter on month-end closes instead. Registered alone, before any S-07 code. The background scoring rides the operator's GO of 2026-10-19, verbatim: 'GO on QT-23: build the advisor with \"hold the index fund\" as its default, the 15% big-fall stop (10% when markets are jumpy) as its live stop, and the rules scored in the background on live prices only.' Nothing live changes: ADV-0 is not altered."
   }
  ],
  "promotion_gos": [
