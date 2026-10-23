@@ -35,7 +35,7 @@ QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
 ## NEXT
 1. **Mentor writes the next box.** Check first: the 07:00 UK run of Fri 23 Oct processed 22 Oct
    with VIX 16.68 (stop stays £117.91), did Friday's review (HOLD), and S-07's first decision.
-2. The DECISION below (ADV-0's stop, S-07's figures beside it).
+2. ADV-0's stop: KEPT by his words of 2026-10-23 (below); S-07 stays a shadow.
 3. PROPOSE: the daily front door drops a row whose session had not closed when fetched (the
    cause of the 16 Oct pre-open ^VIX row; a lost name can otherwise keep one).
 4. PROPOSE: MANUAL's re-justify can open lower (R4); per-ticker scale check vs T212 (SCARS #3).
@@ -43,8 +43,6 @@ QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
    week were missed, so each session's figures came a day late.
 
 ## DECISION REQUESTED (open)
-- **ADV-0's stop.** Default: kept (his GO; P10). GO words: "GO on ADV-0: hold VWRL with no big-fall
-  stop and no re-buy; the shadows keep theirs." S-07 cannot replace it except by the promotion rule.
 - **D1 advisor risk rule.** Default: the 1% rule stays the ceiling. GO words: "GO on D1: for
   the advisor, replace the 1% rule with a cap on how much the account can lose if the stop is
   hit, figure chosen by S5's crash tests."
@@ -55,6 +53,8 @@ QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
   Default: leave, report. Backups on the university OneDrive? Default: keep.
 
 ## Standing GOs (operator words, verbatim)
+- 2026-10-23, decision on QT-24's DECISION 1: *"Keep ADV-0's stop as the default for now; S-07
+  stays a shadow."*
 - 2026-10-23: *"GO on the advisor's 10% brake: after an urgent exit, my own words also clear the
   advisor's 10% brake and restart its peak from that day."*
 - 2026-10-20, a FENCE (raising or removing it needs his words): *"I stopped QT23 halfway
