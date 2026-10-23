@@ -77,6 +77,13 @@ def build(now: datetime, *, arm: date | None, days: Sequence[Mapping[str, Any]],
         out += [f"| {k} | {float(v['pct_1x']):+.2f}% | {float(v['pct_2x']):+.2f}% |"
                 for k, v in sorted(last.get("rules", {}).items())]
         out += ["", f"As of the close of {last['session']} ({age(last['session'], today)}).", ""]
+    out += ["## The brake", "",
+            "If the as-if pot falls 10% below its best value, the brake goes on: no new buys, and the "
+            "safety stop tightens to 10%. While VWRL is held it clears by itself once the pot is back "
+            "within 5% of its best. After an URGENT-EXIT the pot is cash, which never climbs back, so "
+            "the buy-back would wait for ever: then only your own words clear it (the clear-pause "
+            "tool, pot advisor), and the pot's best value restarts from that day. A 15% fall is a "
+            "hold-off, and only your words clear that either.", ""]
     reviews = [r for r in runs if r.get("job") == "weekly"][-6:]
     if reviews:
         out += ["## Weekly reviews", ""] + [

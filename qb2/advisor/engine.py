@@ -93,6 +93,14 @@ def pending(paths: state.Paths) -> str | None:
     return sides[-1] if sides else None
 
 
+def after_exit(paths: state.Paths) -> bool:
+    """The latest allowed BUY or SELL is an URGENT-EXIT: the pot is (or is about to be) cash after
+    an exit -- when his words may also clear its 10% brake (QT-24, his GO of 2026-10-23)."""
+    rows = [r for r in state.rows(paths.log("suggestions"))
+            if r.get("allowed") and r.get("action") in (BUY, SELL)]
+    return bool(rows) and rows[-1].get("kind") == "urgent-exit"
+
+
 def weekly_review(paths: state.Paths, ctx: Context, ledger: stop_ledger.Ledger,
                   now: datetime) -> list[dict[str, Any]]:
     """The Friday review of ADV-0: what to do this week, in plain words, checked."""

@@ -1,0 +1,6 @@
+QT-24 mutants, each applied alone, run under the cap, restored and sha256-checked (2026-10-22T23:55:11Z)
+Part C (tests/qb2/test_qt24_brake.py; qb2/guard/brakes.py sha256 319b8fe44cd0...):
+C(i) the brake clears without words: RED -- ['1 failed, 4 passed in 3.47s'] ['test_without_his_words_nothing_clears_it'] -- restored sha256 319b8fe44cd0 OK
+C(ii) the peak is not restarted: RED -- ['1 failed, 4 passed in 3.18s'] ['test_after_an_urgent_exit_his_words_clear_the_ten_percent_brake_and_restart_the_peak'] -- restored sha256 319b8fe44cd0 OK
+C(iii-a) his advisor GO leaks to the bot's 10% brake: RED -- ['1 failed, 4 passed in 3.99s'] ['test_the_bot_pot_is_untouched_by_the_advisors_clear'] -- restored sha256 319b8fe44cd0 OK
+C(iii-b) the advisor's clear also restarts the bot: RED -- ['2 failed, 3 passed in 2.44s'] ['test_after_an_urgent_exit_his_words_clear_the_ten_percent_brake_and_restart_the_peak', 'test_the_bot_pot_is_untouched_by_the_advisors_clear'] -- restored sha256 319b8fe44cd0 OK

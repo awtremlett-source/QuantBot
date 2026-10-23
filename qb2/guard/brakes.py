@@ -12,6 +12,11 @@
   its peak that day. Operator, 2026-10-19 (verbatim): "GO on the advisor's brake:
   after an urgent exit, my own words clear the advisor's hold-off and restart its
   peak from that day, as for the bot's pause; no code clears it." 
+* After an URGENT EXIT his words clear the advisor's 10% brake too (QT-24): its pot is
+  then cash, which never climbs back within 5%, so the re-buy would wait for ever.
+  Operator, 2026-10-23 (verbatim): "GO on the advisor's 10% brake: after an urgent
+  exit, my own words also clear the advisor's 10% brake and restart its peak from that
+  day." Before an exit, and for the bot, the 10% brake clears only as above.
 * 10% and 15% are P12's own figures, tested against 2008, 2020 and 2022 in
   docs/research/brake_replay_2026-10.md; they are NOT changed here.
 
@@ -127,16 +132,20 @@ class Brakes:
                      "level": new.level, "at": new.at})
         return new
 
-    def clear_pause(self, words: str, at: datetime | None = None, pot: str = BOT) -> State:
-        """The bot's 15% pause -- or the advisor's hold-off (GO 2) -- cleared by the
-        operator's own words, nothing else; the pot's peak restarts at that day's value."""
+    def clear_pause(self, words: str, at: datetime | None = None, pot: str = BOT, *,
+                    after_exit: bool = False) -> State:
+        """The bot's 15% pause -- or the advisor's hold-off (GO 2), or after an urgent exit its
+        10% brake (QT-24) -- cleared by the operator's own words, nothing else; the pot's peak
+        restarts at that day's value."""
         if not words or not words.strip():
             raise Blocked("empty words refused: only the operator's own words clear the pause")
-        held, what = (PAUSED, "paused") if pot == BOT else (HOLD_OFF, "held off")
+        held = (PAUSED,) if pot == BOT else (HOLD_OFF, BRAKED) if after_exit else (HOLD_OFF,)
         now = self.state(pot)
-        if now is None or now.level != held:
-            raise Blocked(f"the {pot} pot is not {what} ({now.level if now else 'no state'}); "
-                          "nothing to clear")
+        if now is None or now.level not in held:
+            why = (" -- the advisor's 10% brake is yours to clear only after an urgent exit"
+                   if pot == ADVISOR and now is not None and now.level == BRAKED else "")
+            raise Blocked(f"the {pot} pot is not {'paused' if pot == BOT else 'held off'} "
+                          f"({now.level if now else 'no state'}); nothing to clear{why}")
         stamp = (at or datetime.now(timezone.utc)).isoformat(timespec="seconds")
         self._write({"event": "cleared", "pot": pot, "words": words, "at": stamp,
                      "was_peak": now.peak})

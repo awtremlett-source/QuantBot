@@ -2267,5 +2267,15 @@
    "box": "QT-23",
    "words": "GO on QT-23: build the advisor with \"hold the index fund\" as its default, the 15% big-fall stop (10% when markets are jumpy) as its live stop, and the rules scored in the background on live prices only."
   }
+ ],
+ "brake_gos": [
+  {
+   "rule": "ADV-0.brake",
+   "beside": "ADV-0's entry (never edited): its field book, 'BRAKE (P12, live only)', and its field source (2), the GO of 2026-10-19 that his words clear the advisor's hold-off",
+   "date": "2026-10-23",
+   "box": "QT-24",
+   "words": "GO on the advisor's 10% brake: after an urgent exit, my own words also clear the advisor's 10% brake and restart its peak from that day.",
+   "applied": "live only (back-tests apply no brake, the S6 rule): python -m qb2.tools.clear_pause --pot advisor --words \"...\" clears the advisor pot's 10% brake when its latest allowed BUY/SELL is an URGENT-EXIT, records the words verbatim and restarts the pot's peak at that day's value; empty words are refused; before an exit, and for the bot, nothing changes (qb2/guard/brakes.py)"
+  }
  ]
 }

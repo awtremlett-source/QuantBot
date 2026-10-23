@@ -1,0 +1,8 @@
+QT-24 C red-first: tests/qb2/test_qt24_brake.py on the OLD code (commit c5f3f02), under the cap, 2026-10-22T23:51:53Z
+FAILED tests/qb2/test_qt24_brake.py::test_after_an_urgent_exit_his_words_clear_the_ten_percent_brake_and_restart_the_peak
+FAILED tests/qb2/test_qt24_brake.py::test_without_his_words_nothing_clears_it
+FAILED tests/qb2/test_qt24_brake.py::test_before_any_exit_the_ten_percent_brake_is_not_his_words_to_clear
+FAILED tests/qb2/test_qt24_brake.py::test_the_bot_pot_is_untouched_by_the_advisors_clear
+FAILED tests/qb2/test_qt24_brake.py::test_the_page_says_what_the_brake_does_after_an_exit
+5 failed in 3.22s
+old code, advisor pot at -12% (BRAKE-10), his words given: the advisor pot is not held off (BRAKE-10); nothing to clear
