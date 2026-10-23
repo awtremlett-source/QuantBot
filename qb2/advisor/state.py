@@ -5,7 +5,8 @@ data/qb2/advisor/
                        jobs do nothing but say so.
 * suggestions.jsonl -- every suggestion issued, checked (engine.issue is its only writer).
 * days.jsonl        -- one line per processed session: the as-if record, reconciled daily.
-* shadows.jsonl     -- S-01..S-06, one line per processed session from the arm date.
+* shadows.jsonl     -- S-01..S-07, one line per processed session from the arm date (S-07 from its
+                       own day 0, 2026-10-23).
 * runs.jsonl        -- each job run: the daily step, the weekly review, catch-ups, MISSED.
 The ADVISOR's stop is its record in data/qb2/stops.jsonl; its brake, its lines in brakes.jsonl.
 """

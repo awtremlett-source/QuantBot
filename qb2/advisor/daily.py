@@ -150,15 +150,11 @@ def shadows_for(paths: state.Paths, todo: Sequence[date], arm: date, through: da
         s: live.bars(s, "LSE", through, clean_root=clean_root)["close"].astype(float)
         for s in (benchmark.D3, benchmark.D3_FALLBACK)}
     on = advisor_rules.filter_of(close[benchmark.D3], close[benchmark.D3_FALLBACK])
-    scored = {sid: shadow.score(preregister.require(sid).entry, names, vix, arm, on)
-              for sid in shadow.SHADOWS}
-    for d in todo:
-        rules = {}
-        for sid, by in scored.items():
-            at = {s: v[live.days_of(v.index, "LSE") <= d] for s, v in by.items()}
-            rules[sid] = {f"pct_{s:g}x": round((float(v.iloc[-1]) - 1) * 100, 4) if len(v) else 0.0
-                          for s, v in at.items()}
-        state.append(paths.log("shadows"), {"session": d.isoformat(), "rules": rules})
+    entries = {sid: preregister.require(sid).entry for sid in shadow.SHADOWS}
+    scored = {sid: shadow.score(e, names, vix, arm, on) for sid, e in entries.items()}
+    for d in todo:                                    # QT-24 D: each from its own start (S-07)
+        state.append(paths.log("shadows"), {"session": d.isoformat(),
+                                            "rules": shadow.row(scored, entries, arm, d)})
 
 
 def weekly(paths: state.Paths, now: datetime, arm: date, through: date, ledger: stops.Ledger,

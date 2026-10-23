@@ -4,3 +4,5 @@ C(i) the brake clears without words: RED -- ['1 failed, 4 passed in 3.47s'] ['te
 C(ii) the peak is not restarted: RED -- ['1 failed, 4 passed in 3.18s'] ['test_after_an_urgent_exit_his_words_clear_the_ten_percent_brake_and_restart_the_peak'] -- restored sha256 319b8fe44cd0 OK
 C(iii-a) his advisor GO leaks to the bot's 10% brake: RED -- ['1 failed, 4 passed in 3.99s'] ['test_the_bot_pot_is_untouched_by_the_advisors_clear'] -- restored sha256 319b8fe44cd0 OK
 C(iii-b) the advisor's clear also restarts the bot: RED -- ['2 failed, 3 passed in 2.44s'] ['test_after_an_urgent_exit_his_words_clear_the_ten_percent_brake_and_restart_the_peak', 'test_the_bot_pot_is_untouched_by_the_advisors_clear'] -- restored sha256 319b8fe44cd0 OK
+Part D (tests/qb2/test_qt24_s07.py; qb2/research/trend_filter.py sha256 5cb4098ea852..., 2026-10-23T00:17:02Z):
+D the filter inverted (below the average = hold): RED -- ['3 failed, 3 passed in 1.77s'] ['test_s07s_book_on_a_hand_worked_year_to_the_penny', 'test_the_description_runs_s07_through_adv0s_own_runner', 'test_above_means_strictly_above_the_ten_month_average[closes1-1.0]'] -- restored sha256 5cb4098ea852 OK

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Any
@@ -99,13 +99,15 @@ def path(days: Sequence[date], opens: np.ndarray, closes: np.ndarray, jumpy: np.
 
 
 def describe(bars: pd.DataFrame, income: np.ndarray, jumpy: np.ndarray, start: date, end: date,
-             instrument: costs.Instrument) -> dict[str, Any]:
+             instrument: costs.Instrument, rule: Callable[..., Path] | None = None) -> dict[str, Any]:
+    """One span. ``rule``: ADV-0's :func:`path` unless given -- S-07 (QT-24 D) runs through here
+    with its own, reading ``jumpy``'s rows as its own per-bar signal (s07_describe.rule)."""
     days = list(holdout.local_index(bars.index, "LSE").date)
     keep = np.array([start <= d <= end for d in days])
     b, inc, jump = bars[keep], income[keep], jumpy[keep]
     d = [x for x, k in zip(days, keep) if k]
     o, c = b["open"].to_numpy(dtype=float), b["close"].to_numpy(dtype=float)
-    p = path(d, o, c, jump, start)
+    p = (rule or path)(d, o, c, jump, start)
     if not p.fills:
         return {"from": str(start), "to": str(end), "note": "no fill in the span"}
     first = p.fills[0][0]

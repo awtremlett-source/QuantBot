@@ -69,12 +69,15 @@ def build(now: datetime, *, arm: date | None, days: Sequence[Mapping[str, Any]],
     else:
         out += ["No session processed yet.", ""]
     if shadows:
-        last = shadows[-1]
-        out += [f"## The six rules scored in the background (S-01..S-06), from {arm}", "",
+        last, since = shadows[-1], dict[str, str]()
+        for r in shadows:
+            for k in r.get("rules", {}):
+                since.setdefault(k, str(r["session"]))      # each rule's own first day (S-07: later)
+        out += [f"## The {len(last.get('rules', {}))} rules scored in the background", "",
                 "Not advice: each would have to beat the default above for 12 months, pass the luck "
                 "test, and then still wait for your words.", "",
-                "| rule | 1x | 2x |", "|---|---|---|"]
-        out += [f"| {k} | {float(v['pct_1x']):+.2f}% | {float(v['pct_2x']):+.2f}% |"
+                "| rule | from | 1x | 2x |", "|---|---|---|---|"]
+        out += [f"| {k} | {since[k]} | {float(v['pct_1x']):+.2f}% | {float(v['pct_2x']):+.2f}% |"
                 for k, v in sorted(last.get("rules", {}).items())]
         out += ["", f"As of the close of {last['session']} ({age(last['session'], today)}).", ""]
     out += ["## The brake", "",
