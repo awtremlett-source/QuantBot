@@ -16,6 +16,9 @@ trigger skipped 18:50 and 19:50 with the PC awake, and nothing said so. A :50 sl
 with a recorder run on BOTH sides of it (the PC was awake) and no push near it is
 named as MISSED.
 
+QT-25 C: :func:`catchup_due` -- when a session's 5-minute bars arrive, so the clean step judges
+them only once their catch-up run is due (record_now.should_catch_up's two ways in).
+
 Reads the run logs' first lines and push.log only. Never writes, never takes a lock.
 """
 
@@ -23,9 +26,12 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Sequence
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+import exchange_calendars as xcals  # type: ignore[import-untyped]
+import pandas as pd
 
 UK = ZoneInfo("Europe/London")
 HOURS = range(7, 21)                       # the 14 fixed triggers, UK wall clock
@@ -33,6 +39,17 @@ ON_TIME_MINUTES = 5                        # a wake from sleep can take a minute
 GRACE = timedelta(minutes=20)              # a slot is judged once its run is due
 PUSH_SLOTS = [time(h, 50) for h in range(8, 22)]   # QB2-StatusPush's 14 fixed triggers
 PUSH_NEAR = timedelta(minutes=10)
+
+
+def catchup_due(day: date) -> datetime:
+    """When ``day``'s 5m catch-up runs (UK): on the day's last trigger (HOURS[-1] =
+    record_now.LAST_RUN_HOUR_LOCAL) or on any run once both markets have shut, whichever is
+    first -- each close on its exchange's own clock, so a clock change on one side moves it."""
+    stamp = pd.Timestamp(day)
+    closes = [c.session_close(stamp) for c in map(xcals.get_calendar, ("XLON", "XNYS"))
+              if c.is_session(stamp)]
+    last = datetime.combine(day, time(HOURS[-1]), UK)
+    return (min(last, max(closes).to_pydatetime()) if closes else last).astimezone(UK)
 
 
 def starts_today(log_dir: Path, now: datetime) -> list[datetime]:

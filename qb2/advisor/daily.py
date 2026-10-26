@@ -195,13 +195,14 @@ def weekly(paths: state.Paths, now: datetime, arm: date, through: date, ledger: 
 def today_line(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd.DataFrame,
                through: date, red: Sequence[str]) -> list[str]:
     rows, stop = state.rows(paths.log("days")), advisor_stop(ledger)
+    have: date = min(through, live.days_of(bars.index, "LSE")[-1]) if len(bars) else through   # QT-25: VWRL's own
     out = []
-    if through < (last := last_finished(now)):
-        out.append(f"UNCHECKED: the newest final close is from {through} -- the stop was NOT checked "
+    if have < (last := last_finished(now)):
+        out.append(f"UNCHECKED: the newest final close is from {have} -- the stop was NOT checked "
                    f"against {last}'s close or any later price. Look at VWRL yourself if markets moved.")
-        if now > (due := clean_step.due_by(lse_sessions(through + timedelta(days=1), last)[0])):   # oldest missing
-            out.append(f"RED: the daily top-up is overdue (due {due:%a %d %b %H:%M} UK): the stop has "
-                       f"been unchecked since {through}")
+        if now > (due := clean_step.due_by(lse_sessions(have + timedelta(days=1), last)[0])):   # oldest missing
+            cause = "the daily top-up is overdue" if have == through else "VWRL's daily close is missing"
+            out.append(f"RED: {cause} (due {due:%a %d %b %H:%M} UK): the stop has been unchecked since {have}")
     if rows:
         r = rows[-1]
         held = (f"holding VWRL as if bought (stop £{stop.level:,.2f})" if stop else "in cash")

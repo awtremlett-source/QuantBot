@@ -8,10 +8,10 @@ door, every call: the daily top-up (QT-15) then earnings (earnings_step.py, QT-1
 once a trading day has finished (New York closes last, 21:00 UK): often the next
 07:00 run. It catches up every day: the front door takes every raw file not yet in.
 
-**Stale is loud.** RED when a census is below its gate, or a market's newest
-clean bar is older than its last finished session (real calendars: a holiday is
-never a missing day). The hourly view counts a session only once its step is
-overdue (10:00 UK next weekday), so 21:50 cannot cry wolf about tonight.
+**Stale is loud.** RED when a census is below its gate, or a market's newest clean bar is
+older than its last finished session (real calendars: a holiday is never a missing day); 5m
+bars once their catch-up is due, before that NOT YET DUE, shown (QT-25 C). The hourly view
+counts a session only once its step is overdue (10:00 UK next weekday): 21:50 cannot cry wolf.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ import pandas as pd
 
 from qb2.data import access, census, earnings_step, front_door
 from qb2.data.front_door import CLEAN, REPO_ROOT
+from qb2.tools.run_times import catchup_due
 
 UK = ZoneInfo("Europe/London")
 CALENDARS = {"US": "XNYS", "LSE": "XLON"}
@@ -40,7 +41,7 @@ DIGEST_DIR = REPO_ROOT / "logs" / "digest"
 MARKER = "after_hours.json"
 
 
-def _closed(market: str, day: date, now: datetime) -> bool | None:
+def closed(market: str, day: date, now: datetime) -> bool | None:
     """Has ``market``'s session on ``day`` closed? None: it did not trade."""
     cal, stamp = xcals.get_calendar(CALENDARS[market]), pd.Timestamp(day)
     if not cal.is_session(stamp):
@@ -56,11 +57,12 @@ def due_by(session: date) -> datetime:
     return datetime.combine(day, DUE_BY, UK)
 
 
-def expected_session(market: str, now: datetime, *, strict: bool) -> date | None:
-    """Newest session the store must hold. strict: closed; else: step overdue."""
+def expected_session(market: str, now: datetime, *, strict: bool, interval: str = "") -> date | None:
+    """Newest session the store must hold. strict: closed (5m: its catch-up due); else: step overdue."""
     day = now.astimezone(UK).date()
     for _ in range(20):
-        if _closed(market, day, now) and (strict or due_by(day) <= now):
+        if closed(market, day, now) and (strict or due_by(day) <= now) and (
+                interval != "5m" or catchup_due(day) <= now):              # QT-25 C
             return day
         day -= timedelta(days=1)
     return None
@@ -70,8 +72,8 @@ def target_session(now: datetime) -> date | None:
     """The newest day on which every market that traded has closed."""
     day = now.astimezone(UK).date()
     for _ in range(20):
-        closed = [c for c in (_closed(m, day, now) for m in CALENDARS) if c is not None]
-        if closed and all(closed):
+        shut = [c for c in (closed(m, day, now) for m in CALENDARS) if c is not None]
+        if shut and all(shut):
             return day
         day -= timedelta(days=1)
     return None
@@ -88,8 +90,7 @@ class Summary:
     newest: Mapping[str, date | None]           # market -> newest clean bar
 
     @classmethod
-    def of(cls, interval: str, fraction: float,
-           rows: Sequence[tuple[str, str | None]]) -> Summary:
+    def of(cls, interval: str, fraction: float, rows: Sequence[tuple[str, str | None]]) -> Summary:
         newest: dict[str, date | None] = {m: None for m in CALENDARS}
         for sleeve, last in rows:
             market = "US" if sleeve == "us_liquid" else "LSE"     # census.take's rule
@@ -99,8 +100,7 @@ class Summary:
 
     @classmethod
     def from_census(cls, taken: census.Census) -> Summary:
-        return cls.of(taken.interval, taken.fraction_passing,
-                      [(n.sleeve, n.last_bar) for n in taken.names])
+        return cls.of(taken.interval, taken.fraction_passing, [(n.sleeve, n.last_bar) for n in taken.names])
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,16 +109,17 @@ class Verdict:
     fresh_to: date | None
     fraction_5m: float | None
     reasons: tuple[str, ...] = ()
+    notes: tuple[str, ...] = ()                 # shown, never RED: NOT YET DUE (QT-25 C)
 
     def line(self) -> str:
         share = "none" if self.fraction_5m is None else f"{self.fraction_5m:.1%}"
         return (f"Clean store: fresh to {self.fresh_to or 'never'} · 5m census "
-                f"{share} · {'RED' if self.red else 'OK'}")
+                f"{share} · {'RED' if self.red else 'OK'}" + "".join(f" · {n}" for n in self.notes))
 
 
 def judge(summaries: Sequence[Summary], now: datetime, *, strict: bool) -> Verdict:
-    """RED on a census below its gate, a stale market, or a census missing."""
-    reasons, held = [], []  # type: tuple[list[str], list[date | None]]
+    """RED on a census below its gate, a stale market, or a census missing; NOT YET DUE shown."""
+    reasons, held, notes = [], [], []  # type: tuple[list[str], list[date | None], list[str]]
     found = {s.interval: s for s in summaries}
     for interval, gate in GATES.items():
         summary = found.get(interval)
@@ -130,21 +131,23 @@ def judge(summaries: Sequence[Summary], now: datetime, *, strict: bool) -> Verdi
             reasons.append(f"{interval} census {summary.fraction:.1%} is below its "
                            f"{gate:.0%} gate")
         for market in CALENDARS:
-            have, want = summary.newest.get(market), expected_session(
-                market, now, strict=strict)
+            have, (want, shut) = summary.newest.get(market), [expected_session(
+                market, now, strict=strict, interval=i) for i in (interval, "")]
             held.append(have)
             if want is not None and (have is None or have < want):
                 reasons.append(f"{interval} {market} clean bars end {have or 'never'}, "
                                f"but the {want} session has finished")
+            elif shut is not None and shut != want and (have is None or have < shut):   # QT-25 C
+                notes.append(f"{interval} {market} {shut}: NOT YET DUE (its catch-up runs from "
+                             f"{catchup_due(shut):%H:%M} UK)")
     fresh = None if not held or None in held else min(d for d in held if d)
     five = found.get("5m")
     return Verdict(bool(reasons), fresh, five.fraction if five else None,
-                   tuple(reasons))
+                   tuple(reasons), tuple(notes))
 
 
 def _newest_saved(root: Path, pattern: str) -> Summary | None:
-    files = sorted(root.glob(pattern))
-    if not files:
+    if not (files := sorted(root.glob(pattern))):
         return None
     body = json.loads(files[-1].read_text(encoding="utf-8"))
     return Summary.of(str(body["interval"]), float(body["fraction_passing"]),
@@ -198,8 +201,7 @@ def run(now: datetime, *, clean_root: Path | None = None, raw_root: Path | None 
     """Front door, then the 5m and 1m censuses, then the labels, then the digest."""
     root = clean_root or CLEAN
     tally = front_door.ingest(clean_root=clean_root, raw_root=raw_root)
-    complaints = [f"raw file skipped, unreadable (half-written?): {name}"
-                  for name in tally.unreadable]
+    complaints = [f"raw file skipped, unreadable (half-written?): {name}" for name in tally.unreadable]
     today = now.astimezone(UK).date()
     five = census.take("5m", today=today, clean_root=clean_root, entries=entries)
     one = census.take("1m", today=today, clean_root=clean_root, entries=entries)
@@ -215,14 +217,12 @@ def run(now: datetime, *, clean_root: Path | None = None, raw_root: Path | None 
         complaints.append("the minute census and the labels disagree about which "
                           "names exist -- refusing to relabel")
 
-    verdict = judge([Summary.from_census(five), Summary.from_census(one)], now,
-                    strict=True)
+    verdict = judge([Summary.from_census(five), Summary.from_census(one)], now, strict=True)
     complaints += [f"RED: {reason}" for reason in verdict.reasons]
     per_sleeve = access.counts_by_sleeve(labels, entries or [
         {"yfinance": n.symbol, "sleeve": n.sleeve} for n in one.names])
-    lines = [f"clean: {tally.files_written} written, {tally.files_skipped_unchanged} "
-             f"unchanged, {len(tally.unreadable)} unreadable, "
-             f"{tally.rows_quarantined} rows quarantined",
+    lines = [f"clean: {tally.files_written} written, {tally.files_skipped_unchanged} unchanged, "
+             f"{len(tally.unreadable)} unreadable, {tally.rows_quarantined} rows quarantined",
              *census.report(five).splitlines(),
              f"1m census: {one.fraction_passing:.1%} of {len(one.names)} names "
              f"(gate {GATES['1m']:.0%}, labels only)",

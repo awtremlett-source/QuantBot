@@ -9,7 +9,9 @@ every recorder run. It does the work once per finished trading day (the same
 ``target_session`` the clean step uses), with catch-up for free: each fetch takes
 every bar from daily.HISTORY_START, so a day missed while the laptop was off is
 filled by the next run. A name whose fetch fails is NAMED in the marker and only those names are
-retried on the next run. Nothing here raises into the recorder.
+retried on the next run. A row whose session had not closed when fetched is refused at the door
+(daily.unclosed, QT-25 B), NAMED in the line, and taken by the next top-up, which comes only once
+that session has closed. Nothing here raises into the recorder.
 
 **What.** The bot universe, the advisor universe, VWRP (D3; VWRL, its fallback, is
 already an advisor name), ^VIX (P10's "unsettled", QT-24) and GBPUSD=X.
@@ -111,6 +113,9 @@ def status_line(now: datetime, *, clean_root: Path | None = None,
     fresh = min(held) if len(held) == len(newest) else "never"
     lost = list(seen.get("lost") or [])
     tail = f" · {len(lost)} not fetched, retrying: {', '.join(lost[:6])}" if lost else ""
+    early = [f"{name} {day}" for name, days in dict(seen.get("refused") or {}).items() for day in days]
+    tail += (f" · {len(early)} row{'s' if len(early) > 1 else ''} refused, their session not closed when "
+             f"fetched (fetched again once it has): {', '.join(early[:6])}") if early else ""
     why = f" ({'; '.join(stale)})" if stale else ""
     return f"{PREFIX} fresh to {fresh} · {'RED' if stale else 'OK'}{why}{tail}"
 
@@ -148,7 +153,7 @@ def run_if_due(now: datetime, *, clean_root: Path | None = None,
             marker.write_text(json.dumps({
                 "fetched_through": target.isoformat() if fresh_day else through,
                 "at": now.astimezone(timezone.utc).isoformat(timespec="seconds"),
-                "fetched": len(outcome.saved), "lost": sorted(outcome.lost),
+                "fetched": len(outcome.saved), "lost": sorted(outcome.lost), "refused": outcome.refused,
                 "newest": newest_by_market(names, clean_root)}) + "\n", encoding="utf-8")
             did = True
         # strict right after a top-up; otherwise the overdue rule, as clean_step's view

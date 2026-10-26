@@ -18,13 +18,18 @@ rather than a quick download: London is quoted in pence about as often as in
 pounds, and the clean store is always in POUNDS for London and dollars for the US.
 Prices and dividends must be converted the same way or the yield check compares a
 pence dividend with a pound price and condemns every London payer.
+
+**Only a closed session gets in (QT-25 B).** A daily bar is labelled with its date, not
+the moment it was taken: fetched before its session closed (a 09:25 New York pre-open
+^VIX, a 13:10 New York share mid-session) it is a snapshot, not a close. Such a row is
+refused, said in the manifest and the "Daily store:" line, and taken by the next top-up.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -34,13 +39,13 @@ from qb2.data.front_door import (CLEAN, PENCE, WriterLock, _append_manifest,
                                  _write_parquet_atomically, impossible_rows, to_pounds)
 from qb2.ingest.recorder import EXCHANGE_TZ
 
-DAILY_DIR = CLEAN / "daily"
 FX_PAIR = "GBPUSD=X"
 # QT-19: from 2010-01-01, so the advisor's slow rules have their lookback and a
 # walk-forward long enough to judge them. Every top-up re-fetches the whole span (one
 # consistent split adjustment); a shorter routine fetch would cut the history back.
 HISTORY_START = "2010-01-01"
 COLUMNS = ("open", "high", "low", "close", "volume")
+NOT_CLOSED = "its session had not closed on its exchange's clock when fetched (QT-25 B)"
 
 
 @dataclass(slots=True)
@@ -50,11 +55,8 @@ class DailyOutcome:
     attempted: list[str] = field(default_factory=list)
     saved: dict[str, int] = field(default_factory=dict)
     lost: dict[str, str] = field(default_factory=dict)
+    refused: dict[str, list[str]] = field(default_factory=dict)    # symbol -> sessions not closed
     quarantined: int = 0
-
-    def unaccounted(self) -> list[str]:
-        seen = set(self.saved) | set(self.lost)
-        return [name for name in self.attempted if name not in seen]
 
 
 def fetch_daily(symbol: str, start: str = HISTORY_START) -> pd.DataFrame | None:
@@ -108,6 +110,15 @@ def close_on(symbol: str, day: object, clean_root: Path | None = None,
     return float(frame["close"].to_numpy()[list(naive).index(nearest)])
 
 
+def unclosed(frame: pd.DataFrame, market: str | None, now: datetime) -> pd.Series:
+    """True on a row (dated on its exchange's clock) whose session had not closed at ``now``, the
+    fetch: never a close. The pound/dollar rate has no exchange close, so no row of it is judged."""
+    from qb2.data import clean_step                   # clean_step -> daily_step -> this module
+    recent = (now - timedelta(days=7)).date()          # older sessions closed long before
+    return pd.Series([market is not None and d >= recent and clean_step.closed(market, d, now) is False
+                      for d in pd.DatetimeIndex(frame.index).date], index=frame.index, dtype=bool)
+
+
 def ingest(entries: Sequence[Mapping[str, object]], *,
            fetch: object = None, clean_root: Path | None = None,
            include_fx: bool = True,
@@ -121,7 +132,7 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
 
     wanted = _wanted(entries, include_fx)
     with WriterLock((clean_root or CLEAN) / "daily.lock"):
-        for symbol, currency, kind, clock in wanted:
+        for symbol, currency, kind, market in wanted:
             outcome.attempted.append(symbol)
             try:
                 frame = getter(symbol)                    # type: ignore[operator]
@@ -160,11 +171,17 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
             stored = "GBP" if currency in PENCE else currency
             frame = frame.copy()
             frame["currency"] = stored
-            if clock is not None and getattr(frame.index, "tz", None) is not None:
+            if market is not None and getattr(frame.index, "tz", None) is not None:
                 # QT-24, as QT-15 A2 for the minute bars: the exchange's own clock, whatever
                 # label the provider carries (^VIX arrives on Chicago's)
-                frame.index = pd.DatetimeIndex(frame.index).tz_convert(clock)
+                frame.index = pd.DatetimeIndex(frame.index).tz_convert(EXCHANGE_TZ[market])
             frame.index.name = "date"
+            if bool((early := unclosed(frame, market, moment).to_numpy()).any()):   # QT-25 B: said
+                refused = outcome.refused[symbol] = [str(d) for d in pd.DatetimeIndex(frame.index[early]).date]
+                _append_manifest({"event": "refused", "table": "daily", "symbol": symbol, "sessions": refused,
+                                  "at": moment.isoformat(timespec="seconds"), "reason": NOT_CLOSED,
+                                  "closes": [float(x) for x in frame["close"].to_numpy()[early]]}, clean_root)
+                frame = frame[~early]
             frame, moved = cross_bar.apply(frame, symbol, kind, now=moment,   # QT-21: every write
                                            clean_root=clean_root)
             outcome.quarantined += moved
@@ -191,11 +208,11 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
 
 def _wanted(entries: Sequence[Mapping[str, object]], include_fx: bool,
             ) -> list[tuple[str, str, str, str | None]]:
-    """(symbol, quote currency, kind, clock) per entry; the pound/dollar rate has no kind and
-    keeps its own stamp (pounds.FX_CLOCK)."""
+    """(symbol, quote currency, kind, market) per entry; the pound/dollar rate has no kind and no
+    exchange, and keeps its own stamp (pounds.FX_CLOCK)."""
     out: list[tuple[str, str, str, str | None]] = [
         (str(e["yfinance"]), str(e.get("quote_currency") or "USD"), str(e.get("kind") or ""),
-         EXCHANGE_TZ[universe.market_of(e)]) for e in entries]
+         universe.market_of(e)) for e in entries]
     return out + [(FX_PAIR, "RATE", "", None)] if include_fx else out
 
 
@@ -224,16 +241,3 @@ def requarantine(entries: Sequence[Mapping[str, object]], *, clean_root: Path | 
                     "last": str(kept.index.max()), "requarantine": int(len(frame) - len(kept)),
                     "note": "QT-21 cross-bar check over the stored file (no fetch)"}, clean_root)
     return outcome
-
-
-def report(outcome: DailyOutcome) -> str:
-    lines = [f"DAILY BARS: {len(outcome.saved)} saved of {len(outcome.attempted)} "
-             f"attempted, {outcome.quarantined} row(s) quarantined"]
-    if outcome.lost:
-        lines.append(f"  {len(outcome.lost)} with nothing, named not guessed:")
-        for symbol, why in list(outcome.lost.items())[:12]:
-            lines.append(f"    {symbol:<10} {why}")
-    missing = outcome.unaccounted()
-    if missing:
-        lines.append(f"  !! {len(missing)} attempted and unaccounted for: {missing}")
-    return "\n".join(lines)

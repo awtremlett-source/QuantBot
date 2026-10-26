@@ -1,0 +1,87 @@
+QT-25 red-first record: the new tests run on the OLD code (HEAD 0831878, no source changed),
+inside the cap, Mon 26 Oct 2026 06:33 UTC (= UK, GMT). 15 RED, 2 green guards (they guard
+behaviour that must not change: a due-and-missing day stays RED; the catch-up hour is record_now's).
+
+PASSED tests/qb2/test_qt25_not_yet_due.py::test_once_the_catch_up_is_due_a_missing_day_is_red_as_before
+PASSED tests/qb2/test_qt25_not_yet_due.py::test_the_last_trigger_is_the_one_record_now_catches_up_on
+FAILED tests/qb2/test_qt25_front_door.py::test_a_session_still_trading_is_refused_and_logged
+FAILED tests/qb2/test_qt25_front_door.py::test_the_pre_open_vix_snapshot_of_16_october_is_refused
+FAILED tests/qb2/test_qt25_front_door.py::test_the_daily_store_line_names_every_refusal
+FAILED tests/qb2/test_qt25_front_door.py::test_a_refused_row_is_fetched_again_and_accepted_once_its_session_has_closed
+FAILED tests/qb2/test_qt25_front_door.py::test_a_name_whose_newest_row_was_refused_shows_behind_never_current
+FAILED tests/qb2/test_qt25_front_door.py::test_vwrl_behind_the_marker_leaves_the_stop_unchecked_and_says_so
+FAILED tests/qb2/test_qt25_front_door.py::test_a_us_session_on_monday_26_october_is_closed_at_2030_uk_not_at_1930
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_the_three_wake_up_runs_are_clean_with_the_day_not_yet_due[now0-2026-10-20-2026-10-21]
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_the_three_wake_up_runs_are_clean_with_the_day_not_yet_due[now1-2026-10-21-2026-10-22]
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_the_three_wake_up_runs_are_clean_with_the_day_not_yet_due[now2-2026-10-22-2026-10-23]
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_an_older_missing_day_is_red_before_todays_catch_up
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_the_catch_up_is_due_at_the_last_trigger_or_once_both_markets_have_shut[day0-due0]
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_the_catch_up_is_due_at_the_last_trigger_or_once_both_markets_have_shut[day1-due1]
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_the_catch_up_is_due_at_the_last_trigger_or_once_both_markets_have_shut[day2-due2]
+FAILED tests/qb2/test_qt25_not_yet_due.py::test_this_weeks_clock_judges_monday_at_1959_and_2000_uk
+
+The assertions that failed, as pytest printed them:
+E       AssertionError: assert ('2026-10-23', 101.0) == ('2026-10-22', 100.0)
+E         
+E         At index 0 diff: '2026-10-23' != '2026-10-22'
+E         Use -v to get more diff
+E       AttributeError: 'DailyOutcome' object has no attribute 'refused'
+E       AssertionError: assert 'Daily store:...26-10-23 · OK' == 'Daily store:...IX 2026-10-23'
+E         
+E         - Daily store: fresh to 2026-10-22 · OK · 2 rows refused, their session not closed when fetched (fetched again once it has): AAPL 2026-10-23, ^VIX 2026-10-23
+E         + Daily store: fresh to 2026-10-23 · OK
+E       AssertionError: assert '2026-10-23' == '2026-10-22'
+E         
+E         - 2026-10-22
+E         ?          ^
+E         + 2026-10-23
+E         ?          ^
+E       AssertionError: assert 'Daily store:...rying: VWRL.L' == 'Daily store:...rying: VWRL.L'
+E         
+E         - Daily store: fresh to 2026-10-22 · RED (LSE ends 2026-10-22, 2026-10-23 has finished) · 1 not fetched, retrying: VWRL.L
+E         + Daily store: fresh to 2026-10-23 · OK · 1 not fetched, retrying: VWRL.L
+E       AssertionError: assert 'reconciled: OK' == 'UNCHECKED: t...arkets moved.'
+E         
+E         - UNCHECKED: the newest final close is from 2026-10-22 -- the stop was NOT checked against 2026-10-23's close or any later price. Look at VWRL yourself if markets moved.
+E         + reconciled: OK
+E           AssertionError: 19:30 UK
+E           assert '2026-10-26' == '2026-10-23'
+E             
+E             - 2026-10-23
+E             ?          ^
+E             + 2026-10-26
+E             ?          ^
+E       AssertionError: assert ('5m LSE clea...as finished',) == ()
+E         
+E         Left contains one more item: '5m LSE clean bars end 2026-10-20, but the 2026-10-21 session has finished'
+E         Use -v to get more diff
+E       AssertionError: assert ('5m LSE clea...as finished',) == ()
+E         
+E         Left contains one more item: '5m LSE clean bars end 2026-10-21, but the 2026-10-22 session has finished'
+E         Use -v to get more diff
+E       AssertionError: assert ('5m LSE clea...as finished',) == ()
+E         
+E         Left contains one more item: '5m LSE clean bars end 2026-10-22, but the 2026-10-23 session has finished'
+E         Use -v to get more diff
+E       AssertionError: assert ('5m LSE clea...as finished',) == ('5m LSE clea...as finished',)
+E         
+E         At index 0 diff: '5m LSE clean bars end 2026-10-21, but the 2026-10-23 session has finished' != '5m LSE clean bars end 2026-10-21, but the 2026-10-22 session has finished'
+E         Use -v to get more diff
+E       AttributeError: module 'qb2.data.clean_step' has no attribute 'catchup_due'
+E       AttributeError: module 'qb2.data.clean_step' has no attribute 'catchup_due'
+E       AttributeError: module 'qb2.data.clean_step' has no attribute 'catchup_due'
+E       assert (True, True) == (False, True)
+E         
+E         At index 0 diff: True != False
+E         Use -v to get more diff
+
+15 failed, 2 passed in 3.18s
+[cap] finished with exit code 1; peak memory 0.57 GB of 25.35 GB
+
+Three edits to the tests after this record, none changing what they demand:
+- test_the_pre_open_vix_snapshot_of_16_october_is_refused: its planted last close (15.88) sat
+  below that bar's own low (95), so the door's older sanity check quarantined the row before the
+  new check could refuse it. Now the same planted snapshot as the other tests (101.0). On the old
+  code it still fails first on `outcome.refused` (AttributeError above).
+- two typing-only edits for mypy --strict: `through is not None` asserted before use, and
+  `catchup_due` read from qb2.tools.run_times, where it lives, not through clean_step's import.

@@ -1,0 +1,11 @@
+QT-25 mutants, Mon 26 Oct 2026 ~07:04 UTC (= UK, GMT), each test run inside the cap; every
+mutated source restored from its original bytes and sha256-checked against the fixed version.
+
+B(i) the close-time check removed: RED -- 6 failed, 1 passed in 2.38s
+    restored qb2/ingest/daily.py: sha256 7a14197bdefb... == before
+B(ii) a refused row dropped silently, no log: RED -- 3 failed, 4 passed in 2.52s
+    restored qb2/ingest/daily.py: sha256 7a14197bdefb... == before
+B(iii) the advisor reads the marker, not VWRL's own close: RED -- 1 failed, 6 passed in 2.03s
+    restored qb2/advisor/daily.py: sha256 ad130094b0da... == before
+C the 5m catch-up's due time ignored: RED -- 5 failed, 5 passed in 1.10s
+    restored qb2/data/clean_step.py: sha256 2127df298e27... == before
