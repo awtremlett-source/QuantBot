@@ -1,7 +1,7 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-23. History → docs/archive/STATE_2026-10-23_QT23.md (verbatim). Box done:
-QT-24 → docs/reports/QT-24.md.
+Updated: 2026-10-26. History → docs/archive/STATE_2026-10-26_QT24.md (verbatim). Box done:
+QT-25 → docs/reports/QT-25.md.
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN (paused); S9 OPEN — the advisor is LIVE (armed
 2026-10-20, first as-if fill 21 Oct)** (S3 close = QT-13 + QT-13b). No pick has survived (S6 0/24,
@@ -16,31 +16,31 @@ QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
 ## The advisor, live
 - **ADV-0 = hold VWRL** (IE00B3RBWM25, GBP, London), stop 15% below the highest close (10% when
   unsettled), raise-only; crossed = URGENT-EXIT alert, never a sale; re-buy 10% above the low.
-- **First fill: as-if BUY at Wed 21 Oct's open £138.38**, written by Thu 22 Oct's 18:14 UK run.
-  Stop £117.91. Day 1: £7,003.17 at 1x, £6,989.16 at 2x (reconciled to the penny by hand).
-- **Timing:** a session is final once London AND New York have closed (21:00 UK); its figures
-  (fills, stop checks) arrive with the NEXT morning's first run. The price door STOPs if the store
-  claims a session London has not closed by the run's clock (QT-24 A).
-- **^VIX** rides the daily top-up (New York clock); the "Daily store" line is RED if ^VIX trails
-  VWRL by more than one London session. Caught up to 22 Oct (19.03). The 21 Oct day line keeps its
-  recorded 15.88 (a pre-open snapshot; the real 20 Oct close was 17.31: settled either way).
+- **As-if BUY at Wed 21 Oct's open £138.38**, stop £117.91. Thu 22 Oct: £6,919.37 at 1x, £6,905.52
+  at 2x (by hand, QT-25). **Friday's review (23 Oct 17:10 UTC): HOLD.**
+- **Fri 23 Oct NOT processed yet:** Monday's provider bar for VWRL had no close (quarantined).
+  The page says UNCHECKED, RED from Mon 10:00 UK (runs NOT CLEAN) until a sane close arrives.
+- **Timing:** a session is final once London AND New York have closed (own clocks): 21:00 UK
+  normally, **20:00 UK this week** (US clocks change Sun 1 Nov); figures come with the next run.
+- **Daily door (QT-25 B):** a row fetched before its session closed is refused (manifest
+  "refused", named in the "Daily store" line); the next top-up takes it.
+- **5m bars (QT-25 C):** NOT YET DUE until their catch-up (20:00 UK or both markets shut); RED after.
+- **^VIX** in the daily top-up; RED if it trails VWRL by > 1 London session.
 - **Brake:** after an URGENT-EXIT his words also clear the advisor's 10% brake (GO below):
   `python -m qb2.tools.clear_pause --pot advisor --words "..."`.
-- **Shadows:** S-01..S-06 from 20 Oct; **S-07** (trend filter, registered cd3e863) from 23 Oct,
-  its own day 0 — first decision Fri 23 Oct's close → as-if BUY at Mon 26 Oct's open.
-- **Described 2014–2025, 2× costs:** ADV-0 +173.3% (worst fall −25.5%); S-07 +145.0% (−18.6%, out
-  9 times); plain VWRL +268.7% (−24.9%). 2020: +12.1 / +7.0 / +10.8%. 2022: −16.1 / −9.0 / −7.0%.
+- **Shadows:** S-01..S-06 from 20 Oct; **S-07** (registered cd3e863) day 0 = 23 Oct: first decision
+  at Fri 23 Oct's close → as-if BUY at Mon 26 Oct's open. Both wait for VWRL's 23 Oct close.
+- Described 2014–2025 at 2×: ADV-0 +173.3%, S-07 +145.0%, plain VWRL +268.7% (QT-24 report).
 - Files: data/qb2/advisor/, stops.jsonl, brakes.jsonl; page `status/advisor.md` (status branch).
 
 ## NEXT
-1. **Mentor writes the next box.** Check first: the 07:00 UK run of Fri 23 Oct processed 22 Oct
-   with VIX 16.68 (stop stays £117.91), did Friday's review (HOLD), and S-07's first decision.
-2. ADV-0's stop: KEPT by his words of 2026-10-23 (below); S-07 stays a shadow.
-3. PROPOSE: the daily front door drops a row whose session had not closed when fetched (the
-   cause of the 16 Oct pre-open ^VIX row; a lost name can otherwise keep one).
-4. PROPOSE: MANUAL's re-justify can open lower (R4); per-ticker scale check vs T212 (SCARS #3).
-5. OPERATOR: keep the PC on or asleep (it wakes itself at 07:00) on weekdays — both mornings this
-   week were missed, so each session's figures came a day late.
+1. **Mentor writes the next box.** Check first: Mon 26 Oct's 20:00 UK run. VWRL's 23 Oct close back
+   sane? Yes: days 23 + 26, S-07's first row and BUY at 26 Oct's open, RED gone. No: Monday done,
+   Friday passed over silently (PROPOSE 2), S-07's first decision moves to Fri 30 Oct.
+2. From Mon 2 Nov New York closes at 21:00 UK again.
+3. PROPOSE: QT-25 report's list (first: the door keeps a sane stored row a re-fetch brings back
+   broken; the advisor names a skipped session); MANUAL's re-justify (R4); scale check (SCARS #3).
+4. OPERATOR: keep the PC on or asleep (it wakes itself at 07:00) on weekdays.
 
 ## DECISION REQUESTED (open)
 - **D1 advisor risk rule.** Default: the 1% rule stays the ceiling. GO words: "GO on D1: for
@@ -78,9 +78,10 @@ QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
 - QT-23 stash "QT-23-interrupted" kept (superseded by B; never deleted).
 
 ## Open flags
-- Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned). 52 mypy
-  errors silenced in 5 inherited modules; mypy's 4 known Qt-stub errors in manual/ui.
+- Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned); clean_step.py
+  at 250. 52 mypy errors silenced in 5 inherited modules; 4 known Qt-stub errors.
 
 ## Fingerprints
-v1 4add56ec…743b6 (unchanged). Advisor daily (a) 0f3a960c…f1f9, (b) f7aae670…768e (unchanged by
-the ^VIX catch-up).
+v1 4add56ec…743b6 (unchanged). Advisor daily (a) 6883791f…97b1 since 26 Oct 06:17 UTC (BBY.L's
+first earnings row; = 0f3a960c…f1f9 counted as before: no data in its window moved), (b)
+f7aae670…768e (unchanged).
