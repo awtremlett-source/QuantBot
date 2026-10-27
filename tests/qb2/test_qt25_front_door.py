@@ -105,7 +105,10 @@ def test_a_refused_row_is_fetched_again_and_accepted_once_its_session_has_closed
     line = _top_up(tmp_path, MON_0611_UK, _Fetch("2026-10-23", FINAL))
     assert _newest("AAPL", tmp_path) == ("2026-10-23", FINAL)          # the close, not the snapshot
     assert _newest("^VIX", tmp_path) == ("2026-10-23", FINAL)
-    assert line == "Daily store: fresh to 2026-10-23 · OK"
+    # QT-26 B: VWRL.L's 23 Oct row was stored on Friday after London's close, so a different close on
+    # Monday is a provider correction, named (the pound/dollar rate's moving row is not judged)
+    assert line == ("Daily store: fresh to 2026-10-23 · OK · 1 close corrected by the provider (the newer "
+                    "one kept): VWRL.L 2026-10-23 101.00 → 102.00")
 
 
 # (c) behind, never current ---------------------------------------------------------------------

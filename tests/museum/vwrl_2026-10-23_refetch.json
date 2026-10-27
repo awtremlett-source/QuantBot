@@ -1,0 +1,18 @@
+{
+  "about": "QT-26 B museum case: VWRL.L's Fri 23 Oct 2026 daily bar, sane when stored, broken on a re-fetch. Fri 23 Oct 17:10:32 UTC (after London's 15:30 UTC close) the top-up stored a sane 23 Oct row. Mon 26 Oct 06:17:30 UTC the whole-history re-fetch brought it back with NO close; the door set the broken bar aside and rewrote the file whole, so the sane row was lost and the advisor could not process Friday (QT-25). Mon 26 Oct 20:11:06 UTC the re-fetch came back sane, and the quarantine file was rewritten whole too, so the broken bar vanished from it (335 rows -> 334). Friday's own stored figures were overwritten on Monday and are known only as sane; 'sane' below is the row as the store holds it since Mon 20:11 UTC. The broken bar's figures are QT-25's record of it (docs/reports/QT-25.md, A5), the only copy left. 'historic_broken': one of the 334 older broken bars (its close below its low) the provider sends on every fetch, as in the store's quarantine. Columns: open, high, low, close, volume; prices in pounds; dates on London's clock.",
+  "fetched": {
+    "friday": "2026-10-23T17:10:32+00:00",
+    "monday_morning": "2026-10-26T06:17:30+00:00",
+    "monday_evening": "2026-10-26T20:11:06+00:00"
+  },
+  "sane": {
+    "2026-10-19": [138.82000732421875, 139.0399932861328, 138.0500030517578, 139.02000427246094, 87268],
+    "2026-10-20": [138.11000061035156, 138.64999389648438, 137.13999938964844, 138.22000122070312, 82156],
+    "2026-10-21": [138.3800048828125, 138.94000244140625, 138.02000427246094, 138.72000122070312, 76817],
+    "2026-10-22": [137.3699951171875, 137.9499969482422, 136.85000610351562, 137.05999755859375, 103807],
+    "2026-10-23": [137.0, 137.11000061035156, 136.00999450683594, 137.0, 136355],
+    "2026-10-26": [136.72000122070312, 138.02000427246094, 136.52000427246094, 137.57000732421875, 179036]
+  },
+  "broken_2026-10-23": [137.0, 137.11, 136.01, null, 136247],
+  "historic_broken": {"2025-07-29": [115.13999938964844, 115.48999786376953, 114.76000213623047, 114.68499755859375, 73649]}
+}

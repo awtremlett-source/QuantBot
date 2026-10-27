@@ -1,0 +1,27 @@
+QT-26 mutation check: each mutant breaks one piece of the fix in a scratch copy of the repository (a git worktree of 813e045 plus the fix), never in the code the scheduled runs import; its tests must go RED; every source is restored and its sha256 checked. Run at 2026-10-27T07:04:14Z, inside the cap, after the 07:00 run's finished line.
+[cap] capped (Local\QuantBot-cap): CPU <= 80% of the machine on <= 12 of 16 processors, memory <= 80% of RAM (25.3 GB), below-normal priority: .venv-qb2/Scripts/python C:/Users/mtrem/AppData/Local/Temp/claude/C--Users-mtrem-TRADING/c48c6174-e559-4b44-bc34-0f1ed9a5f927/scratchpad/mutants.py C:/Users/mtr
+B(i) the stored sane row never kept: RED -- 1 failed, 6 passed in 2.91s -- restored, sha256 matches (1e0404ffd04f...)
+B(ii) the quarantine rewritten whole (the old way): RED -- 1 failed, 6 passed in 2.88s -- restored, sha256 matches (1e0404ffd04f...)
+B(iii) a correction taken but not named: RED -- 1 failed, 6 passed in 2.28s -- restored, sha256 matches (1e0404ffd04f...)
+B(iv) a session not yet closed counted as broken-and-closed: RED -- 1 failed, 6 passed in 2.14s -- restored, sha256 matches (1ca34e907368...)
+B(v) a broken stored row counted sane: RED -- 2 failed, 5 passed in 2.11s -- restored, sha256 matches (1e0404ffd04f...)
+C(i) a passed-over session never found: RED -- 2 failed, 2 passed in 14.78s -- restored, sha256 matches (8e0760a37676...)
+C(ii) a late bar not held out of the record: GREEN (mutant SURVIVED) -- 4 passed in 15.47s -- restored, sha256 matches (8e0760a37676...)
+C(iii) the UNCHECKED line not said: RED -- 1 failed, 3 passed in 14.83s -- restored, sha256 matches (8e0760a37676...)
+C(iv) skipped rows reconciled like days: RED -- 2 failed, 2 passed in 15.45s -- restored, sha256 matches (ae4ca423a811...)
+SOME MUTANT SURVIVED OR A SOURCE DIFFERS
+[cap] finished with exit code 1; peak memory 0.58 GB of 25.35 GB
+
+==== Re-run after adding test_a_late_close_never_moves_a_fill_already_recorded (C(ii) had survived above): 2026-10-27T07:07:33Z, inside the cap
+[cap] capped (Local\QuantBot-cap): CPU <= 80% of the machine on <= 12 of 16 processors, memory <= 80% of RAM (25.3 GB), below-normal priority: .venv-qb2/Scripts/python C:/Users/mtrem/AppData/Local/Temp/claude/C--Users-mtrem-TRADING/c48c6174-e559-4b44-bc34-0f1ed9a5f927/scratchpad/mutants.py C:/Users/mtr
+B(i) the stored sane row never kept: RED -- 1 failed, 6 passed in 2.25s -- restored, sha256 matches (1e0404ffd04f...)
+B(ii) the quarantine rewritten whole (the old way): RED -- 1 failed, 6 passed in 2.18s -- restored, sha256 matches (1e0404ffd04f...)
+B(iii) a correction taken but not named: RED -- 1 failed, 6 passed in 2.17s -- restored, sha256 matches (1e0404ffd04f...)
+B(iv) a session not yet closed counted as broken-and-closed: RED -- 1 failed, 6 passed in 2.12s -- restored, sha256 matches (1ca34e907368...)
+B(v) a broken stored row counted sane: RED -- 2 failed, 5 passed in 2.08s -- restored, sha256 matches (1e0404ffd04f...)
+C(i) a passed-over session never found: RED -- 3 failed, 2 passed in 18.49s -- restored, sha256 matches (8e0760a37676...)
+C(ii) a late bar not held out of the record: RED -- 1 failed, 4 passed in 19.22s -- restored, sha256 matches (8e0760a37676...)
+C(iii) the UNCHECKED line not said: RED -- 1 failed, 4 passed in 18.45s -- restored, sha256 matches (8e0760a37676...)
+C(iv) skipped rows reconciled like days: RED -- 3 failed, 2 passed in 19.03s -- restored, sha256 matches (ae4ca423a811...)
+ALL MUTANTS RED, ALL SOURCES RESTORED
+[cap] finished with exit code 0; peak memory 0.58 GB of 25.35 GB

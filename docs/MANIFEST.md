@@ -49,6 +49,7 @@ this logic leaves NVDA or this laptop.
     (back-tests only, test_p15_history_wall.py) · p15_coverage.py · s6_run.py +
     s6_results.py (S6 batch 1) · signals/s6_rules.py · data/data_fingerprint.py ·
     (QT-21) data/cross_bar.py (daily unit-break/filler quarantine) · rank_null.py
+    · (QT-26) ingest/refetch.py (re-fetch vs store) · advisor/skips.py
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
     (which samples count: full calendar sessions, each bar once; the meter that

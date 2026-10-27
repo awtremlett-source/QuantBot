@@ -15,6 +15,7 @@ from qb2.advisor.engine import NAME
 from qb2.advisor.scorecard import POT_GBP
 
 UK = ZoneInfo("Europe/London")
+ROWS = 10                          # the as-if record's last rows on the page (skips.py: final notes)
 
 
 def age(of: date | str | None, today: date) -> str:
@@ -63,8 +64,9 @@ def build(now: datetime, *, arm: date | None, days: Sequence[Mapping[str, Any]],
     out += [f"## The as-if record (P9), from the arm date {arm}", ""]
     if days:
         out += ["| session | held | VWRL close | value 1x costs | value 2x costs |", "|---|---|---|---|---|"]
-        out += [f"| {d['session']} | {'yes' if d['held'] else 'cash'} | £{float(d['close']):,.2f} | "
-                f"{_money(d, '1')} | {_money(d, '2')} |" for d in days[-10:]]
+        out += [f"| {d['session']} | skipped | no sane close | — | — |" if d.get("skipped") else   # QT-26 C
+                f"| {d['session']} | {'yes' if d['held'] else 'cash'} | £{float(d['close']):,.2f} | "
+                f"{_money(d, '1')} | {_money(d, '2')} |" for d in days[-ROWS:]]
         out += ["", f"Reconciled today: {status.get('reconciled', 'not checked')}.", ""]
     else:
         out += ["No session processed yet.", ""]

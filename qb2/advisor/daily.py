@@ -17,6 +17,7 @@ than one new session): every open stop checked on the newest final close, logged
    no review: MISSED. 5. The reconciliation (RED if any written day moved) and the page.
 A newest final close older than the last finished session: the stop UNCHECKED, said so; RED (loud)
 only once the top-up is overdue (clean_step.due_by: 10:00 UK next weekday) -- never every evening.
+A session VWRL's store lacks though a later one has: a SKIPPED row, named UNCHECKED (skips.py, QT-26 C).
 CLI: python -m qb2.advisor.daily [--arm]   (inside the cap: python -m qb2.tools.capped -- ...)
 """
 
@@ -31,7 +32,7 @@ from typing import Any
 
 import pandas as pd
 
-from qb2.advisor import engine, live, page, scorecard, shadow, state
+from qb2.advisor import engine, live, page, scorecard, shadow, skips, state
 from qb2.data import clean_step, universe
 from qb2.execution.safety import ADVISOR, Blocked
 from qb2.guard import brakes, stops
@@ -77,18 +78,21 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
     arm, through = state.arm_date(paths), live.final_through(clean_root, now)       # QT-24 A
     if arm is None or through is None:
         return ["advisor not armed" if arm is None else "no final daily bars yet (the top-up never ran)"]
-    entry, ledger, brake_log = vwrl(), stops.Ledger(paths.stops), brakes.Brakes(paths.brakes)
-    instrument = names.instrument_of(entry)
-    bars = live.bars(engine.TICKER, "LSE", through, since=arm, clean_root=clean_root)
+    instrument, ledger, brake_log = names.instrument_of(vwrl()), stops.Ledger(paths.stops), brakes.Brakes(paths.brakes)
+    written = state.rows(paths.log("days"))
+    bars, late = skips.split(live.bars(engine.TICKER, "LSE", through, since=arm, clean_root=clean_root), written)
     sessions = list(live.days_of(bars.index, "LSE"))          # none yet on the arm day: fine
     income, _ = advisor_rules.income(engine.TICKER, "LSE", bars, clean_root)
-    written = state.rows(paths.log("days"))
     todo = [d for d in sessions if d.isoformat() not in {r["session"] for r in written}]
+    holes = skips.holes(lse_sessions(arm, through), sessions, written)          # QT-26 C: passed over
     lines: list[str] = []
     if len(todo) > 1:                                                  # 1. on waking
         acts = ledger.catch_up({engine.TICKER: float(bars["close"].iloc[-1])}) if advisor_stop(ledger) else []
         lines += [f"woke after {len(todo)} sessions: stops checked, {len(acts)} to act on (logged)"]
-    for d in todo:
+    for d in sorted([*todo, *holes]):
+        if d in holes:                                                 # a skipped row, in its place
+            state.append(paths.log("days"), skips.row(d, advisor_stop(ledger)))
+            continue
         k = sessions.index(d)
         brake = brake_log.state(ADVISOR)
         uns, vix = unsettled_on(d, brake, through, clean_root)
@@ -135,9 +139,9 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
     lines += weekly(paths, now, arm, through, ledger, brake_log, clean_root, first_review)
     fresh = scorecard.record(bars, sessions, scorecard.as_if(state.rows(paths.log("suggestions")), sessions),
                              income, instrument)
-    red = scorecard.reconcile(written, fresh)
+    red = scorecard.reconcile([r for r in written if not skips.is_skip(r)], fresh)
     lines += [f"RED: the scorecard does not reconcile -- {x}" for x in red]
-    lines += today_line(now, paths, ledger, bars, through, red)
+    lines += skips.lines(state.rows(paths.log("days")), late) + today_line(now, paths, ledger, bars, through, red)
     write_page(now, paths, arm, lines)
     return lines
 
@@ -173,7 +177,7 @@ def weekly(paths: state.Paths, now: datetime, arm: date, through: date, ledger: 
     due = open_[-1] if open_ else None
     if due is None and not (first and not runs):
         return out
-    rows = state.rows(paths.log("days"))
+    rows = [r for r in state.rows(paths.log("days")) if not skips.is_skip(r)]
     value = float(rows[-1]["value_1x"]) if rows else scorecard.POT_GBP
     closes = live.bars(engine.TICKER, "LSE", through, clean_root=clean_root)["close"]
     if closes.empty:
@@ -194,7 +198,7 @@ def weekly(paths: state.Paths, now: datetime, arm: date, through: date, ledger: 
 
 def today_line(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd.DataFrame,
                through: date, red: Sequence[str]) -> list[str]:
-    rows, stop = state.rows(paths.log("days")), advisor_stop(ledger)
+    rows, stop = [r for r in state.rows(paths.log("days")) if not skips.is_skip(r)], advisor_stop(ledger)
     have: date = min(through, live.days_of(bars.index, "LSE")[-1]) if len(bars) else through   # QT-25: VWRL's own
     out = []
     if have < (last := last_finished(now)):
@@ -214,7 +218,7 @@ def today_line(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd
 
 def write_page(now: datetime, paths: state.Paths, arm: date, lines: Sequence[str]) -> None:
     status = {"line": next((x for x in reversed(lines) if x.startswith(("holding", "in cash"))), "no line"),
-              "warnings": [x for x in lines if x.startswith(("UNCHECKED", "RED", "the weekly"))],
+              "warnings": [x for x in lines if x.startswith(("UNCHECKED", "SKIPPED", "RED", "the weekly"))],
               "reconciled": "OK" if "reconciled: OK" in lines else "RED"}
     text = page.build(now, arm=arm, days=state.rows(paths.log("days")),
                       suggestions=state.rows(paths.log("suggestions")), runs=state.rows(paths.log("runs")),

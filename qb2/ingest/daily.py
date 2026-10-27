@@ -23,6 +23,8 @@ pence dividend with a pound price and condemns every London payer.
 the moment it was taken: fetched before its session closed (a 09:25 New York pre-open
 ^VIX, a 13:10 New York share mid-session) it is a snapshot, not a close. Such a row is
 refused, said in the manifest and the "Daily store:" line, and taken by the next top-up.
+**A sane stored row outlives a broken re-fetch (QT-26 B):** kept and said, and the quarantine only
+grows (refetch.py: VWRL.L's Fri 23 Oct row, lost on Mon 26 Oct to a re-fetch without its close).
 """
 
 from __future__ import annotations
@@ -37,6 +39,7 @@ import pandas as pd
 from qb2.data import cross_bar, universe
 from qb2.data.front_door import (CLEAN, PENCE, WriterLock, _append_manifest,
                                  _write_parquet_atomically, impossible_rows, to_pounds)
+from qb2.ingest import refetch
 from qb2.ingest.recorder import EXCHANGE_TZ
 
 FX_PAIR = "GBPUSD=X"
@@ -56,6 +59,8 @@ class DailyOutcome:
     saved: dict[str, int] = field(default_factory=dict)
     lost: dict[str, str] = field(default_factory=dict)
     refused: dict[str, list[str]] = field(default_factory=dict)    # symbol -> sessions not closed
+    kept: dict[str, list[str]] = field(default_factory=dict)       # symbol -> stored rows kept (QT-26)
+    corrected: dict[str, list[list[object]]] = field(default_factory=dict)   # [session, old, new]
     quarantined: int = 0
 
 
@@ -145,16 +150,15 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
 
             bad = impossible_rows(frame) if set(COLUMNS) <= set(frame.columns) \
                 else pd.Series(False, index=frame.index)
+            broken = set(pd.DatetimeIndex(frame.index[(bad & ~unclosed(frame, market, moment)).to_numpy()]).date)
             if bool(bad.any()):
                 # KEPT, not dropped. These are real and worth seeing: BP.L has a
                 # day whose open sits above its own high, and the GBP/USD series
                 # has days where the close exceeds the high by about 0.002% --
                 # rounding inside the provider's own aggregation. Dropping them
-                # silently would hide a genuine bad bar among harmless ones.
-                quarantine = (clean_root or CLEAN) / "quarantine" / "daily"
-                quarantine.mkdir(parents=True, exist_ok=True)
-                _write_parquet_atomically(
-                    frame[bad], quarantine / f"{symbol}-impossible.parquet")
+                # silently would hide a genuine bad bar among harmless ones. Added to, never rewritten.
+                refetch.set_aside(frame[bad], (clean_root or CLEAN) / "quarantine" / "daily"
+                                  / f"{symbol}-impossible.parquet")
                 _append_manifest({
                     "event": "quarantine", "table": "daily", "symbol": symbol,
                     "at": moment.isoformat(timespec="seconds"),
@@ -169,8 +173,7 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
 
             frame, converted = to_pounds(frame, currency)
             stored = "GBP" if currency in PENCE else currency
-            frame = frame.copy()
-            frame["currency"] = stored
+            frame = frame.assign(currency=stored)
             if market is not None and getattr(frame.index, "tz", None) is not None:
                 # QT-24, as QT-15 A2 for the minute bars: the exchange's own clock, whatever
                 # label the provider carries (^VIX arrives on Chicago's)
@@ -182,7 +185,11 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
                                   "at": moment.isoformat(timespec="seconds"), "reason": NOT_CLOSED,
                                   "closes": [float(x) for x in frame["close"].to_numpy()[early]]}, clean_root)
                 frame = frame[~early]
-            frame, moved = cross_bar.apply(frame, symbol, kind, now=moment,   # QT-21: every write
+            merged = refetch.merge(frame, load(symbol, clean_root), broken, judged=market is not None)  # QT-26 B
+            refetch.say(merged, symbol, moment, clean_root)
+            outcome.kept.update({symbol: merged.kept} if merged.kept else {})
+            outcome.corrected.update({symbol: merged.corrected} if merged.corrected else {})
+            frame, moved = cross_bar.apply(merged.frame, symbol, kind, now=moment,   # QT-21: every write
                                            clean_root=clean_root)
             outcome.quarantined += moved
             if frame.empty:
