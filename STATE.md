@@ -4,7 +4,7 @@ Updated: 2026-10-27. History → docs/archive/STATE_2026-10-27_QT25.md (verbatim
 QT-26 → docs/reports/QT-26.md.
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN (paused); S9 OPEN — the advisor is LIVE (armed
-2026-10-20, first as-if fill 21 Oct)**. No pick has survived (S6 0/24, S9 0/12, P19 0/18).
+2026-10-20, first as-if fill 21 Oct)** (S3 close = QT-13 + QT-13b). No pick has survived (S6 0/24, S9 0/12, P19 0/18).
 **Trial count N = 56**. Sender disarmed. No holdout ever opened.
 
 ## The resource cap (operator's words below: a FENCE)
