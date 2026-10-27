@@ -1,46 +1,45 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-26. History → docs/archive/STATE_2026-10-26_QT24.md (verbatim). Box done:
-QT-25 → docs/reports/QT-25.md.
+Updated: 2026-10-27. History → docs/archive/STATE_2026-10-27_QT25.md (verbatim). Box done:
+QT-26 → docs/reports/QT-26.md.
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN (paused); S9 OPEN — the advisor is LIVE (armed
-2026-10-20, first as-if fill 21 Oct)** (S3 close = QT-13 + QT-13b). No pick has survived (S6 0/24,
-S9 0/12, P19 0/18). **Trial count N = 56** (S-07 described). Sender disarmed. No holdout ever opened.
+2026-10-20, first as-if fill 21 Oct)**. No pick has survived (S6 0/24, S9 0/12, P19 0/18).
+**Trial count N = 56**. Sender disarmed. No holdout ever opened.
 
 ## The resource cap (operator's words below: a FENCE)
 Every heavy run: `.venv-qb2/Scripts/python -m qb2.tools.capped -- <cmd>` — one shared Job
 Object: CPU 80% + 12 of 16 processors, 80% of RAM, below-normal priority; whole-PC memory ≥ 80%
-waits, ≥ 90% for 60 s (or ≥ 95%) stops. Heavy entry points and the qb2 suite refuse outside it;
-QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
+waits, ≥ 90% for 60 s (or ≥ 95%) stops. QB2-Recorder/QB2-StatusPush wrap themselves.
+Diary: logs/cap/cap.log.
 
 ## The advisor, live
 - **ADV-0 = hold VWRL** (IE00B3RBWM25, GBP, London), stop 15% below the highest close (10% when
   unsettled), raise-only; crossed = URGENT-EXIT alert, never a sale; re-buy 10% above the low.
-- **As-if BUY at Wed 21 Oct's open £138.38**, stop £117.91. Thu 22 Oct: £6,919.37 at 1x, £6,905.52
-  at 2x (by hand, QT-25). **Friday's review (23 Oct 17:10 UTC): HOLD.**
-- **Fri 23 Oct NOT processed yet:** Monday's provider bar for VWRL had no close (quarantined).
-  The page says UNCHECKED, RED from Mon 10:00 UK (runs NOT CLEAN) until a sane close arrives.
-- **Timing:** a session is final once London AND New York have closed (own clocks): 21:00 UK
-  normally, **20:00 UK this week** (US clocks change Sun 1 Nov); figures come with the next run.
-- **Daily door (QT-25 B):** a row fetched before its session closed is refused (manifest
-  "refused", named in the "Daily store" line); the next top-up takes it.
-- **5m bars (QT-25 C):** NOT YET DUE until their catch-up (20:00 UK or both markets shut); RED after.
-- **^VIX** in the daily top-up; RED if it trails VWRL by > 1 London session.
-- **Brake:** after an URGENT-EXIT his words also clear the advisor's 10% brake (GO below):
+- **As-if BUY at Wed 21 Oct's open £138.38**, stop £117.91. Fri 23 Oct £6,916.34, Mon 26 Oct
+  **£6,945.11** at 1x (£6,931.22 at 2x), by hand (QT-26). Friday's review: HOLD.
+- **S-07** first decision Fri 23 Oct's close (Sep 140.29 > 10-month avg 131.66): as-if BUY at Mon
+  26 Oct's open £136.72; +0.42% at 1x on 26 Oct. S-01..S-06 in cash since 20 Oct.
+- **Timing:** a session is final once London AND New York have closed: **20:00 UK this week**,
+  21:00 UK from Mon 2 Nov (US clocks change Sun 1 Nov); figures come with the next run.
+- **Daily door:** refuses a row fetched before its session closed (QT-25 B). **QT-26 B:** a sane
+  stored row whose re-fetch comes back broken is KEPT; a changed close is taken and named with both
+  figures; the quarantine only grows (refetch.py). All named in the "Daily store" line.
+- **QT-26 C:** a London session VWRL lacks between good days = a SKIPPED row in days.jsonl, named
+  "UNCHECKED: <date> has no sane VWRL close" every run and on the page; a late close is final
+  (never re-processed). skips.py.
+- 5m bars NOT YET DUE until their catch-up; ^VIX RED if it trails VWRL by > 1 London session.
+- **Brake:** after an URGENT-EXIT his words also clear the advisor's 10% brake:
   `python -m qb2.tools.clear_pause --pot advisor --words "..."`.
-- **Shadows:** S-01..S-06 from 20 Oct; **S-07** (registered cd3e863) day 0 = 23 Oct: first decision
-  at Fri 23 Oct's close → as-if BUY at Mon 26 Oct's open. Both wait for VWRL's 23 Oct close.
-- Described 2014–2025 at 2×: ADV-0 +173.3%, S-07 +145.0%, plain VWRL +268.7% (QT-24 report).
 - Files: data/qb2/advisor/, stops.jsonl, brakes.jsonl; page `status/advisor.md` (status branch).
 
 ## NEXT
-1. **Mentor writes the next box.** Check first: Mon 26 Oct's 20:00 UK run. VWRL's 23 Oct close back
-   sane? Yes: days 23 + 26, S-07's first row and BUY at 26 Oct's open, RED gone. No: Monday done,
-   Friday passed over silently (PROPOSE 2), S-07's first decision moves to Fri 30 Oct.
-2. From Mon 2 Nov New York closes at 21:00 UK again.
-3. PROPOSE: QT-25 report's list (first: the door keeps a sane stored row a re-fetch brings back
-   broken; the advisor names a skipped session); MANUAL's re-justify (R4); scale check (SCARS #3).
-4. OPERATOR: keep the PC on or asleep (it wakes itself at 07:00) on weekdays.
+1. **Mentor writes the next box.** Check: tonight's 20:00 UK run is the first top-up on QT-26's
+   door — read its "Daily store" line (any "kept" or "corrected" names, and why).
+2. PROPOSE (QT-26 report): fingerprint (a)'s "no file" counting; GBPUSD cut-off; ^VIX Cboe
+   calendar; MANUAL's re-justify (R4); scale check (SCARS #3); Windows task-history log; a row the
+   provider leaves out altogether.
+3. OPERATOR: keep the PC on or asleep (it wakes itself at 07:00) on weekdays.
 
 ## DECISION REQUESTED (open)
 - **D1 advisor risk rule.** Default: the 1% rule stays the ceiling. GO words: "GO on D1: for
@@ -74,14 +73,13 @@ QB2-Recorder/QB2-StatusPush wrap themselves. Diary: logs/cap/cap.log.
 ## CARRIED
 - GOOG/GOOGL and VUAG/VUSA each count as ONE bet when the bot trades (bet_groups.json v1).
   FX 0.15% per leg on non-sterling lines. MTLN.L (EUR) skipped: no EUR rate.
-- Parked: v1 revive-or-retire (its daily task fails since 28 Jul). 5m known-null to re-prove.
-- QT-23 stash "QT-23-interrupted" kept (superseded by B; never deleted).
+- Parked: v1 revive-or-retire. 5m known-null to re-prove. QT-23 stash "QT-23-interrupted" kept.
 
 ## Open flags
-- Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned); clean_step.py
-  at 250. 52 mypy errors silenced in 5 inherited modules; 4 known Qt-stub errors.
+- Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned); clean_step.py,
+  ingest/daily.py, advisor/daily.py at 250. 52 mypy errors silenced in 5 inherited modules; 4 known
+  Qt-stub errors.
 
 ## Fingerprints
-v1 4add56ec…743b6 (unchanged). Advisor daily (a) 6883791f…97b1 since 26 Oct 06:17 UTC (BBY.L's
-first earnings row; = 0f3a960c…f1f9 counted as before: no data in its window moved), (b)
-f7aae670…768e (unchanged).
+v1 4add56ec…743b6 (unchanged). Advisor daily (a) 6883791f…97b1, (b) f7aae670…768e (both
+unchanged, QT-26).
