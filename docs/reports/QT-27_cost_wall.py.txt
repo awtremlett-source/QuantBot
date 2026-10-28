@@ -1,0 +1,95 @@
+"""QT-27 C: the cost wall, DESCRIBED (read-only, not counted, unsealed data only).
+
+C1: per sleeve, the round-trip cost at 1x and 2x, and over 2024-02-01 -> 2026-07-10 the
+move from batch 2's fill (bar 3's open, decided at bar 1's close) to E's open (the P4 cut)
+per name-day, no stop: its median size, and the share of name-days that rose by more than
+the 2x round-trip cost.
+C2: VWRL daily 2014-03-31 -> 2025-10-09 (VWRP from its first stored bar, 2019-08-13), total
+return split into overnight (close -> next open, dividends credited at the ex-date's open)
+and daytime (open -> close).
+Run from the repo root under the cap:  python -I <this file> <out.json>
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from datetime import date
+from pathlib import Path
+
+import numpy as np
+
+sys.path.insert(0, str(Path.cwd()))
+
+from qb2.data import universe  # noqa: E402
+from qb2.execution import costs  # noqa: E402
+from qb2.research import advisor_rules, fills, holdout  # noqa: E402
+from qb2.research.names import instrument_of  # noqa: E402
+from qb2.signals import s6_rules  # noqa: E402
+from qb2.tools.governor import assert_capped  # noqa: E402
+
+assert_capped()
+FIRST, LAST = date(2024, 2, 1), date(2026, 7, 10)
+OPEN = {"US": "09:30", "LSE": "08:00"}
+out: dict[str, object] = {"c1": {}, "c2": {}}
+
+by_sleeve: dict[str, dict[str, object]] = {}
+for entry in universe.bot_entries():
+    symbol, market, sleeve = str(entry["yfinance"]), universe.market_of(entry), str(entry["sleeve"])
+    inst = instrument_of(entry)
+    row = by_sleeve.setdefault(sleeve, {
+        "cost_1x": costs.round_trip(inst, 300.0).fraction,
+        "cost_2x": costs.round_trip(inst, 300.0, stress=2.0).fraction, "moves": [], "names": 0,
+        "no_bars": []})
+    try:
+        bars = holdout.research_bars(symbol, "1h", market)
+    except Exception as why:                       # noqa: BLE001 - named, never silent
+        row["no_bars"].append(f"{symbol}: {why}")  # type: ignore[union-attr]
+        continue
+    if len(bars) < 2:
+        row["no_bars"].append(f"{symbol}: no unsealed 1h bars")  # type: ignore[union-attr]
+        continue
+    row["names"] = int(row["names"]) + 1  # type: ignore[call-overload]
+    plan = fills.schedule(bars.index, "1h", market)
+    opens = bars["open"].to_numpy(dtype=float)
+    local = bars.index.strftime("%H:%M")
+    for s0, s1, day in s6_rules.sessions(bars.index, market):
+        if not FIRST <= day <= LAST or local[s0] != OPEN[market]:
+            continue
+        e = s6_rules.exit_bar(plan, s0, s1)
+        f = int(plan.fills[s0])
+        if e is None or not plan.usable[s0] or f >= e:
+            continue
+        row["moves"].append(opens[e] / opens[f] - 1.0)  # type: ignore[union-attr]
+
+for sleeve, row in sorted(by_sleeve.items()):
+    m = np.asarray(row["moves"], dtype=float)
+    c1, c2 = float(row["cost_1x"]), float(row["cost_2x"])  # type: ignore[arg-type]
+    out["c1"][sleeve] = {  # type: ignore[index]
+        "names": row["names"], "name_days": int(len(m)), "cost_1x": c1, "cost_2x": c2,
+        "median_abs_move": float(np.median(np.abs(m))), "mean_move": float(m.mean()),
+        "share_up_beyond_2x": float((m > c2).mean()), "share_up_beyond_1x": float((m > c1).mean()),
+        "share_down_beyond_2x": float((m < -c2).mean()), "no_bars": row["no_bars"]}
+
+
+def split(symbol: str, first: date, dividends: bool) -> dict[str, object]:
+    bars = holdout.research_bars(symbol, "1d", "LSE")
+    days = bars.index.date
+    bars = bars[(days >= first)]
+    o, c = bars["open"].to_numpy(dtype=float), bars["close"].to_numpy(dtype=float)
+    income, seen = (advisor_rules.income(symbol, "LSE", bars) if dividends
+                    else (np.zeros(len(bars)), {"credited": 0, "not_ok": 0}))
+    night = o[1:] / c[:-1] - 1.0 + income[1:]
+    day = c[1:] / o[1:] - 1.0
+    flat_open = int((o == c).sum())
+    return {"first": str(bars.index[0].date()), "last": str(bars.index[-1].date()), "bars": len(bars),
+            "total": float(np.prod(1 + night) * np.prod(1 + day) - 1), "overnight": float(np.prod(1 + night) - 1),
+            "daytime": float(np.prod(1 + day) - 1), "dividends_credited": seen["credited"],
+            "dividends_not_ok": seen["not_ok"], "bars_open_equals_close": flat_open}
+
+
+out["c2"] = {"VWRL.L": split("VWRL.L", date(2014, 3, 31), True),
+             "VWRP.L": split("VWRP.L", date(2014, 3, 31), False)}
+Path(sys.argv[1]).write_text(json.dumps(out, indent=1), encoding="utf-8")
+print(json.dumps({k: {s: {x: v for x, v in d.items() if x != "no_bars"} for s, d in out[k].items()}  # type: ignore[union-attr]
+                  for k in out}, indent=1))

@@ -1,0 +1,66 @@
+{
+ "c1": {
+  "uk_etf": {
+   "names": 9,
+   "name_days": 5260,
+   "cost_1x": 0.0020000000000000005,
+   "cost_2x": 0.004000000000000001,
+   "median_abs_move": 0.0030797273813834014,
+   "mean_move": 2.4618634540909248e-05,
+   "share_up_beyond_2x": 0.20437262357414449,
+   "share_up_beyond_1x": 0.33326996197718634,
+   "share_down_beyond_2x": 0.19467680608365018,
+   "no_bars": [
+    "VALL.L: no unsealed 1h bars"
+   ]
+  },
+  "uk_share": {
+   "names": 10,
+   "name_days": 6160,
+   "cost_1x": 0.007,
+   "cost_2x": 0.014,
+   "median_abs_move": 0.0055653749786690465,
+   "mean_move": 0.00010853638541206475,
+   "share_up_beyond_2x": 0.06525974025974025,
+   "share_up_beyond_1x": 0.2073051948051948,
+   "share_down_beyond_2x": 0.07224025974025974,
+   "no_bars": []
+  },
+  "us_liquid": {
+   "names": 30,
+   "name_days": 17713,
+   "cost_1x": 0.004000000000000001,
+   "cost_2x": 0.008000000000000002,
+   "median_abs_move": 0.0060230542409160925,
+   "mean_move": 0.00034357944515230114,
+   "share_up_beyond_2x": 0.19996612657370294,
+   "share_up_beyond_1x": 0.33156438773781965,
+   "share_down_beyond_2x": 0.19048156721052334,
+   "no_bars": []
+  }
+ },
+ "c2": {
+  "VWRL.L": {
+   "first": "2014-03-31",
+   "last": "2025-10-09",
+   "bars": 2743,
+   "total": 2.7161375714160245,
+   "overnight": 7.974390322153914,
+   "daytime": -0.5859175455916512,
+   "dividends_credited": 46,
+   "dividends_not_ok": 0,
+   "bars_open_equals_close": 22
+  },
+  "VWRP.L": {
+   "first": "2019-08-13",
+   "last": "2025-10-09",
+   "bars": 1439,
+   "total": 0.945396144204447,
+   "overnight": 2.1927880196749943,
+   "daytime": -0.3906904773457287,
+   "dividends_credited": 0,
+   "dividends_not_ok": 0,
+   "bars_open_equals_close": 25
+  }
+ }
+}
