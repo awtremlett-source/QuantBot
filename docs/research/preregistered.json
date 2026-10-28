@@ -2852,6 +2852,115 @@
    "expect": "FAIL",
    "gate": "GREEN when, for each model at 1x and 2x, the verdict is not PASS and costs are what reject it: a net mean per bar not above zero, or too few trades because few forecasts clear the cost bar (INSUFFICIENT)",
    "red_first": "costs off (the cost model returns zero on every leg AND in the trade rule's cost bar) -> RED when the net mean per bar turns positive and the luck test passes, or the verdict is PASS, on at least one model. The full verdict is reported beside it: a PASS also needs VWRP beaten, and 3 slots of 19 earning +0.5x cost compound to roughly +20% over the period, so the box's literal 'turns PASS' is not expected even with costs off; the gate's own check (costs) turning is the red. Not seen = NOT PROVEN -> STOP rule (no trial run)."
+  },
+  {
+   "id": "KN-CM-NULL-v2",
+   "kind": "drill",
+   "rule": "cm_null",
+   "name": "the worthless are rejected (Gate 1), v2: KN-CM-NULL's null, judged by the firewall's own verdict: both models must be not PASS at 1x and 2x on the LON arm",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "models": [
+     "ridge",
+     "gbt"
+    ],
+    "as_trials": "everything as CM-L-LON / CM-G-LON (features, target, walk-forward, trade rule, stop, grading) except the line below",
+    "shuffle": "targets shuffled across names within each session: done from the feature side -- each session's eligible feature vectors are permuted among that session's names (numpy default_rng([0, the session's date ordinal])), so each name keeps its own real price moves and its trades earn them. For the fit this is the same shuffle as permuting the targets; it is done this way so the model never scores REAL features at test time (a model fit on shuffled targets but applied to real features could still pick by a real, if accidental, pattern -- not a null).",
+    "stresses": [
+     1.0,
+     2.0
+    ]
+   },
+   "side": "long-only",
+   "holdout": "no holdout run (a measuring instrument)",
+   "expect": "not PASS",
+   "gate": "GREEN when the verdict is not PASS (FAIL or INSUFFICIENT: the firewall's own meaning of rejected) in all 4 runs: ridge and gbt, each at 1x and 2x. Any PASS = RED. Nothing stricter (no separate luck-p condition), nothing looser.",
+   "date": "2026-10-28",
+   "source": "QT-28 box B (drills v2: the model's birth certificate re-registered BEFORE any v2 drill code or run); honest runs logged kind=drill, counted 0; red-firsts on deliberately broken code logged nowhere",
+   "note": "Why v2 (QT-28 box B): KN-CM-NULL, KN-CM-EDGE and KN-CM-BELOW (register commit 6be96dad) were run in QT-27 E (docs/research/known_null_2026-10-28_QT27_cm.md). By the firewall's own verdicts the bench behaved (EDGE PASS 4 of 4; NULL and BELOW never PASS, 8 of 8), but two gates were worded more strictly than the firewall's own definitions -- NULL asked for a luck p >= 0.05, whereas the firewall's Gate 1 is luck p < 0.05 AND a positive net mean per bar (qb2/research/verdict.py, QT-17 A2), and BELOW asked for a net mean not above zero, whereas 'rejected' is any verdict that is not PASS -- and BELOW's costs-off red-first could not show at X = 0.5 x the 1x round trip. Said plainly: v2's wording was written AFTER v1's drill results were seen. Drills are not counted (kind drill, counted 0). The six trials (CM-L-US, CM-L-LON, CM-L-MIX, CM-G-US, CM-G-LON, CM-G-MIX, register commit 6be96dad) are untouched by this entry and their results are unseen -- none of them has ever been run. v2 only brings the drill words into line with the firewall's own definitions (and re-sizes BELOW by the written rule in KN-CM-BELOW-v2). Same data, arm, models, folds, costs and scratch copies as v1. STOP rule (QT-28 B5, repeated here): if ANY v2 gate is RED or ANY required red-first is NOT SEEN -> the birth certificate is NOT PROVEN -> the six trials do NOT run, and there is NO v3 in this box. Expected for the honest runs (v1 already seen, same seeds and data): INSUFFICIENT in all 4 (QT-27 E1) -> GREEN.",
+   "red_first": "fold boundary leaked (as KN-CM-NULL's: each block's model also fit on its own test sessions, the boundary moved to the end of the block it predicts), both models, 1x, logged nowhere -> SEEN when the gradient-boosted model clears Gate 1 as the firewall defines it: the luck test's p < 0.05 AND a positive net mean per bar (verdict.py's 'luck' and 'positive' checks), or its verdict is PASS. Required on gbt (as registered in v1, M11); ridge reported. Full verdicts reported beside. NOT SEEN = NOT PROVEN -> STOP rule. Expected (v1 already seen, same seeds): gbt clears Gate 1 as in QT-27 E3 (p 0.005, a positive net mean) -> SEEN."
+  },
+  {
+   "id": "KN-CM-EDGE-v2",
+   "kind": "drill",
+   "rule": "cm_planted",
+   "name": "the exploitable passes after costs (Gate 2), v2: KN-CM-EDGE's plant (3 x the 2x round trip), judged by the firewall's own verdict: PASS for both models at 1x and 2x",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "models": [
+     "ridge",
+     "gbt"
+    ],
+    "as_trials": "everything as CM-L-LON / CM-G-LON (features, target, walk-forward, trade rule, stop, grading) except the line below",
+    "plant": "F_p = one N(0,1) draw per (bet, session), numpy default_rng([0, the bet's index, the session's date ordinal]), both lines of a bet sharing it; given to both models as an 18th feature (drills only). Every name of the arm is planted: on a name's sessions with F_p > 0 its fill -> E return gets +X -- on a COPY of its bars (never the store) the fill bar's high, low and close and every price of the session's later bars are multiplied by (1 + X); the fill bar's open (the entry) is unchanged, high/low re-formed, the next session unscaled. X is sized to the name's own round-trip cost (costs.round_trip at GBP 300).",
+    "x": "3 x the name's own 2x round-trip cost",
+    "stresses": [
+     1.0,
+     2.0
+    ]
+   },
+   "side": "long-only",
+   "holdout": "no holdout run (a measuring instrument)",
+   "expect": "PASS",
+   "gate": "GREEN when the verdict is PASS for ridge AND gbt at 1x AND 2x (4 of 4). Anything else = RED.",
+   "date": "2026-10-28",
+   "source": "QT-28 box B (drills v2: the model's birth certificate re-registered BEFORE any v2 drill code or run); honest runs logged kind=drill, counted 0; red-firsts on deliberately broken code logged nowhere",
+   "note": "Why v2 (QT-28 box B): KN-CM-NULL, KN-CM-EDGE and KN-CM-BELOW (register commit 6be96dad) were run in QT-27 E (docs/research/known_null_2026-10-28_QT27_cm.md). By the firewall's own verdicts the bench behaved (EDGE PASS 4 of 4; NULL and BELOW never PASS, 8 of 8), but two gates were worded more strictly than the firewall's own definitions -- NULL asked for a luck p >= 0.05, whereas the firewall's Gate 1 is luck p < 0.05 AND a positive net mean per bar (qb2/research/verdict.py, QT-17 A2), and BELOW asked for a net mean not above zero, whereas 'rejected' is any verdict that is not PASS -- and BELOW's costs-off red-first could not show at X = 0.5 x the 1x round trip. Said plainly: v2's wording was written AFTER v1's drill results were seen. Drills are not counted (kind drill, counted 0). The six trials (CM-L-US, CM-L-LON, CM-L-MIX, CM-G-US, CM-G-LON, CM-G-MIX, register commit 6be96dad) are untouched by this entry and their results are unseen -- none of them has ever been run. v2 only brings the drill words into line with the firewall's own definitions (and re-sizes BELOW by the written rule in KN-CM-BELOW-v2). Same data, arm, models, folds, costs and scratch copies as v1. STOP rule (QT-28 B5, repeated here): if ANY v2 gate is RED or ANY required red-first is NOT SEEN -> the birth certificate is NOT PROVEN -> the six trials do NOT run, and there is NO v3 in this box. Expected for the honest runs (v1 already seen, same seeds and data): PASS in all 4 (QT-27 E1) -> GREEN."
+  },
+  {
+   "id": "KN-CM-BELOW-v2",
+   "kind": "drill",
+   "rule": "cm_planted",
+   "name": "an edge below costs is rejected (Gate 2), v2: the same plant at 0.9 x the 1x round-trip cost, judged by the firewall's own verdict: both models must be not PASS at 1x and 2x",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "models": [
+     "ridge",
+     "gbt"
+    ],
+    "as_trials": "everything as CM-L-LON / CM-G-LON (features, target, walk-forward, trade rule, stop, grading) except the line below",
+    "plant": "F_p = one N(0,1) draw per (bet, session), numpy default_rng([0, the bet's index, the session's date ordinal]), both lines of a bet sharing it; given to both models as an 18th feature (drills only). Every name of the arm is planted: on a name's sessions with F_p > 0 its fill -> E return gets +X -- on a COPY of its bars (never the store) the fill bar's high, low and close and every price of the session's later bars are multiplied by (1 + X); the fill bar's open (the entry) is unchanged, high/low re-formed, the next session unscaled. X is sized to the name's own round-trip cost (costs.round_trip at GBP 300).",
+    "x": "0.9 x the name's own 1x round-trip cost (k = 0.9, by the size rule in this entry's note)",
+    "stresses": [
+     1.0,
+     2.0
+    ],
+    "k": 0.9,
+    "k_ladder": [
+     0.7,
+     0.8,
+     0.9
+    ]
+   },
+   "side": "long-only",
+   "holdout": "no holdout run (a measuring instrument)",
+   "expect": "not PASS",
+   "gate": "GREEN when the verdict at real costs is not PASS (FAIL or INSUFFICIENT: the firewall's own meaning of rejected) in all 4 runs: ridge and gbt, each at 1x and 2x. Any PASS = RED.",
+   "date": "2026-10-28",
+   "source": "QT-28 box B (drills v2: the model's birth certificate re-registered BEFORE any v2 drill code or run); honest runs logged kind=drill, counted 0; red-firsts on deliberately broken code logged nowhere",
+   "note": "Why v2 (QT-28 box B): KN-CM-NULL, KN-CM-EDGE and KN-CM-BELOW (register commit 6be96dad) were run in QT-27 E (docs/research/known_null_2026-10-28_QT27_cm.md). By the firewall's own verdicts the bench behaved (EDGE PASS 4 of 4; NULL and BELOW never PASS, 8 of 8), but two gates were worded more strictly than the firewall's own definitions -- NULL asked for a luck p >= 0.05, whereas the firewall's Gate 1 is luck p < 0.05 AND a positive net mean per bar (qb2/research/verdict.py, QT-17 A2), and BELOW asked for a net mean not above zero, whereas 'rejected' is any verdict that is not PASS -- and BELOW's costs-off red-first could not show at X = 0.5 x the 1x round trip. Said plainly: v2's wording was written AFTER v1's drill results were seen. Drills are not counted (kind drill, counted 0). The six trials (CM-L-US, CM-L-LON, CM-L-MIX, CM-G-US, CM-G-LON, CM-G-MIX, register commit 6be96dad) are untouched by this entry and their results are unseen -- none of them has ever been run. v2 only brings the drill words into line with the firewall's own definitions (and re-sizes BELOW by the written rule in KN-CM-BELOW-v2). Same data, arm, models, folds, costs and scratch copies as v1. STOP rule (QT-28 B5, repeated here): if ANY v2 gate is RED or ANY required red-first is NOT SEEN -> the birth certificate is NOT PROVEN -> the six trials do NOT run, and there is NO v3 in this box. Size rule (QT-28 B2), written and committed BEFORE running: X = k x the name's own 1x round trip, k from the fixed ladder {0.7, 0.8, 0.9} (always below cost); pick the SMALLEST k whose projected costs-off luck p < 0.01 on at least one model, projecting by linear scaling of the z-score from QT-27's costs-off KN-CM-BELOW red-first at k = 0.5 (drill output, not a trial; 200 null runs, p = (count + 1) / 201): ridge p 20/201 = 0.0995, gbt p 32/201 = 0.1592. One-sided z = Phi^-1(1 - p): ridge 1.2844, gbt 0.9977; z(k) = z(0.5) x k / 0.5; projected p(k) = 1 - Phi(z(k)). k = 0.7: ridge z 1.7981, p 0.0361; gbt z 1.3968, p 0.0812. k = 0.8: ridge z 2.0550, p 0.0199; gbt z 1.5964, p 0.0552. k = 0.9: ridge z 2.3119, p 0.0104; gbt z 1.7959, p 0.0363. Even k = 0.9 projects p >= 0.01 (ridge 0.0104), so by the rule k = 0.9 is registered -- said so here. Expected result: costs off -> both models clear Gate 1 (projected p 0.010 ridge and 0.036 gbt, both below 0.05; net mean positive, as at k = 0.5: +9.41% ridge, +8.87% gbt) -> red-first SEEN; honest, at real costs -> not PASS for both models at 1x and 2x (each planted trade earns 0.9 x its 1x round trip and pays 1x or 2x of it: about -0.1 x the round trip net at 1x and -1.1 x at 2x; VWRP's +36.82% over the same dates is out of reach for 3 slots of 19) -> GREEN. A projection, not a promise: it assumes the luck z grows in proportion to X with the trades unchanged.",
+   "red_first": "costs off (as KN-CM-BELOW's: every leg 1e-12 in the firewall AND 1e-12 in the trade rule's cost bar; X keeps its registered size, 0.9 x the REAL 1x round trip), both models, 1x, logged nowhere -> SEEN when at least one model clears Gate 1 as the firewall defines it: the luck test's p < 0.05 AND a positive net mean per bar (verdict.py's 'luck' and 'positive' checks), or PASS: proof that the costs are what reject the honest runs. Full verdicts reported beside. NOT SEEN = NOT PROVEN -> STOP rule."
   }
  ],
  "promotion_gos": [
