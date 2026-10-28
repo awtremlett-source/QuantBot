@@ -1,0 +1,60 @@
+{
+ "id": "CM-L-US",
+ "bars": "1h",
+ "names": 30,
+ "effective_n": 29,
+ "skipped": [],
+ "oos_start": "2024-06-18",
+ "oos_end": "2026-07-10",
+ "n_bars": 3588,
+ "trades": 18,
+ "marked_2x": 0.01037871796817158,
+ "marked_1x": 0.012892133490382873,
+ "net_2x": 0.010393005994652205,
+ "gross": 0.015425901837806677,
+ "max_dd_2x": -0.0042733453035729285,
+ "sharpe": 0.01821728922967229,
+ "vwrp": 0.3757527856850209,
+ "vwrp_symbol": "VWRP.L",
+ "p": null,
+ "dsr": null,
+ "n_trials": null,
+ "null_mean": null,
+ "null_std": null,
+ "verdict": "INSUFFICIENT",
+ "reasons": [
+  "one bar carries 27% of the result's variance (more than 25%): a result made by one bar is not judged",
+  "only 18 out-of-sample trades (need 30)"
+ ],
+ "sleeves": {
+  "us_liquid": {
+   "names": 30,
+   "trades": 18,
+   "marked_2x": 0.01037871796817158
+  }
+ },
+ "report_md": "### CM-L-US -- INSUFFICIENT\n\n- Registered in commit `787d4a2788a9`; bars: 1h; costs at 2x; out-of-sample 2024-06-18 to 2026-07-10\n- Names: 30 (29 independent bets; 0 left out)\n\n| | total return | Sharpe / bar | annualised | max drawdown |\n|---|---|---|---|---|\n| strategy, gross (no costs) | +1.54% | 0.0268 | 1.13 | -0.28% |\n| strategy, net at 2x costs | +1.04% | 0.0182 | 0.77 | -0.43% |\n| strategy, net after survivorship mark-down | +1.04% | 0.0182 | 0.77 | -0.43% |\n| strategy, net at 1x costs | +1.29% | 0.0226 | 0.95 | -0.34% |\n| **benchmark VWRP.L** (same period) | **+37.58%** | | | |\n\n- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)\n- Mark-down: before +1.04%, after +1.04% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)\n- Out-of-sample trades: 18; bars: 3588; net mean per bar +0.00029% (Gate 1 needs it above zero)\n- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them\n- Verdict: INSUFFICIENT -- one bar carries 27% of the result's variance (more than 25%): a result made by one bar is not judged; only 18 out-of-sample trades (need 30)\n",
+ "describe": {
+  "oos_sessions": 516,
+  "oos_first": "2024-06-18",
+  "oos_last": "2026-07-10",
+  "rows_oos": 15187,
+  "rows_dropped": 841,
+  "picked_lines": 21,
+  "p15_refused": 3,
+  "bought_lines": 18,
+  "days_traded": 14,
+  "days_in_cash": 502,
+  "mean_prediction_bought": 0.009550868274105275,
+  "mean_realised_gross_bought": 0.02585052532769357,
+  "fits": 25,
+  "train_rows_last_fit": 18177
+ },
+ "arm": "US",
+ "model": "ridge",
+ "code_commit": "bdd31fcad5b2f1b93222751f6f0676507c93244c",
+ "fp_a": "ad36150c93b82e8976a8f0640be4262d8727a55de3e4fce08cc550b418708781",
+ "register_commit": "787d4a2788a9f555cf035d3c0cec79d4bfff81c4",
+ "run": 1,
+ "seconds": 134.7
+}

@@ -1,0 +1,69 @@
+{
+ "id": "CM-G-LON",
+ "bars": "1h",
+ "names": 19,
+ "effective_n": 18,
+ "skipped": [
+  "VALL.L: no unsealed 1h bars"
+ ],
+ "oos_start": "2024-06-19",
+ "oos_end": "2026-07-10",
+ "n_bars": 4678,
+ "trades": 92,
+ "marked_2x": -0.01989927743443276,
+ "marked_1x": -0.010488232399962327,
+ "net_2x": -0.01989927743443276,
+ "gross": -0.000987894578650672,
+ "max_dd_2x": -0.021919797440256406,
+ "sharpe": -0.029013535534189325,
+ "vwrp": 0.36817691232196204,
+ "vwrp_symbol": "VWRP.L",
+ "p": 0.06965174129353234,
+ "dsr": 1.0933534250745502e-06,
+ "n_trials": 62.0,
+ "null_mean": -0.05320763823022826,
+ "null_std": 0.014608719516067561,
+ "verdict": "FAIL",
+ "reasons": [
+  "failed: beats the turnover-matched luck test (p 0.0697 < 0.05)",
+  "failed: a positive net mean per bar (-0.00043% > 0)",
+  "failed: Deflated Sharpe 0.000 >= 0.95",
+  "failed: beats the benchmark (-1.99% vs +36.82%)"
+ ],
+ "sleeves": {
+  "uk_etf": {
+   "names": 9,
+   "trades": 92,
+   "marked_2x": -0.044354717864463655
+  },
+  "uk_share": {
+   "names": 10,
+   "trades": 0,
+   "marked_2x": 0.0
+  }
+ },
+ "report_md": "### CM-G-LON -- FAIL\n\n- Registered in commit `787d4a2788a9`; bars: 1h; costs at 2x; out-of-sample 2024-06-19 to 2026-07-10\n- Names: 19 (18 independent bets; 1 left out)\n\n| | total return | Sharpe / bar | annualised | max drawdown |\n|---|---|---|---|---|\n| strategy, gross (no costs) | -0.10% | -0.0014 | -0.06 | -1.08% |\n| strategy, net at 2x costs | -1.99% | -0.0290 | -1.22 | -2.19% |\n| strategy, net after survivorship mark-down | -1.99% | -0.0290 | -1.22 | -2.19% |\n| strategy, net at 1x costs | -1.05% | -0.0154 | -0.65 | -1.62% |\n| **benchmark VWRP.L** (same period) | **+36.82%** | | | |\n\n- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)\n- Mark-down: before -1.99%, after -1.99% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)\n- Out-of-sample trades: 92; bars: 4678; net mean per bar -0.00043% (Gate 1 needs it above zero)\n- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them\n- Luck test (turnover-matched null: the rule's own trades at random times): p = 0.0697 (null Sharpe/bar -0.0532 \u00b1 0.0146)\n- Coin-flip null (description only -- it churns, so a slow rule beats it on costs): p = 0.0050 (null Sharpe/bar -0.9791 \u00b1 0.0177)\n- Deflated Sharpe: 0.000 over 62 trials (luck ceiling 0.0417 per bar)\n- Verdict: FAIL -- failed: beats the turnover-matched luck test (p 0.0697 < 0.05); failed: a positive net mean per bar (-0.00043% > 0); failed: Deflated Sharpe 0.000 >= 0.95; failed: beats the benchmark (-1.99% vs +36.82%)\n",
+ "describe": {
+  "oos_sessions": 521,
+  "oos_first": "2024-06-19",
+  "oos_last": "2026-07-10",
+  "rows_oos": 7482,
+  "rows_dropped": 3607,
+  "picked_lines": 93,
+  "p15_refused": 1,
+  "bought_lines": 92,
+  "days_traded": 52,
+  "days_in_cash": 469,
+  "mean_prediction_bought": 0.005728905015474092,
+  "mean_realised_gross_bought": -0.0003431097436296756,
+  "fits": 25,
+  "train_rows_last_fit": 8464
+ },
+ "arm": "LON",
+ "model": "gbt",
+ "code_commit": "bdd31fcad5b2f1b93222751f6f0676507c93244c",
+ "fp_a": "ad36150c93b82e8976a8f0640be4262d8727a55de3e4fce08cc550b418708781",
+ "register_commit": "787d4a2788a9f555cf035d3c0cec79d4bfff81c4",
+ "run": 1,
+ "seconds": 86.1
+}

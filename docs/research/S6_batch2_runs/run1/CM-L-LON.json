@@ -1,0 +1,66 @@
+{
+ "id": "CM-L-LON",
+ "bars": "1h",
+ "names": 19,
+ "effective_n": 18,
+ "skipped": [
+  "VALL.L: no unsealed 1h bars"
+ ],
+ "oos_start": "2024-06-19",
+ "oos_end": "2026-07-10",
+ "n_bars": 4678,
+ "trades": 16,
+ "marked_2x": 0.003709249618448318,
+ "marked_1x": 0.005494814262800629,
+ "net_2x": 0.003709249618448318,
+ "gross": 0.007283344129474401,
+ "max_dd_2x": -0.003297505720908589,
+ "sharpe": 0.007856618382466611,
+ "vwrp": 0.36817691232196204,
+ "vwrp_symbol": "VWRP.L",
+ "p": null,
+ "dsr": null,
+ "n_trials": null,
+ "null_mean": null,
+ "null_std": null,
+ "verdict": "INSUFFICIENT",
+ "reasons": [
+  "only 16 out-of-sample trades (need 30)"
+ ],
+ "sleeves": {
+  "uk_etf": {
+   "names": 9,
+   "trades": 16,
+   "marked_2x": 0.008297121191446877
+  },
+  "uk_share": {
+   "names": 10,
+   "trades": 0,
+   "marked_2x": 0.0
+  }
+ },
+ "report_md": "### CM-L-LON -- INSUFFICIENT\n\n- Registered in commit `787d4a2788a9`; bars: 1h; costs at 2x; out-of-sample 2024-06-19 to 2026-07-10\n- Names: 19 (18 independent bets; 1 left out)\n\n| | total return | Sharpe / bar | annualised | max drawdown |\n|---|---|---|---|---|\n| strategy, gross (no costs) | +0.73% | 0.0156 | 0.65 | -0.27% |\n| strategy, net at 2x costs | +0.37% | 0.0079 | 0.33 | -0.33% |\n| strategy, net after survivorship mark-down | +0.37% | 0.0079 | 0.33 | -0.33% |\n| strategy, net at 1x costs | +0.55% | 0.0117 | 0.49 | -0.30% |\n| **benchmark VWRP.L** (same period) | **+36.82%** | | | |\n\n- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)\n- Mark-down: before +0.37%, after +0.37% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)\n- Out-of-sample trades: 16; bars: 4678; net mean per bar +0.00008% (Gate 1 needs it above zero)\n- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them\n- Verdict: INSUFFICIENT -- only 16 out-of-sample trades (need 30)\n",
+ "describe": {
+  "oos_sessions": 521,
+  "oos_first": "2024-06-19",
+  "oos_last": "2026-07-10",
+  "rows_oos": 7482,
+  "rows_dropped": 3607,
+  "picked_lines": 16,
+  "p15_refused": 0,
+  "bought_lines": 16,
+  "days_traded": 10,
+  "days_in_cash": 511,
+  "mean_prediction_bought": 0.005105505886861936,
+  "mean_realised_gross_bought": 0.00809208108510616,
+  "fits": 25,
+  "train_rows_last_fit": 8464
+ },
+ "arm": "LON",
+ "model": "ridge",
+ "code_commit": "bdd31fcad5b2f1b93222751f6f0676507c93244c",
+ "fp_a": "ad36150c93b82e8976a8f0640be4262d8727a55de3e4fce08cc550b418708781",
+ "register_commit": "787d4a2788a9f555cf035d3c0cec79d4bfff81c4",
+ "run": 1,
+ "seconds": 41.4
+}

@@ -1,47 +1,52 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-28. History → docs/archive/STATE_2026-10-28_QT26.md (verbatim). Box done:
-QT-27 → docs/reports/QT-27.md.
+Updated: 2026-10-28 (evening). History → docs/archive/STATE_2026-10-28_QT27.md (verbatim). Box done:
+QT-28 → docs/reports/QT-28.md (read its "For Tuesday" first).
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN; S9 OPEN — the advisor is LIVE (armed 2026-10-20)**
-(S3 close = QT-13 + QT-13b). No pick has survived (S6 0/24, S9 0/12, P19 0/18).
-**Trial count N = 56** (QT-27 ran no counted trial). Sender disarmed. No holdout ever opened.
+(S3 close = QT-13 + QT-13b). No pick has survived (S6 0/30, S9 0/12, P19 0/18).
+**Trial count N = 62** (QT-28 ran the six CM trials). Sender disarmed. No holdout ever opened.
 
-## QT-27: S6 batch 2, the combined model — registered and built, NOT run
-- Register **6be96dad** (alone, before code): CM-L/CM-G (ridge / gradient-boosted trees) × US/LON/MIX
-  = 6 trials, + drills KN-CM-NULL/EDGE/BELOW. Code **ef4fcd0** (qb2/model/, research/cm_*.py).
-- Known-null on LON: EDGE PASSED 4/4; NULL and BELOW rejected 8/8 by the firewall's own verdicts, but
-  RED by the stricter gate words registered that morning → **STOP rule: the 6 trials were not run.**
-  Red-firsts: the leaked fold boundary showed RED (gbt); costs off did NOT show. Details:
-  docs/research/known_null_2026-10-28_QT27_cm.md. No defect in bench or code: the drills' gate words
-  and the below-cost drill's size failed.
-- Cost wall (docs/research/cost_wall_2026-10-28.md, description only): fill→E moves are mostly smaller
-  than 2× costs; VWRL 2014–2025 made all its gain overnight (+797%), daytime −59%.
-- London's 08:00 hourly bar has zero volume every winter (Yahoo): F7 missing on 29% of London rows.
+## QT-28: S6 batch 2 run — 0 of 6 PASS
+- Drills v2 registered first, alone (**787d4a27**): gates = the firewall's own verdicts; BELOW sized by
+  a written rule (k = 0.9). Code **bdd31fca** (cm_drills only). Birth certificate **PROVEN**
+  (docs/research/known_null_2026-10-28_QT28_cm.md): null and below-cost never PASS, planted edge PASS
+  4/4, both red-firsts seen.
+- The six as registered (6be96dad; trial code = ef4fcd0's): ridge ×3 INSUFFICIENT (10–18 trades in two
+  years); gbt ×3 FAIL (−2.82% / −1.99% / −2.15% at 2× costs; VWRP +36.8% to +38.5%).
+  docs/research/S6_batch2_results_2026-10.md. Nothing survives → G3 default (a) holds: the bot stays off.
+- Cost wall (QT-27, description only): fill→E moves mostly below 2× costs; VWRL 2014–2025 made all its
+  gain overnight (+797%), daytime −59%.
 
 ## The resource cap (operator's words below: a FENCE)
 Every heavy run: `.venv-qb2/Scripts/python -m qb2.tools.capped -- <cmd>` (CPU 80%, 12 of 16
-processors, 80% RAM, below-normal priority). QT-27: `python -m qb2.tools.run_window` says whether a
-recorder run is in the way (hh:57 → "finished"); cm_run/cm_drills wait by themselves.
+processors, 80% RAM, below-normal priority). `python -m qb2.tools.run_window` says whether a recorder
+run is in the way; cm_run/cm_drills wait by themselves (s6_run, advisor_run, known_null do not yet).
 
 ## The advisor, live
 - **ADV-0 = hold VWRL**, stop 15% below the highest close (10% when unsettled), raise-only; crossed =
-  URGENT-EXIT alert, never a sale. **As-if BUY 21 Oct at £138.38. Tue 27 Oct £7,009.23 at 1x
-  (£6,995.20 at 2x), stop raised to £118.01**, by hand (QT-27). S-07: +1.35% / +1.14% on 27 Oct.
+  URGENT-EXIT alert, never a sale. **As-if BUY 21 Oct at £138.38. Wed 28 Oct £7,021.85 at 1x
+  (£7,007.80 at 2x), stop raised to £118.23**, by hand (QT-28). S-07: +1.53% / +1.33% on 28 Oct.
 - A session is final once London AND New York have closed: 20:00 UK this week, **21:00 UK from Mon
   2 Nov**. Daily door (QT-25/26): refuses unfinished rows, keeps a sane row a broken re-fetch would
-  replace, names corrections (27 Oct: ^VIX 26 Oct 18.43 → 18.39, fetched before Cboe's 16:15 close).
+  replace, names corrections (26 and 27 Oct: ^VIX fetched before Cboe's 16:15 close, e.g. 17.54 → 17.52).
 - **Brake:** after an URGENT-EXIT his words also clear the advisor's 10% brake:
   `python -m qb2.tools.clear_pause --pot advisor --words "..."`.
 
 ## NEXT
-1. **Mentor writes QT-28:** re-register the drills (v2) with gates = the firewall's own verdicts
-   (Gate 1 = luck AND a positive net mean; rejected = not PASS) BEFORE running; re-run the known-null
-   and red-firsts; then the 6 CM trials exactly as registered (N → 62). PROPOSE list: QT-27 report.
-2. OPERATOR: keep the PC on or asleep (it wakes itself at 07:00) on weekdays.
+1. **OPERATOR (away Thu 29 Oct → Mon 2 Nov, his words 2026-10-28): on Tuesday read QT-28's "For
+   Tuesday", then answer G3 below.** Nothing needs him before then.
+2. **Mentor writes QT-29:** G3 as he answers it; then QT-27 PROPOSE 2–6, deferred while he was away
+   (^VIX fetched after 16:20 New York first; run_window for the older runners). No new trial unless
+   registered first.
+3. OPERATOR: keep the PC on or asleep (it wakes itself at 07:00) on weekdays.
 
 ## DECISION REQUESTED (open)
-- **What the bot does next (G3)** — waits for the 6 trials; default (a) holds now: the bot stays off.
+- **G3 — what the bot does next (none of the six survived).** Default (a): the bot stays off and its
+  30% is not traded; the search reopens only with a genuinely new kind of information. GO words:
+  (b) "GO on bot holds: once the always-on PC (S13) runs, the bot may hold overnight with its stop
+  placed at Trading 212." (reopens P4) · (c) "GO on bot to index: until a bot strategy survives, the
+  bot's 30% follows ADV-0 with the big-fall stop."
 - **D1 advisor risk rule.** Default: the 1% rule stays. GO words: "GO on D1: for the advisor,
   replace the 1% rule with a cap on how much the account can lose if the stop is hit, figure chosen
   by S5's crash tests."
@@ -73,8 +78,9 @@ recorder run is in the way (hh:57 → "finished"); cm_run/cm_drills wait by them
 
 ## Open flags
 - Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned); clean_step.py,
-  ingest/daily.py, advisor/daily.py at 250. 52 mypy errors silenced in 5 inherited modules; 4 known
-  Qt-stub errors.
+  ingest/daily.py, advisor/daily.py at 250; cm_drills.py 247. 52 mypy errors silenced in 5 inherited
+  modules; 4 known Qt-stub errors.
 
 ## Fingerprints
-v1 4add56ec…743b6. Advisor daily (a) 6883791f…97b1, (b) f7aae670…768e (QT-27 end checks).
+v1 4add56ec…743b6. Advisor daily (a) 6883791f…97b1, (b) f7aae670…768e. Batch 2 trial data (a)
+ad36150c…8781, (b) 14a454fb…90dc (QT-28 end checks).

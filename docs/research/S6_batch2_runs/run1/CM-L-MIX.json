@@ -1,0 +1,71 @@
+{
+ "id": "CM-L-MIX",
+ "bars": "1h",
+ "names": 49,
+ "effective_n": 47,
+ "skipped": [
+  "VALL.L: no unsealed 1h bars"
+ ],
+ "oos_start": "2024-06-14",
+ "oos_end": "2026-07-10",
+ "n_bars": 8307,
+ "trades": 10,
+ "marked_2x": 0.0014106932911890357,
+ "marked_1x": 0.00200416288947447,
+ "net_2x": 0.0014126336821314034,
+ "gross": 0.0025999036133070863,
+ "max_dd_2x": -0.0017085947907605759,
+ "sharpe": 0.005646300587135928,
+ "vwrp": 0.3849011554734936,
+ "vwrp_symbol": "VWRP.L",
+ "p": null,
+ "dsr": null,
+ "n_trials": null,
+ "null_mean": null,
+ "null_std": null,
+ "verdict": "INSUFFICIENT",
+ "reasons": [
+  "only 10 out-of-sample trades (need 30)"
+ ],
+ "sleeves": {
+  "uk_etf": {
+   "names": 9,
+   "trades": 6,
+   "marked_2x": 0.001943867236478214
+  },
+  "uk_share": {
+   "names": 10,
+   "trades": 0,
+   "marked_2x": 0.0
+  },
+  "us_liquid": {
+   "names": 30,
+   "trades": 4,
+   "marked_2x": 0.0017369865120597794
+  }
+ },
+ "report_md": "### CM-L-MIX -- INSUFFICIENT\n\n- Registered in commit `787d4a2788a9`; bars: 1h; costs at 2x; out-of-sample 2024-06-14 to 2026-07-10\n- Names: 49 (47 independent bets; 1 left out)\n\n| | total return | Sharpe / bar | annualised | max drawdown |\n|---|---|---|---|---|\n| strategy, gross (no costs) | +0.26% | 0.0107 | 0.45 | -0.14% |\n| strategy, net at 2x costs | +0.14% | 0.0057 | 0.24 | -0.17% |\n| strategy, net after survivorship mark-down | +0.14% | 0.0056 | 0.24 | -0.17% |\n| strategy, net at 1x costs | +0.20% | 0.0082 | 0.34 | -0.16% |\n| **benchmark VWRP.L** (same period) | **+38.49%** | | | |\n\n- Benchmark: VWRP: Trading 212 VWRPl_EQ, ISIN IE00BK5BQT80, GBP, accumulating (Vanguard FTSE All-World (Acc)) (1h closes)\n- Mark-down: before +0.14%, after +0.14% (survivorship mark-down: 1.0%/yr held on single shares, 0 on ETFs -- a starting figure from published averages, not measured on these names)\n- Out-of-sample trades: 10; bars: 8307; net mean per bar +0.00002% (Gate 1 needs it above zero)\n- Brakes (P12) are a live safety layer and are NOT applied inside back-tests (QT-17 A3): the maximum drawdown above stands in for them\n- Verdict: INSUFFICIENT -- only 10 out-of-sample trades (need 30)\n",
+ "describe": {
+  "oos_sessions": 533,
+  "oos_first": "2024-06-14",
+  "oos_last": "2026-07-10",
+  "rows_oos": 22779,
+  "rows_dropped": 4448,
+  "picked_lines": 12,
+  "p15_refused": 2,
+  "bought_lines": 10,
+  "days_traded": 8,
+  "days_in_cash": 525,
+  "mean_prediction_bought": 0.007062377864950646,
+  "mean_realised_gross_bought": 0.011941377432227996,
+  "fits": 26,
+  "train_rows_last_fit": 26962
+ },
+ "arm": "MIX",
+ "model": "ridge",
+ "code_commit": "bdd31fcad5b2f1b93222751f6f0676507c93244c",
+ "fp_a": "ad36150c93b82e8976a8f0640be4262d8727a55de3e4fce08cc550b418708781",
+ "register_commit": "787d4a2788a9f555cf035d3c0cec79d4bfff81c4",
+ "run": 1,
+ "seconds": 173.8
+}

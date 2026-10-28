@@ -1,0 +1,13 @@
+{"at": "2026-10-28T21:59:00+00:00", "code_commit": "bdd31fcad5b2f1b93222751f6f0676507c93244c", "counted_before": 56, "event": "start", "fp_a": "ad36150c93b82e8976a8f0640be4262d8727a55de3e4fce08cc550b418708781", "fp_b": "14a454fbe9d0e3d19fa90dde5d482fa4b69159a18026a400e1a1f6ffcf5790dc", "reason": "first run", "run": 1}
+{"at": "2026-10-28T21:59:00+00:00", "event": "started", "id": "CM-L-US", "run": 1}
+{"at": "2026-10-28T22:01:15+00:00", "event": "done", "id": "CM-L-US", "run": 1, "seconds": 134.7, "verdict": "INSUFFICIENT"}
+{"at": "2026-10-28T22:01:15+00:00", "event": "started", "id": "CM-L-LON", "run": 1}
+{"at": "2026-10-28T22:01:56+00:00", "event": "done", "id": "CM-L-LON", "run": 1, "seconds": 41.4, "verdict": "INSUFFICIENT"}
+{"at": "2026-10-28T22:01:56+00:00", "event": "started", "id": "CM-L-MIX", "run": 1}
+{"at": "2026-10-28T22:04:50+00:00", "event": "done", "id": "CM-L-MIX", "run": 1, "seconds": 173.8, "verdict": "INSUFFICIENT"}
+{"at": "2026-10-28T22:04:50+00:00", "event": "started", "id": "CM-G-US", "run": 1}
+{"at": "2026-10-28T22:06:51+00:00", "event": "done", "id": "CM-G-US", "run": 1, "seconds": 121.3, "verdict": "FAIL"}
+{"at": "2026-10-28T22:06:52+00:00", "event": "started", "id": "CM-G-LON", "run": 1}
+{"at": "2026-10-28T22:08:18+00:00", "event": "done", "id": "CM-G-LON", "run": 1, "seconds": 86.1, "verdict": "FAIL"}
+{"at": "2026-10-28T22:08:18+00:00", "event": "started", "id": "CM-G-MIX", "run": 1}
+{"at": "2026-10-28T22:12:09+00:00", "event": "done", "id": "CM-G-MIX", "run": 1, "seconds": 231.7, "verdict": "FAIL"}
