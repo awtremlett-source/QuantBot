@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import replace
 from datetime import date
 
@@ -125,3 +126,21 @@ def test_unregistered_ids_and_drills_are_refused_as_trials() -> None:
         cm_run.require_trial("CM-Q-US")
     with pytest.raises(preregister.NotRegistered):
         cm_run.require_trial("KN-CM-NULL")
+
+
+def test_an_entry_unlike_what_the_code_implements_is_refused() -> None:
+    entry = preregister.entries()["CM-G-US"]
+    assert cm_run.check_entry(entry) == "gbt" and cm_run.check_entry(preregister.entries()["CM-L-MIX"]) == "ridge"
+    for path, value in ((("model_settings", "HistGradientBoostingRegressor", "max_iter"), 300),
+                        (("walk_forward", "refit_every_sessions"), 10), (("top",), 4), (("stop_k",), 2.0)):
+        bad = copy.deepcopy(entry)
+        node = bad["parameters"]
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = value
+        with pytest.raises(ValueError):
+            cm_run.check_entry(bad)
+    short = copy.deepcopy(entry)
+    short["parameters"]["features"] = short["parameters"]["features"][:16]
+    with pytest.raises(ValueError):
+        cm_run.check_entry(short)

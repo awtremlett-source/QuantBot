@@ -123,3 +123,8 @@ C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40
 FAILED tests/qb2/test_qt27_drills.py::test_the_page_names_each_gate_and_each_red_first
 1 failed in 1.58s
 [cap] finished with exit code 1; peak memory 1.08 GB of 25.35 GB
+
+================================================================================
+test_an_entry_unlike_what_the_code_implements_is_refused (added 07:35 UTC): cm_run.check_entry existed
+before its test, so its red-first is mutant M18 (the refusal switched off -> the test fails, rc 1;
+QT-27_mutants.txt), then green on the honest code.

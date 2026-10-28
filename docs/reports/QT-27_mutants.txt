@@ -26,3 +26,7 @@ M15 the hh:57 rule removed [qb2/tools/run_window.py]: KILLED (red, as it must be
 M16 an unfinished run not waited for [qb2/tools/run_window.py]: KILLED (red, as it must be); pytest rc 1: 2 failed in 0.46s; restored, sha256 matches c4e4b749d323
 17 mutants, 17 killed and restored, 0 not
 [cap] finished with exit code 0; peak memory 0.41 GB of 25.35 GB
+
+Added at 07:35 UTC after proofreading found the report claiming a check_entry test that did not exist:
+M18 an entry unlike the code accepted (check_entry's refusal off) [qb2/research/cm_run.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.64s; restored, sha256 matches 3db104fc0326
+18 mutants in all, 18 killed and restored.
