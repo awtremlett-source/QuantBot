@@ -49,11 +49,11 @@ this logic leaves NVDA or this laptop.
     (back-tests only, test_p15_history_wall.py) · p15_coverage.py · s6_run.py +
     s6_results.py (S6 batch 1) · signals/s6_rules.py · data/data_fingerprint.py ·
     (QT-21) data/cross_bar.py (daily unit-break/filler quarantine) · rank_null.py
-    · (QT-26) ingest/refetch.py (re-fetch vs store) · advisor/skips.py
+    · (QT-26) ingest/refetch.py (re-fetch vs store) · advisor/skips.py · (QT-27)
+    model/ + cm_*.py (S6 batch 2, the combined model) · tools/run_window.py
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
-    (which samples count: full calendar sessions, each bar once; the meter that
-    goes red when a session has under 3 samples) · status_push.py (QB2-StatusPush
+    (which samples count; red under 3 a session) · status_push.py (QB2-StatusPush
     task: hourly status file → orphan branch "status", secret scan first) · record_now.py (hourly top-up
     vs after-hours catch-up, under a single-writer lock, with a per-name ledger) ·
     run_recorder.bat (one log per run, kept 30 days) · fingerprint.py · clear_pause.py

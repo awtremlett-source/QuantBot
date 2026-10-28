@@ -1,0 +1,28 @@
+QT-27 mutants: each new check must go RED on a deliberately broken copy.
+Run in the build worktree (scratchpad git worktree at 6be96da + the new files), inside the cap, 06:45-06:46 UTC.
+Each mutant = one exact text replacement; the named tests run; the file restored and its SHA-256 checked.
+Script: the mutant list below is the whole of it (scratchpad/mutants.py, recorded here).
+M11 was first NOT APPLIED (the worktree checks qb2/signals/s6_rules.py out with CRLF line endings; the
+match then dropped its line ending) -- re-run, killed. Two tests were tightened BEFORE these runs because
+the mutants as first designed would have survived: the stop test's path (a lowered stop gave the same
+exit) and F6-F11 (no formula check). Batch 1's s6_rules.py and the firewall are unchanged (git status).
+----
+M1 ridge scaler fit on train + test rows [qb2/model/combined.py]: KILLED (red, as it must be); pytest rc 1: 1 failed, 1 passed in 3.25s; restored, sha256 matches 1a64efa9bba3
+M2 clip at the percentiles of ALL rows [qb2/model/combined.py]: KILLED (red, as it must be); pytest rc 1: 2 failed in 3.13s; restored, sha256 matches 1a64efa9bba3
+M3 embargo removed (train through first - 1) [qb2/model/combined.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.22s; restored, sha256 matches 1a64efa9bba3
+M4 gbt not seeded [qb2/model/combined.py]: KILLED (red, as it must be); pytest rc 1: 1 failed, 1 passed in 1.87s; restored, sha256 matches 1a64efa9bba3
+M5 cost bar >= instead of > [qb2/research/cm_book.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.43s; restored, sha256 matches bf924a79d997
+M6 ties broken by bet name descending [qb2/research/cm_book.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.45s; restored, sha256 matches bf924a79d997
+M7 bet groups ignored (each line its own bet) [qb2/research/cm_book.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.52s; restored, sha256 matches bf924a79d997
+M8 MIX ranked as one arm (reads the future for London) [qb2/research/cm_book.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.50s; restored, sha256 matches bf924a79d997
+M9 the target keeps P15 (a refused day loses its row) [qb2/research/cm_book.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.61s; restored, sha256 matches bf924a79d997
+M10 graded window one session short [qb2/research/cm_book.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.67s; restored, sha256 matches bf924a79d997
+M11 the stop lowered with the close (batch 1's Rule) [qb2/signals/s6_rules.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.63s; restored, sha256 matches 4ac736fdd657
+M12 a drill accepted as a trial [qb2/research/cm_run.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.65s; restored, sha256 matches 2e093e6c7779
+M13 F15 reads today's ^VIX close [qb2/model/features.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.72s; restored, sha256 matches 8d3d13333604
+M14 F7's volume mean includes today's bar 1 [qb2/model/features.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 1.95s; restored, sha256 matches 8d3d13333604
+M17 F1 reads bar 2's close (after the decision) [qb2/model/features.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 25.59s; restored, sha256 matches 8d3d13333604
+M15 the hh:57 rule removed [qb2/tools/run_window.py]: KILLED (red, as it must be); pytest rc 1: 1 failed in 0.41s; restored, sha256 matches c4e4b749d323
+M16 an unfinished run not waited for [qb2/tools/run_window.py]: KILLED (red, as it must be); pytest rc 1: 2 failed in 0.46s; restored, sha256 matches c4e4b749d323
+17 mutants, 17 killed and restored, 0 not
+[cap] finished with exit code 0; peak memory 0.41 GB of 25.35 GB

@@ -1,0 +1,41 @@
+"""QT-27 pipeline smoke on the REAL store: an instrument, not a test of anything counted.
+
+KN-CM-NULL (a drill), ridge, 1x, 2 null draws, logged NOWHERE -- to see the machinery run end to end on
+real bars and how long each step takes (QT-22's precedent: a smoke of a drill). Then the US and MIX arms'
+ROWS are built (features, targets, refit schedule) without any model fit or score: no trial figure exists.
+"""
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+from qb2.research import cm_arm, cm_drills, firewall, holdout, preregister, s6_run  # noqa: E402
+from qb2.tools.governor import assert_capped  # noqa: E402
+
+assert_capped()
+t = time.monotonic()
+token = preregister.require("KN-CM-NULL")
+base, skipped = firewall.load("1h", entries=s6_run.arm_entries(token.entry))
+vix = holdout.research_bars(cm_arm.VIX, "1h", "US")
+print(f"load {time.monotonic() - t:.0f}s: {len(base)} names, skipped {skipped}", flush=True)
+t = time.monotonic()
+arm = cm_drills.arm_for("KN-CM-NULL", base, skipped, vix)
+print(f"assemble {time.monotonic() - t:.0f}s: rows {len(arm.rows)}, dropped {arm.dropped}, sessions {len(arm.sessions)}"
+      f" {arm.sessions[0]} -> {arm.sessions[-1]}, targets {int(arm.rows['target'].notna().sum())}, blocks {len(arm.blocks)},"
+      f" first OOS {arm.sessions[arm.blocks[0].first]}", flush=True)
+t = time.monotonic()
+_, log = cm_arm.predictions(arm, "gbt")
+print(f"gbt walk-forward {time.monotonic() - t:.0f}s, {len(log)} fits, last trained on {log[-1]['train_rows']} rows",
+      flush=True)
+t = time.monotonic()
+r, ex = cm_arm.score(token, arm, "ridge", stress=1.0, n_null=2, log_path=None)
+print(f"score (2 nulls) {time.monotonic() - t:.0f}s: graded {r.start} -> {r.end}, names {r.names}", flush=True)
+print("describe:", ex, flush=True)
+for cid in ("CM-L-US", "CM-L-MIX"):
+    t = time.monotonic()
+    entry = preregister.require(cid).entry
+    data, sk = firewall.load("1h", entries=s6_run.arm_entries(entry))
+    a = cm_arm.assemble(cid, data, vix, skipped=sk)
+    print(f"{cid} rows only {time.monotonic() - t:.0f}s: names {len(data)}, skipped {sk}, rows {len(a.rows)}, "
+          f"dropped {a.dropped}, sessions {len(a.sessions)}, blocks {len(a.blocks)}, "
+          f"first OOS {a.sessions[a.blocks[0].first]}", flush=True)

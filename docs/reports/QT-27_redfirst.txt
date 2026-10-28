@@ -1,0 +1,125 @@
+QT-27 red-first record (1/2): the new tests run on the OLD code -- no qb2 source file of QT-27 exists yet.
+Run at 2026-10-28T06:33:04Z, inside the cap, in the build worktree at HEAD 6be96da.
+git status --short qb2/ (empty = no source changed):
+----
+[cap] capped (Local\QuantBot-cap): CPU <= 80% of the machine on <= 12 of 16 processors, memory <= 80% of RAM (25.3 GB), below-normal priority: C:/Users/mtrem/TRADING/.venv-qb2/Scripts/python -m pytest tests/qb2/test_qt27_window.py tests/qb2/test_qt27_features.py tests/qb2/test_qt27_model.py tests/qb2/t
+
+=================================== ERRORS ====================================
+_______________ ERROR collecting tests/qb2/test_qt27_window.py ________________
+ImportError while importing test module 'C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\tests\qb2\test_qt27_window.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\..\..\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\qb2\test_qt27_window.py:8: in <module>
+    from qb2.tools import run_window
+E   ImportError: cannot import name 'run_window' from 'qb2.tools' (C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\qb2\tools\__init__.py)
+______________ ERROR collecting tests/qb2/test_qt27_features.py _______________
+ImportError while importing test module 'C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\tests\qb2\test_qt27_features.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\..\..\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\qb2\test_qt27_features.py:17: in <module>
+    from qb2.model import features
+E   ImportError: cannot import name 'features' from 'qb2.model' (C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\qb2\model\__init__.py)
+________________ ERROR collecting tests/qb2/test_qt27_model.py ________________
+ImportError while importing test module 'C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\tests\qb2\test_qt27_model.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\..\..\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\qb2\test_qt27_model.py:11: in <module>
+    from qb2.model import combined
+E   ImportError: cannot import name 'combined' from 'qb2.model' (C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\qb2\model\__init__.py)
+________________ ERROR collecting tests/qb2/test_qt27_book.py _________________
+ImportError while importing test module 'C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\tests\qb2\test_qt27_book.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\..\..\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\qb2\test_qt27_book.py:12: in <module>
+    from qb2.research import cm_book, cm_run, fills, preregister, walk_forward
+E   ImportError: cannot import name 'cm_book' from 'qb2.research' (C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\qb2\research\__init__.py)
+=========================== short test summary info ===========================
+ERROR tests/qb2/test_qt27_window.py
+ERROR tests/qb2/test_qt27_features.py
+ERROR tests/qb2/test_qt27_model.py
+ERROR tests/qb2/test_qt27_book.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 4 errors during collection !!!!!!!!!!!!!!!!!!!
+4 errors in 0.98s
+[cap] finished with exit code 2; peak memory 0.18 GB of 25.35 GB
+
+================================================================================
+The look-ahead test's first real run (06:38 UTC, the new code): 50 pairs, features byte-identical in all
+50, prediction moved in 5. Diagnosed (scratch script): for every moved pair the training rows were
+byte-identical (same X, same y, same 630/735 rows, same block); the prediction differed by 2e-19 to
+9e-19 -- the last binary digit -- because the full run scored a 105-row batch and the cut run a 30-95-row
+batch, and the matrix product's summation order depends on the batch size. NOT a leak; fixed by scoring
+each (market, session) as its own batch (the decision moment's own), combined.walk_forward. Output:
+----
+F....                                                                    [100%]
+================================== FAILURES ===================================
+____ test_cutting_the_future_leaves_features_and_prediction_byte_identical ____
+tests\qb2\test_qt27_features.py:58: in test_cutting_the_future_leaves_features_and_prediction_byte_identical
+    assert _mismatches(full, names, vix, pairs) == []
+E   AssertionError: assert ['SYN4.L 2024...iction moved'] == []
+E     
+E     Left contains 4 more items, first extra item: 'SYN4.L 2024-06-12: prediction moved'
+E     Use -v to get more diff
+============================= slowest 5 durations =============================
+22.85s call     tests/qb2/test_qt27_features.py::test_cutting_the_future_leaves_features_and_prediction_byte_identical
+4.72s call     tests/qb2/test_qt27_features.py::test_a_planted_leak_feature_equal_to_the_target_goes_red
+1.28s setup    tests/qb2/test_qt27_features.py::test_cutting_the_future_leaves_features_and_prediction_byte_identical
+0.05s call     tests/qb2/test_qt27_features.py::test_each_feature_is_the_registered_formula_on_one_row
+0.02s call     tests/qb2/test_qt27_features.py::test_bar_1_must_start_at_the_open_and_vix_is_never_todays
+=========================== short test summary info ===========================
+FAILED tests/qb2/test_qt27_features.py::test_cutting_the_future_leaves_features_and_prediction_byte_identical
+1 failed, 4 passed in 30.83s
+[cap] finished with exit code 1; peak memory 0.40 GB of 25.35 GB
+---- diagnosis ----
+SYN4.L 2024-06-12 0.0035330973443328975 vs 0.003533097344332898 (diff -4.3e-19): same X True, same y True, 630 = 630 rows, test rows 105 vs 30
+SYN4.L 2024-06-19 diff +4.3e-19; SYN4.L 2024-07-11 diff +2.2e-19; SYN4.L 2024-07-30 diff -8.7e-19 (same X, same y each)
+
+After the fix: 27 passed (06:40 UTC); after the mutant-driven tightening of two tests: 27 passed (06:43 UTC).
+================================================================================
+
+QT-27 red-first record (2/2): tests/qb2/test_qt27_drills.py on the code WITHOUT qb2/research/cm_drills.py
+(the drills module was written before its test; it was moved aside for this run, then put back unchanged).
+Run at 2026-10-28T06:48:56Z, inside the cap, build worktree.
+----
+[cap] capped (Local\QuantBot-cap): CPU <= 80% of the machine on <= 12 of 16 processors, memory <= 80% of RAM (25.3 GB), below-normal priority: C:/Users/mtrem/TRADING/.venv-qb2/Scripts/python -m pytest tests/qb2/test_qt27_drills.py -q -p no:cacheprovider --tb=line
+
+=================================== ERRORS ====================================
+_______________ ERROR collecting tests/qb2/test_qt27_drills.py ________________
+ImportError while importing test module 'C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\tests\qb2\test_qt27_drills.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\..\..\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\qb2\test_qt27_drills.py:13: in <module>
+    from qb2.research import cm_book, cm_drills, verdict
+E   ImportError: cannot import name 'cm_drills' from 'qb2.research' (C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\qb2\research\__init__.py)
+=========================== short test summary info ===========================
+ERROR tests/qb2/test_qt27_drills.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.74s
+[cap] finished with exit code 2; peak memory 0.18 GB of 25.35 GB
+
+================================================================================
+QT-27 red-first record (3/3): test_the_page_names_each_gate_and_each_red_first on the code before
+cm_drills.write_page existed (the build worktree's copy), 2026-10-28T06:54:31Z
+----
+F                                                                        [100%]
+================================== FAILURES ===================================
+E   AttributeError: module 'qb2.research.cm_drills' has no attribute 'write_page'
+C:\Users\mtrem\AppData\Local\Temp\claude\C--Users-mtrem-TRADING\0562a420-1e5d-40e1-a6c3-434acd64a123\scratchpad\wt\tests\qb2\test_qt27_drills.py:100: AttributeError: module 'qb2.research.cm_drills' has no attribute 'write_page'
+=========================== short test summary info ===========================
+FAILED tests/qb2/test_qt27_drills.py::test_the_page_names_each_gate_and_each_red_first
+1 failed in 1.58s
+[cap] finished with exit code 1; peak memory 1.08 GB of 25.35 GB
