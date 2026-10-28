@@ -1,0 +1,49 @@
+"""QT-28 E: the six CM trials through cm_run.run() exactly as registered -- with ONE thing withheld:
+the holdout. cm_run opens the seal by itself right after a walk-forward PASS (cm_run._holdout ->
+holdout.open_final_run); QT-28 forbids opening it while the operator is away (one-shot, irreversible).
+So cm_run._holdout is replaced by a stop that raises BEFORE anything is opened, written or logged:
+the trial's own result file, its trial-log line and its 'done' journal note already exist by then
+(cm_run writes them first). A held trial is left out of the next pass so the rest still run; its
+file keeps no 'holdout' key, so cm_run's own holdout path runs it later, once, on the operator's GO.
+Scoring (cm_arm.score, the firewall, the register check) is untouched. Kept as .txt in docs/reports.
+
+    python -m qb2.tools.capped -- python -I awake.py <python> -I <this> [out.json]
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+
+from qb2.research import cm_results, cm_run, preregister  # noqa: E402
+from qb2.tools.governor import assert_capped  # noqa: E402
+
+assert_capped()
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("qt28_e.json")
+
+
+class HeldForGO(Exception):
+    """A walk-forward PASS: its holdout waits for the operator's words."""
+
+
+def held(token: preregister.Registered, *args: object, **kwargs: object) -> dict[str, object]:
+    raise HeldForGO(token.id)
+
+
+real_trials, held_ids = cm_run.trials, []
+cm_run._holdout = held                                   # the seal stays shut in this box
+while True:
+    cm_run.trials = lambda root=None: [e for e in real_trials(root) if e["id"] not in held_ids]
+    try:
+        number = cm_run.run()
+        break
+    except HeldForGO as why:
+        held_ids.append(str(why))
+        print(f"  {why}: walk-forward PASS -- holdout NOT opened (needs the operator's GO)", flush=True)
+cm_run.trials = real_trials
+print(cm_results.write_page(cm_run.RUN_DIR, cm_run.trials()), flush=True)
+OUT.write_text(json.dumps({"run": number, "held_for_go": held_ids}, indent=1), encoding="utf-8")
+print("held for GO:", held_ids or "none")
