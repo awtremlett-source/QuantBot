@@ -2320,6 +2320,538 @@
    },
    "date": "2026-10-23",
    "source": "QT-24 D (the mentor's box): ADV-0 with no percentage stop; a 10-month moving-average filter on month-end closes instead. Registered alone, before any S-07 code. The background scoring rides the operator's GO of 2026-10-19, verbatim: 'GO on QT-23: build the advisor with \"hold the index fund\" as its default, the 15% big-fall stop (10% when markets are jumpy) as its live stop, and the rules scored in the background on live prices only.' Nothing live changes: ADV-0 is not altered."
+  },
+  {
+   "id": "CM-L-US",
+   "kind": "trial",
+   "rule": "cm_ridge",
+   "name": "COMBINED MODEL (ridge regression): 17 features known at bar 1's close -> one forecast of the trade's gross return per name; buy the top 3 bets whose forecast is more than twice their own 1x round-trip cost, at the next allowed open; exit at E's open or the stop",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "model": "ridge",
+    "model_settings": {
+     "scaler": "StandardScaler, fit on the training fold only",
+     "Ridge": {
+      "alpha": 1.0
+     }
+    },
+    "features": [
+     "F1 bar-1 return: close(bar 1) / open(bar 1) - 1",
+     "F2 overnight gap: open(bar 1) / P1 - 1",
+     "F3 previous session return: P1 / P2 - 1",
+     "F4 5-session return: P1 / P6 - 1",
+     "F5 20-session return: P1 / P21 - 1",
+     "F6 bar-1 range / ATR: (high(bar 1) - low(bar 1)) / Wilder ATR(14) of the 1h bars as of the bar before bar 1",
+     "F7 bar-1 volume / the mean bar-1 volume of the previous 20 sessions (those with a bar 1; missing if fewer than 10 of them have one, or the mean is 0)",
+     "F8 close(bar 1) / EMA 9 - 1",
+     "F9 close(bar 1) / EMA 21 - 1",
+     "F10 close(bar 1) / EMA 50 - 1",
+     "F11 Keltner position: (close(bar 1) - lower) / (upper - lower), P19's Keltner = EMA 21 +/- 2.0 x Wilder ATR(14) on the 1h bars at bar 1",
+     "F12 rank of F1 among the arm's names of the same market that session (average rank of ties / count)",
+     "F13 rank of F2, the same way",
+     "F14 mean F1 of the arm's names of the same market that session (the market that hour)",
+     "F15 ^VIX close of the latest US session dated before the session (never today's): the close of that session's last ^VIX 1-hour bar in the store; missing if it is more than 5 weekdays back",
+     "F16 day of week (0 = Monday ... 4 = Friday)",
+     "F17 turn of month: 1 if the session is the last, or one of the first 3, sessions of its calendar month on the market's exchange calendar (XNYS / XLON), else 0"
+    ],
+    "target": "gross return fill -> exit (after the stop), own currency, clipped at the training fold's 1st/99th percentiles",
+    "walk_forward": {
+     "window": "expanding",
+     "min_train_sessions": 126,
+     "oos_not_before": "2024-02-01",
+     "refit_every_sessions": 21,
+     "embargo_sessions": 1,
+     "oos_end": "2026-07-10"
+    },
+    "decide_at_bar": 1,
+    "qualify": "bet prediction > 2 x its own 1x round-trip cost",
+    "rank_by": "prediction - 1x round-trip cost",
+    "top": 3,
+    "ties": "bet name",
+    "rank_scope": "the arm",
+    "stop": true,
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "stake_gbp": 300.0,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ]
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES, by holdout.py (clarification 8); bars from 2026-10-10 stay sealed for S12",
+   "judged": "Judged EXACTLY as S6 batch 1 (QT-18 B2): net after 2x costs with the survivorship mark-down, compounded, in pounds, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (56 + 6 = 62); beats VWRP's own 1h closes over the same dates; INSUFFICIENT under 30 out-of-sample trades. 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Fixed before any model code (QT-27 B; decided while the operator was away, STANDING GO 2026-10-07; each is a mapping onto batch 1's code, logged in docs/reports/QT-27.md). (1) DECISION AND TRADE = batch 1's plumbing (s6_rules.Rule): bars numbered from 1 within each session; bar 1 = the session's first stored bar, and only if it starts at the exchange's open (US 09:30, London 08:00); the decision is taken at bar 1's CLOSE; fill by fills.py (two bars later, same session); exit at E's open or the stop (S6-04/05's stop, k = 3, Wilder ATR(14) of the 1h bars); one entry per name per day. (2) SKIPPED for a name (batch 1's rules): no previous session; no bar 1; the entry would land at or after E; any feature missing (the row is dropped, train and live alike, and counted). ELIGIBLE = not skipped. (3) FEATURES F1-F17 as listed, all known at bar 1's close; Pk = the close of the name's last bar of its k-th previous session in the store (P1 = batch 1's 'prior close'); EMAs and ATR are qb2/signals/indicators.py's, over the name's 1h bars from its first stored bar; F12-F14 among the arm's names of the same market (the whole arm in US and LON; in MIX the name's own market, because the other market's bar 1 is not known at that moment); F15 from the 1h store because the daily table is sealed from 2025-10-10. No feature is ever added. (4) TARGET = the trade's gross return from the fill to the exit after the stop rule, in the instrument's own currency (the price move forecast; FX and every other cost sit in the cost bar), by batch 1's own arithmetic (s6_rules.Rule weights with that day chosen, fills.positions, simulate.run gross, compounded over the session). P15 changes no price path, so a P15-refused day keeps its training row. Both lines of a bet are rows. Clipped at the training fold's own 1st and 99th percentiles (numpy, linear) before each fit. (5) WALK-FORWARD: the arm's SESSIONS = the dates with at least one eligible row, in order; the first out-of-sample session t0 = the first session dated on or after 2024-02-01 with at least 126 sessions holding training rows at or before the session two positions before it; refit at t0 and every 21 sessions after; the model for sessions [t_k, t_k+1) is fit on every training row dated at or before the session two positions before t_k (expanding, embargo one session); out-of-sample ends 2026-07-10. No tuning, ever; OMP_NUM_THREADS=4, n_jobs=1. (6) TRADE RULE per session: every eligible name is scored by the model in force; BETS (bet_groups v1): a bet's prediction = the mean of its eligible lines' predictions, its cost = the mean of its lines' own 1x round-trip costs (costs.round_trip at GBP 300, 1x); a bet QUALIFIES if prediction > 2 x cost; qualifiers ranked by prediction - cost, highest first, ties by bet name; the top 3 are chosen; a chosen bet buys every eligible line of it; a chosen line P15 refuses at bar 1's close (plan.may_enter, the history rule) is not bought and not replaced (batch 1's rule); no qualifier = cash. The ranking runs over the arm in US and LON; in MIX over each market on its own at its own bar-1 close, top 3 each (batch 1's rule for intraday rankings in the Mix arm, S6-06/07: the US bar 1 closes 5.5 hours after London's, so one ranking across both would read the future for London -- the box's 'MIX ranks the whole arm' cannot be done causally); the MIX model is ONE model fit on both markets' rows. (7) GRADED WINDOW = the model's out-of-sample sessions only: each name's bars start one firewall training window (63 sessions' worth of its 1h bars, walk_forward.default_sizes) before its first out-of-sample bar, so the unchanged firewall grades from exactly that bar; a name with fewer bars before it is graded from its own 63-session mark, as in batch 1. Stake GBP 300 per order (cost arithmetic only); equal weight per bet across the arm's bets, a bet not held in cash (batch 1). (8) HOLDOUT, only for a walk-forward PASS, by holdout.py, once: the same walk-forward continued into the sealed sessions 2026-07-13 -> 2026-10-09 (refit every 21 sessions on every row up to two sessions before, sealed rows included once past), sealed ^VIX bars read in that one pass only. (9) Described, never judged: trades, days in cash, rows dropped, mean prediction vs mean realised gross on traded days (calibration).",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box B (S6 batch 2, the combined model); registered alone, in its own commit, before any model code exists"
+  },
+  {
+   "id": "CM-L-LON",
+   "kind": "trial",
+   "rule": "cm_ridge",
+   "name": "COMBINED MODEL (ridge regression): 17 features known at bar 1's close -> one forecast of the trade's gross return per name; buy the top 3 bets whose forecast is more than twice their own 1x round-trip cost, at the next allowed open; exit at E's open or the stop",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "model": "ridge",
+    "model_settings": {
+     "scaler": "StandardScaler, fit on the training fold only",
+     "Ridge": {
+      "alpha": 1.0
+     }
+    },
+    "features": [
+     "F1 bar-1 return: close(bar 1) / open(bar 1) - 1",
+     "F2 overnight gap: open(bar 1) / P1 - 1",
+     "F3 previous session return: P1 / P2 - 1",
+     "F4 5-session return: P1 / P6 - 1",
+     "F5 20-session return: P1 / P21 - 1",
+     "F6 bar-1 range / ATR: (high(bar 1) - low(bar 1)) / Wilder ATR(14) of the 1h bars as of the bar before bar 1",
+     "F7 bar-1 volume / the mean bar-1 volume of the previous 20 sessions (those with a bar 1; missing if fewer than 10 of them have one, or the mean is 0)",
+     "F8 close(bar 1) / EMA 9 - 1",
+     "F9 close(bar 1) / EMA 21 - 1",
+     "F10 close(bar 1) / EMA 50 - 1",
+     "F11 Keltner position: (close(bar 1) - lower) / (upper - lower), P19's Keltner = EMA 21 +/- 2.0 x Wilder ATR(14) on the 1h bars at bar 1",
+     "F12 rank of F1 among the arm's names of the same market that session (average rank of ties / count)",
+     "F13 rank of F2, the same way",
+     "F14 mean F1 of the arm's names of the same market that session (the market that hour)",
+     "F15 ^VIX close of the latest US session dated before the session (never today's): the close of that session's last ^VIX 1-hour bar in the store; missing if it is more than 5 weekdays back",
+     "F16 day of week (0 = Monday ... 4 = Friday)",
+     "F17 turn of month: 1 if the session is the last, or one of the first 3, sessions of its calendar month on the market's exchange calendar (XNYS / XLON), else 0"
+    ],
+    "target": "gross return fill -> exit (after the stop), own currency, clipped at the training fold's 1st/99th percentiles",
+    "walk_forward": {
+     "window": "expanding",
+     "min_train_sessions": 126,
+     "oos_not_before": "2024-02-01",
+     "refit_every_sessions": 21,
+     "embargo_sessions": 1,
+     "oos_end": "2026-07-10"
+    },
+    "decide_at_bar": 1,
+    "qualify": "bet prediction > 2 x its own 1x round-trip cost",
+    "rank_by": "prediction - 1x round-trip cost",
+    "top": 3,
+    "ties": "bet name",
+    "rank_scope": "the arm",
+    "stop": true,
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "stake_gbp": 300.0,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ]
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES, by holdout.py (clarification 8); bars from 2026-10-10 stay sealed for S12",
+   "judged": "Judged EXACTLY as S6 batch 1 (QT-18 B2): net after 2x costs with the survivorship mark-down, compounded, in pounds, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (56 + 6 = 62); beats VWRP's own 1h closes over the same dates; INSUFFICIENT under 30 out-of-sample trades. 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Fixed before any model code (QT-27 B; decided while the operator was away, STANDING GO 2026-10-07; each is a mapping onto batch 1's code, logged in docs/reports/QT-27.md). (1) DECISION AND TRADE = batch 1's plumbing (s6_rules.Rule): bars numbered from 1 within each session; bar 1 = the session's first stored bar, and only if it starts at the exchange's open (US 09:30, London 08:00); the decision is taken at bar 1's CLOSE; fill by fills.py (two bars later, same session); exit at E's open or the stop (S6-04/05's stop, k = 3, Wilder ATR(14) of the 1h bars); one entry per name per day. (2) SKIPPED for a name (batch 1's rules): no previous session; no bar 1; the entry would land at or after E; any feature missing (the row is dropped, train and live alike, and counted). ELIGIBLE = not skipped. (3) FEATURES F1-F17 as listed, all known at bar 1's close; Pk = the close of the name's last bar of its k-th previous session in the store (P1 = batch 1's 'prior close'); EMAs and ATR are qb2/signals/indicators.py's, over the name's 1h bars from its first stored bar; F12-F14 among the arm's names of the same market (the whole arm in US and LON; in MIX the name's own market, because the other market's bar 1 is not known at that moment); F15 from the 1h store because the daily table is sealed from 2025-10-10. No feature is ever added. (4) TARGET = the trade's gross return from the fill to the exit after the stop rule, in the instrument's own currency (the price move forecast; FX and every other cost sit in the cost bar), by batch 1's own arithmetic (s6_rules.Rule weights with that day chosen, fills.positions, simulate.run gross, compounded over the session). P15 changes no price path, so a P15-refused day keeps its training row. Both lines of a bet are rows. Clipped at the training fold's own 1st and 99th percentiles (numpy, linear) before each fit. (5) WALK-FORWARD: the arm's SESSIONS = the dates with at least one eligible row, in order; the first out-of-sample session t0 = the first session dated on or after 2024-02-01 with at least 126 sessions holding training rows at or before the session two positions before it; refit at t0 and every 21 sessions after; the model for sessions [t_k, t_k+1) is fit on every training row dated at or before the session two positions before t_k (expanding, embargo one session); out-of-sample ends 2026-07-10. No tuning, ever; OMP_NUM_THREADS=4, n_jobs=1. (6) TRADE RULE per session: every eligible name is scored by the model in force; BETS (bet_groups v1): a bet's prediction = the mean of its eligible lines' predictions, its cost = the mean of its lines' own 1x round-trip costs (costs.round_trip at GBP 300, 1x); a bet QUALIFIES if prediction > 2 x cost; qualifiers ranked by prediction - cost, highest first, ties by bet name; the top 3 are chosen; a chosen bet buys every eligible line of it; a chosen line P15 refuses at bar 1's close (plan.may_enter, the history rule) is not bought and not replaced (batch 1's rule); no qualifier = cash. The ranking runs over the arm in US and LON; in MIX over each market on its own at its own bar-1 close, top 3 each (batch 1's rule for intraday rankings in the Mix arm, S6-06/07: the US bar 1 closes 5.5 hours after London's, so one ranking across both would read the future for London -- the box's 'MIX ranks the whole arm' cannot be done causally); the MIX model is ONE model fit on both markets' rows. (7) GRADED WINDOW = the model's out-of-sample sessions only: each name's bars start one firewall training window (63 sessions' worth of its 1h bars, walk_forward.default_sizes) before its first out-of-sample bar, so the unchanged firewall grades from exactly that bar; a name with fewer bars before it is graded from its own 63-session mark, as in batch 1. Stake GBP 300 per order (cost arithmetic only); equal weight per bet across the arm's bets, a bet not held in cash (batch 1). (8) HOLDOUT, only for a walk-forward PASS, by holdout.py, once: the same walk-forward continued into the sealed sessions 2026-07-13 -> 2026-10-09 (refit every 21 sessions on every row up to two sessions before, sealed rows included once past), sealed ^VIX bars read in that one pass only. (9) Described, never judged: trades, days in cash, rows dropped, mean prediction vs mean realised gross on traded days (calibration).",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box B (S6 batch 2, the combined model); registered alone, in its own commit, before any model code exists"
+  },
+  {
+   "id": "CM-L-MIX",
+   "kind": "trial",
+   "rule": "cm_ridge",
+   "name": "COMBINED MODEL (ridge regression): 17 features known at bar 1's close -> one forecast of the trade's gross return per name; buy the top 3 bets whose forecast is more than twice their own 1x round-trip cost, at the next allowed open; exit at E's open or the stop",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "model": "ridge",
+    "model_settings": {
+     "scaler": "StandardScaler, fit on the training fold only",
+     "Ridge": {
+      "alpha": 1.0
+     }
+    },
+    "features": [
+     "F1 bar-1 return: close(bar 1) / open(bar 1) - 1",
+     "F2 overnight gap: open(bar 1) / P1 - 1",
+     "F3 previous session return: P1 / P2 - 1",
+     "F4 5-session return: P1 / P6 - 1",
+     "F5 20-session return: P1 / P21 - 1",
+     "F6 bar-1 range / ATR: (high(bar 1) - low(bar 1)) / Wilder ATR(14) of the 1h bars as of the bar before bar 1",
+     "F7 bar-1 volume / the mean bar-1 volume of the previous 20 sessions (those with a bar 1; missing if fewer than 10 of them have one, or the mean is 0)",
+     "F8 close(bar 1) / EMA 9 - 1",
+     "F9 close(bar 1) / EMA 21 - 1",
+     "F10 close(bar 1) / EMA 50 - 1",
+     "F11 Keltner position: (close(bar 1) - lower) / (upper - lower), P19's Keltner = EMA 21 +/- 2.0 x Wilder ATR(14) on the 1h bars at bar 1",
+     "F12 rank of F1 among the arm's names of the same market that session (average rank of ties / count)",
+     "F13 rank of F2, the same way",
+     "F14 mean F1 of the arm's names of the same market that session (the market that hour)",
+     "F15 ^VIX close of the latest US session dated before the session (never today's): the close of that session's last ^VIX 1-hour bar in the store; missing if it is more than 5 weekdays back",
+     "F16 day of week (0 = Monday ... 4 = Friday)",
+     "F17 turn of month: 1 if the session is the last, or one of the first 3, sessions of its calendar month on the market's exchange calendar (XNYS / XLON), else 0"
+    ],
+    "target": "gross return fill -> exit (after the stop), own currency, clipped at the training fold's 1st/99th percentiles",
+    "walk_forward": {
+     "window": "expanding",
+     "min_train_sessions": 126,
+     "oos_not_before": "2024-02-01",
+     "refit_every_sessions": 21,
+     "embargo_sessions": 1,
+     "oos_end": "2026-07-10"
+    },
+    "decide_at_bar": 1,
+    "qualify": "bet prediction > 2 x its own 1x round-trip cost",
+    "rank_by": "prediction - 1x round-trip cost",
+    "top": 3,
+    "ties": "bet name",
+    "rank_scope": "each market on its own",
+    "stop": true,
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "stake_gbp": 300.0,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ]
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES, by holdout.py (clarification 8); bars from 2026-10-10 stay sealed for S12",
+   "judged": "Judged EXACTLY as S6 batch 1 (QT-18 B2): net after 2x costs with the survivorship mark-down, compounded, in pounds, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (56 + 6 = 62); beats VWRP's own 1h closes over the same dates; INSUFFICIENT under 30 out-of-sample trades. 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Fixed before any model code (QT-27 B; decided while the operator was away, STANDING GO 2026-10-07; each is a mapping onto batch 1's code, logged in docs/reports/QT-27.md). (1) DECISION AND TRADE = batch 1's plumbing (s6_rules.Rule): bars numbered from 1 within each session; bar 1 = the session's first stored bar, and only if it starts at the exchange's open (US 09:30, London 08:00); the decision is taken at bar 1's CLOSE; fill by fills.py (two bars later, same session); exit at E's open or the stop (S6-04/05's stop, k = 3, Wilder ATR(14) of the 1h bars); one entry per name per day. (2) SKIPPED for a name (batch 1's rules): no previous session; no bar 1; the entry would land at or after E; any feature missing (the row is dropped, train and live alike, and counted). ELIGIBLE = not skipped. (3) FEATURES F1-F17 as listed, all known at bar 1's close; Pk = the close of the name's last bar of its k-th previous session in the store (P1 = batch 1's 'prior close'); EMAs and ATR are qb2/signals/indicators.py's, over the name's 1h bars from its first stored bar; F12-F14 among the arm's names of the same market (the whole arm in US and LON; in MIX the name's own market, because the other market's bar 1 is not known at that moment); F15 from the 1h store because the daily table is sealed from 2025-10-10. No feature is ever added. (4) TARGET = the trade's gross return from the fill to the exit after the stop rule, in the instrument's own currency (the price move forecast; FX and every other cost sit in the cost bar), by batch 1's own arithmetic (s6_rules.Rule weights with that day chosen, fills.positions, simulate.run gross, compounded over the session). P15 changes no price path, so a P15-refused day keeps its training row. Both lines of a bet are rows. Clipped at the training fold's own 1st and 99th percentiles (numpy, linear) before each fit. (5) WALK-FORWARD: the arm's SESSIONS = the dates with at least one eligible row, in order; the first out-of-sample session t0 = the first session dated on or after 2024-02-01 with at least 126 sessions holding training rows at or before the session two positions before it; refit at t0 and every 21 sessions after; the model for sessions [t_k, t_k+1) is fit on every training row dated at or before the session two positions before t_k (expanding, embargo one session); out-of-sample ends 2026-07-10. No tuning, ever; OMP_NUM_THREADS=4, n_jobs=1. (6) TRADE RULE per session: every eligible name is scored by the model in force; BETS (bet_groups v1): a bet's prediction = the mean of its eligible lines' predictions, its cost = the mean of its lines' own 1x round-trip costs (costs.round_trip at GBP 300, 1x); a bet QUALIFIES if prediction > 2 x cost; qualifiers ranked by prediction - cost, highest first, ties by bet name; the top 3 are chosen; a chosen bet buys every eligible line of it; a chosen line P15 refuses at bar 1's close (plan.may_enter, the history rule) is not bought and not replaced (batch 1's rule); no qualifier = cash. The ranking runs over the arm in US and LON; in MIX over each market on its own at its own bar-1 close, top 3 each (batch 1's rule for intraday rankings in the Mix arm, S6-06/07: the US bar 1 closes 5.5 hours after London's, so one ranking across both would read the future for London -- the box's 'MIX ranks the whole arm' cannot be done causally); the MIX model is ONE model fit on both markets' rows. (7) GRADED WINDOW = the model's out-of-sample sessions only: each name's bars start one firewall training window (63 sessions' worth of its 1h bars, walk_forward.default_sizes) before its first out-of-sample bar, so the unchanged firewall grades from exactly that bar; a name with fewer bars before it is graded from its own 63-session mark, as in batch 1. Stake GBP 300 per order (cost arithmetic only); equal weight per bet across the arm's bets, a bet not held in cash (batch 1). (8) HOLDOUT, only for a walk-forward PASS, by holdout.py, once: the same walk-forward continued into the sealed sessions 2026-07-13 -> 2026-10-09 (refit every 21 sessions on every row up to two sessions before, sealed rows included once past), sealed ^VIX bars read in that one pass only. (9) Described, never judged: trades, days in cash, rows dropped, mean prediction vs mean realised gross on traded days (calibration).",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box B (S6 batch 2, the combined model); registered alone, in its own commit, before any model code exists"
+  },
+  {
+   "id": "CM-G-US",
+   "kind": "trial",
+   "rule": "cm_gbt",
+   "name": "COMBINED MODEL (gradient-boosted trees): 17 features known at bar 1's close -> one forecast of the trade's gross return per name; buy the top 3 bets whose forecast is more than twice their own 1x round-trip cost, at the next allowed open; exit at E's open or the stop",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm US = sleeve us_liquid (30 names; GOOG/GOOGL one bet). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "model": "gbt",
+    "model_settings": {
+     "HistGradientBoostingRegressor": {
+      "max_iter": 200,
+      "learning_rate": 0.05,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 50,
+      "l2_regularization": 1.0,
+      "early_stopping": false,
+      "random_state": 0
+     },
+     "scaler": null,
+     "other settings": "scikit-learn 1.8.0's defaults"
+    },
+    "features": [
+     "F1 bar-1 return: close(bar 1) / open(bar 1) - 1",
+     "F2 overnight gap: open(bar 1) / P1 - 1",
+     "F3 previous session return: P1 / P2 - 1",
+     "F4 5-session return: P1 / P6 - 1",
+     "F5 20-session return: P1 / P21 - 1",
+     "F6 bar-1 range / ATR: (high(bar 1) - low(bar 1)) / Wilder ATR(14) of the 1h bars as of the bar before bar 1",
+     "F7 bar-1 volume / the mean bar-1 volume of the previous 20 sessions (those with a bar 1; missing if fewer than 10 of them have one, or the mean is 0)",
+     "F8 close(bar 1) / EMA 9 - 1",
+     "F9 close(bar 1) / EMA 21 - 1",
+     "F10 close(bar 1) / EMA 50 - 1",
+     "F11 Keltner position: (close(bar 1) - lower) / (upper - lower), P19's Keltner = EMA 21 +/- 2.0 x Wilder ATR(14) on the 1h bars at bar 1",
+     "F12 rank of F1 among the arm's names of the same market that session (average rank of ties / count)",
+     "F13 rank of F2, the same way",
+     "F14 mean F1 of the arm's names of the same market that session (the market that hour)",
+     "F15 ^VIX close of the latest US session dated before the session (never today's): the close of that session's last ^VIX 1-hour bar in the store; missing if it is more than 5 weekdays back",
+     "F16 day of week (0 = Monday ... 4 = Friday)",
+     "F17 turn of month: 1 if the session is the last, or one of the first 3, sessions of its calendar month on the market's exchange calendar (XNYS / XLON), else 0"
+    ],
+    "target": "gross return fill -> exit (after the stop), own currency, clipped at the training fold's 1st/99th percentiles",
+    "walk_forward": {
+     "window": "expanding",
+     "min_train_sessions": 126,
+     "oos_not_before": "2024-02-01",
+     "refit_every_sessions": 21,
+     "embargo_sessions": 1,
+     "oos_end": "2026-07-10"
+    },
+    "decide_at_bar": 1,
+    "qualify": "bet prediction > 2 x its own 1x round-trip cost",
+    "rank_by": "prediction - 1x round-trip cost",
+    "top": 3,
+    "ties": "bet name",
+    "rank_scope": "the arm",
+    "stop": true,
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "stake_gbp": 300.0,
+    "arm": "US",
+    "sleeves": [
+     "us_liquid"
+    ]
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES, by holdout.py (clarification 8); bars from 2026-10-10 stay sealed for S12",
+   "judged": "Judged EXACTLY as S6 batch 1 (QT-18 B2): net after 2x costs with the survivorship mark-down, compounded, in pounds, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (56 + 6 = 62); beats VWRP's own 1h closes over the same dates; INSUFFICIENT under 30 out-of-sample trades. 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Fixed before any model code (QT-27 B; decided while the operator was away, STANDING GO 2026-10-07; each is a mapping onto batch 1's code, logged in docs/reports/QT-27.md). (1) DECISION AND TRADE = batch 1's plumbing (s6_rules.Rule): bars numbered from 1 within each session; bar 1 = the session's first stored bar, and only if it starts at the exchange's open (US 09:30, London 08:00); the decision is taken at bar 1's CLOSE; fill by fills.py (two bars later, same session); exit at E's open or the stop (S6-04/05's stop, k = 3, Wilder ATR(14) of the 1h bars); one entry per name per day. (2) SKIPPED for a name (batch 1's rules): no previous session; no bar 1; the entry would land at or after E; any feature missing (the row is dropped, train and live alike, and counted). ELIGIBLE = not skipped. (3) FEATURES F1-F17 as listed, all known at bar 1's close; Pk = the close of the name's last bar of its k-th previous session in the store (P1 = batch 1's 'prior close'); EMAs and ATR are qb2/signals/indicators.py's, over the name's 1h bars from its first stored bar; F12-F14 among the arm's names of the same market (the whole arm in US and LON; in MIX the name's own market, because the other market's bar 1 is not known at that moment); F15 from the 1h store because the daily table is sealed from 2025-10-10. No feature is ever added. (4) TARGET = the trade's gross return from the fill to the exit after the stop rule, in the instrument's own currency (the price move forecast; FX and every other cost sit in the cost bar), by batch 1's own arithmetic (s6_rules.Rule weights with that day chosen, fills.positions, simulate.run gross, compounded over the session). P15 changes no price path, so a P15-refused day keeps its training row. Both lines of a bet are rows. Clipped at the training fold's own 1st and 99th percentiles (numpy, linear) before each fit. (5) WALK-FORWARD: the arm's SESSIONS = the dates with at least one eligible row, in order; the first out-of-sample session t0 = the first session dated on or after 2024-02-01 with at least 126 sessions holding training rows at or before the session two positions before it; refit at t0 and every 21 sessions after; the model for sessions [t_k, t_k+1) is fit on every training row dated at or before the session two positions before t_k (expanding, embargo one session); out-of-sample ends 2026-07-10. No tuning, ever; OMP_NUM_THREADS=4, n_jobs=1. (6) TRADE RULE per session: every eligible name is scored by the model in force; BETS (bet_groups v1): a bet's prediction = the mean of its eligible lines' predictions, its cost = the mean of its lines' own 1x round-trip costs (costs.round_trip at GBP 300, 1x); a bet QUALIFIES if prediction > 2 x cost; qualifiers ranked by prediction - cost, highest first, ties by bet name; the top 3 are chosen; a chosen bet buys every eligible line of it; a chosen line P15 refuses at bar 1's close (plan.may_enter, the history rule) is not bought and not replaced (batch 1's rule); no qualifier = cash. The ranking runs over the arm in US and LON; in MIX over each market on its own at its own bar-1 close, top 3 each (batch 1's rule for intraday rankings in the Mix arm, S6-06/07: the US bar 1 closes 5.5 hours after London's, so one ranking across both would read the future for London -- the box's 'MIX ranks the whole arm' cannot be done causally); the MIX model is ONE model fit on both markets' rows. (7) GRADED WINDOW = the model's out-of-sample sessions only: each name's bars start one firewall training window (63 sessions' worth of its 1h bars, walk_forward.default_sizes) before its first out-of-sample bar, so the unchanged firewall grades from exactly that bar; a name with fewer bars before it is graded from its own 63-session mark, as in batch 1. Stake GBP 300 per order (cost arithmetic only); equal weight per bet across the arm's bets, a bet not held in cash (batch 1). (8) HOLDOUT, only for a walk-forward PASS, by holdout.py, once: the same walk-forward continued into the sealed sessions 2026-07-13 -> 2026-10-09 (refit every 21 sessions on every row up to two sessions before, sealed rows included once past), sealed ^VIX bars read in that one pass only. (9) Described, never judged: trades, days in cash, rows dropped, mean prediction vs mean realised gross on traded days (calibration).",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box B (S6 batch 2, the combined model); registered alone, in its own commit, before any model code exists"
+  },
+  {
+   "id": "CM-G-LON",
+   "kind": "trial",
+   "rule": "cm_gbt",
+   "name": "COMBINED MODEL (gradient-boosted trees): 17 features known at bar 1's close -> one forecast of the trade's gross return per name; buy the top 3 bets whose forecast is more than twice their own 1x round-trip cost, at the next allowed open; exit at E's open or the stop",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "model": "gbt",
+    "model_settings": {
+     "HistGradientBoostingRegressor": {
+      "max_iter": 200,
+      "learning_rate": 0.05,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 50,
+      "l2_regularization": 1.0,
+      "early_stopping": false,
+      "random_state": 0
+     },
+     "scaler": null,
+     "other settings": "scikit-learn 1.8.0's defaults"
+    },
+    "features": [
+     "F1 bar-1 return: close(bar 1) / open(bar 1) - 1",
+     "F2 overnight gap: open(bar 1) / P1 - 1",
+     "F3 previous session return: P1 / P2 - 1",
+     "F4 5-session return: P1 / P6 - 1",
+     "F5 20-session return: P1 / P21 - 1",
+     "F6 bar-1 range / ATR: (high(bar 1) - low(bar 1)) / Wilder ATR(14) of the 1h bars as of the bar before bar 1",
+     "F7 bar-1 volume / the mean bar-1 volume of the previous 20 sessions (those with a bar 1; missing if fewer than 10 of them have one, or the mean is 0)",
+     "F8 close(bar 1) / EMA 9 - 1",
+     "F9 close(bar 1) / EMA 21 - 1",
+     "F10 close(bar 1) / EMA 50 - 1",
+     "F11 Keltner position: (close(bar 1) - lower) / (upper - lower), P19's Keltner = EMA 21 +/- 2.0 x Wilder ATR(14) on the 1h bars at bar 1",
+     "F12 rank of F1 among the arm's names of the same market that session (average rank of ties / count)",
+     "F13 rank of F2, the same way",
+     "F14 mean F1 of the arm's names of the same market that session (the market that hour)",
+     "F15 ^VIX close of the latest US session dated before the session (never today's): the close of that session's last ^VIX 1-hour bar in the store; missing if it is more than 5 weekdays back",
+     "F16 day of week (0 = Monday ... 4 = Friday)",
+     "F17 turn of month: 1 if the session is the last, or one of the first 3, sessions of its calendar month on the market's exchange calendar (XNYS / XLON), else 0"
+    ],
+    "target": "gross return fill -> exit (after the stop), own currency, clipped at the training fold's 1st/99th percentiles",
+    "walk_forward": {
+     "window": "expanding",
+     "min_train_sessions": 126,
+     "oos_not_before": "2024-02-01",
+     "refit_every_sessions": 21,
+     "embargo_sessions": 1,
+     "oos_end": "2026-07-10"
+    },
+    "decide_at_bar": 1,
+    "qualify": "bet prediction > 2 x its own 1x round-trip cost",
+    "rank_by": "prediction - 1x round-trip cost",
+    "top": 3,
+    "ties": "bet name",
+    "rank_scope": "the arm",
+    "stop": true,
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "stake_gbp": 300.0,
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ]
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES, by holdout.py (clarification 8); bars from 2026-10-10 stay sealed for S12",
+   "judged": "Judged EXACTLY as S6 batch 1 (QT-18 B2): net after 2x costs with the survivorship mark-down, compounded, in pounds, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (56 + 6 = 62); beats VWRP's own 1h closes over the same dates; INSUFFICIENT under 30 out-of-sample trades. 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Fixed before any model code (QT-27 B; decided while the operator was away, STANDING GO 2026-10-07; each is a mapping onto batch 1's code, logged in docs/reports/QT-27.md). (1) DECISION AND TRADE = batch 1's plumbing (s6_rules.Rule): bars numbered from 1 within each session; bar 1 = the session's first stored bar, and only if it starts at the exchange's open (US 09:30, London 08:00); the decision is taken at bar 1's CLOSE; fill by fills.py (two bars later, same session); exit at E's open or the stop (S6-04/05's stop, k = 3, Wilder ATR(14) of the 1h bars); one entry per name per day. (2) SKIPPED for a name (batch 1's rules): no previous session; no bar 1; the entry would land at or after E; any feature missing (the row is dropped, train and live alike, and counted). ELIGIBLE = not skipped. (3) FEATURES F1-F17 as listed, all known at bar 1's close; Pk = the close of the name's last bar of its k-th previous session in the store (P1 = batch 1's 'prior close'); EMAs and ATR are qb2/signals/indicators.py's, over the name's 1h bars from its first stored bar; F12-F14 among the arm's names of the same market (the whole arm in US and LON; in MIX the name's own market, because the other market's bar 1 is not known at that moment); F15 from the 1h store because the daily table is sealed from 2025-10-10. No feature is ever added. (4) TARGET = the trade's gross return from the fill to the exit after the stop rule, in the instrument's own currency (the price move forecast; FX and every other cost sit in the cost bar), by batch 1's own arithmetic (s6_rules.Rule weights with that day chosen, fills.positions, simulate.run gross, compounded over the session). P15 changes no price path, so a P15-refused day keeps its training row. Both lines of a bet are rows. Clipped at the training fold's own 1st and 99th percentiles (numpy, linear) before each fit. (5) WALK-FORWARD: the arm's SESSIONS = the dates with at least one eligible row, in order; the first out-of-sample session t0 = the first session dated on or after 2024-02-01 with at least 126 sessions holding training rows at or before the session two positions before it; refit at t0 and every 21 sessions after; the model for sessions [t_k, t_k+1) is fit on every training row dated at or before the session two positions before t_k (expanding, embargo one session); out-of-sample ends 2026-07-10. No tuning, ever; OMP_NUM_THREADS=4, n_jobs=1. (6) TRADE RULE per session: every eligible name is scored by the model in force; BETS (bet_groups v1): a bet's prediction = the mean of its eligible lines' predictions, its cost = the mean of its lines' own 1x round-trip costs (costs.round_trip at GBP 300, 1x); a bet QUALIFIES if prediction > 2 x cost; qualifiers ranked by prediction - cost, highest first, ties by bet name; the top 3 are chosen; a chosen bet buys every eligible line of it; a chosen line P15 refuses at bar 1's close (plan.may_enter, the history rule) is not bought and not replaced (batch 1's rule); no qualifier = cash. The ranking runs over the arm in US and LON; in MIX over each market on its own at its own bar-1 close, top 3 each (batch 1's rule for intraday rankings in the Mix arm, S6-06/07: the US bar 1 closes 5.5 hours after London's, so one ranking across both would read the future for London -- the box's 'MIX ranks the whole arm' cannot be done causally); the MIX model is ONE model fit on both markets' rows. (7) GRADED WINDOW = the model's out-of-sample sessions only: each name's bars start one firewall training window (63 sessions' worth of its 1h bars, walk_forward.default_sizes) before its first out-of-sample bar, so the unchanged firewall grades from exactly that bar; a name with fewer bars before it is graded from its own 63-session mark, as in batch 1. Stake GBP 300 per order (cost arithmetic only); equal weight per bet across the arm's bets, a bet not held in cash (batch 1). (8) HOLDOUT, only for a walk-forward PASS, by holdout.py, once: the same walk-forward continued into the sealed sessions 2026-07-13 -> 2026-10-09 (refit every 21 sessions on every row up to two sessions before, sealed rows included once past), sealed ^VIX bars read in that one pass only. (9) Described, never judged: trades, days in cash, rows dropped, mean prediction vs mean realised gross on traded days (calibration).",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box B (S6 batch 2, the combined model); registered alone, in its own commit, before any model code exists"
+  },
+  {
+   "id": "CM-G-MIX",
+   "kind": "trial",
+   "rule": "cm_gbt",
+   "name": "COMBINED MODEL (gradient-boosted trees): 17 features known at bar 1's close -> one forecast of the trade's gross return per name; buy the top 3 bets whose forecast is more than twice their own 1x round-trip cost, at the next allowed open; exit at E's open or the stop",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm Mix = all three sleeves (the agreed 50). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "parameters": {
+    "model": "gbt",
+    "model_settings": {
+     "HistGradientBoostingRegressor": {
+      "max_iter": 200,
+      "learning_rate": 0.05,
+      "max_leaf_nodes": 15,
+      "min_samples_leaf": 50,
+      "l2_regularization": 1.0,
+      "early_stopping": false,
+      "random_state": 0
+     },
+     "scaler": null,
+     "other settings": "scikit-learn 1.8.0's defaults"
+    },
+    "features": [
+     "F1 bar-1 return: close(bar 1) / open(bar 1) - 1",
+     "F2 overnight gap: open(bar 1) / P1 - 1",
+     "F3 previous session return: P1 / P2 - 1",
+     "F4 5-session return: P1 / P6 - 1",
+     "F5 20-session return: P1 / P21 - 1",
+     "F6 bar-1 range / ATR: (high(bar 1) - low(bar 1)) / Wilder ATR(14) of the 1h bars as of the bar before bar 1",
+     "F7 bar-1 volume / the mean bar-1 volume of the previous 20 sessions (those with a bar 1; missing if fewer than 10 of them have one, or the mean is 0)",
+     "F8 close(bar 1) / EMA 9 - 1",
+     "F9 close(bar 1) / EMA 21 - 1",
+     "F10 close(bar 1) / EMA 50 - 1",
+     "F11 Keltner position: (close(bar 1) - lower) / (upper - lower), P19's Keltner = EMA 21 +/- 2.0 x Wilder ATR(14) on the 1h bars at bar 1",
+     "F12 rank of F1 among the arm's names of the same market that session (average rank of ties / count)",
+     "F13 rank of F2, the same way",
+     "F14 mean F1 of the arm's names of the same market that session (the market that hour)",
+     "F15 ^VIX close of the latest US session dated before the session (never today's): the close of that session's last ^VIX 1-hour bar in the store; missing if it is more than 5 weekdays back",
+     "F16 day of week (0 = Monday ... 4 = Friday)",
+     "F17 turn of month: 1 if the session is the last, or one of the first 3, sessions of its calendar month on the market's exchange calendar (XNYS / XLON), else 0"
+    ],
+    "target": "gross return fill -> exit (after the stop), own currency, clipped at the training fold's 1st/99th percentiles",
+    "walk_forward": {
+     "window": "expanding",
+     "min_train_sessions": 126,
+     "oos_not_before": "2024-02-01",
+     "refit_every_sessions": 21,
+     "embargo_sessions": 1,
+     "oos_end": "2026-07-10"
+    },
+    "decide_at_bar": 1,
+    "qualify": "bet prediction > 2 x its own 1x round-trip cost",
+    "rank_by": "prediction - 1x round-trip cost",
+    "top": 3,
+    "ties": "bet name",
+    "rank_scope": "each market on its own",
+    "stop": true,
+    "stop_k": 3.0,
+    "atr_period": 14,
+    "stake_gbp": 300.0,
+    "arm": "MIX",
+    "sleeves": [
+     "us_liquid",
+     "uk_etf",
+     "uk_share"
+    ]
+   },
+   "side": "long-only",
+   "holdout": "1-hour bars sealed from 2026-07-13 for ever; ONE holdout run on 2026-07-13 -> 2026-10-09 only if walk-forward PASSES, by holdout.py (clarification 8); bars from 2026-10-10 stay sealed for S12",
+   "judged": "Judged EXACTLY as S6 batch 1 (QT-18 B2): net after 2x costs with the survivorship mark-down, compounded, in pounds, 1x beside it; Gate 1 = turnover-matched null p < 0.05 AND a positive net mean per bar; Deflated Sharpe >= 0.95 over qb2's full trial count (56 + 6 = 62); beats VWRP's own 1h closes over the same dates; INSUFFICIENT under 30 out-of-sample trades. 200 null runs, seed 0. Brakes (P12) not applied; maximum drawdown reported.",
+   "clarifications": "Fixed before any model code (QT-27 B; decided while the operator was away, STANDING GO 2026-10-07; each is a mapping onto batch 1's code, logged in docs/reports/QT-27.md). (1) DECISION AND TRADE = batch 1's plumbing (s6_rules.Rule): bars numbered from 1 within each session; bar 1 = the session's first stored bar, and only if it starts at the exchange's open (US 09:30, London 08:00); the decision is taken at bar 1's CLOSE; fill by fills.py (two bars later, same session); exit at E's open or the stop (S6-04/05's stop, k = 3, Wilder ATR(14) of the 1h bars); one entry per name per day. (2) SKIPPED for a name (batch 1's rules): no previous session; no bar 1; the entry would land at or after E; any feature missing (the row is dropped, train and live alike, and counted). ELIGIBLE = not skipped. (3) FEATURES F1-F17 as listed, all known at bar 1's close; Pk = the close of the name's last bar of its k-th previous session in the store (P1 = batch 1's 'prior close'); EMAs and ATR are qb2/signals/indicators.py's, over the name's 1h bars from its first stored bar; F12-F14 among the arm's names of the same market (the whole arm in US and LON; in MIX the name's own market, because the other market's bar 1 is not known at that moment); F15 from the 1h store because the daily table is sealed from 2025-10-10. No feature is ever added. (4) TARGET = the trade's gross return from the fill to the exit after the stop rule, in the instrument's own currency (the price move forecast; FX and every other cost sit in the cost bar), by batch 1's own arithmetic (s6_rules.Rule weights with that day chosen, fills.positions, simulate.run gross, compounded over the session). P15 changes no price path, so a P15-refused day keeps its training row. Both lines of a bet are rows. Clipped at the training fold's own 1st and 99th percentiles (numpy, linear) before each fit. (5) WALK-FORWARD: the arm's SESSIONS = the dates with at least one eligible row, in order; the first out-of-sample session t0 = the first session dated on or after 2024-02-01 with at least 126 sessions holding training rows at or before the session two positions before it; refit at t0 and every 21 sessions after; the model for sessions [t_k, t_k+1) is fit on every training row dated at or before the session two positions before t_k (expanding, embargo one session); out-of-sample ends 2026-07-10. No tuning, ever; OMP_NUM_THREADS=4, n_jobs=1. (6) TRADE RULE per session: every eligible name is scored by the model in force; BETS (bet_groups v1): a bet's prediction = the mean of its eligible lines' predictions, its cost = the mean of its lines' own 1x round-trip costs (costs.round_trip at GBP 300, 1x); a bet QUALIFIES if prediction > 2 x cost; qualifiers ranked by prediction - cost, highest first, ties by bet name; the top 3 are chosen; a chosen bet buys every eligible line of it; a chosen line P15 refuses at bar 1's close (plan.may_enter, the history rule) is not bought and not replaced (batch 1's rule); no qualifier = cash. The ranking runs over the arm in US and LON; in MIX over each market on its own at its own bar-1 close, top 3 each (batch 1's rule for intraday rankings in the Mix arm, S6-06/07: the US bar 1 closes 5.5 hours after London's, so one ranking across both would read the future for London -- the box's 'MIX ranks the whole arm' cannot be done causally); the MIX model is ONE model fit on both markets' rows. (7) GRADED WINDOW = the model's out-of-sample sessions only: each name's bars start one firewall training window (63 sessions' worth of its 1h bars, walk_forward.default_sizes) before its first out-of-sample bar, so the unchanged firewall grades from exactly that bar; a name with fewer bars before it is graded from its own 63-session mark, as in batch 1. Stake GBP 300 per order (cost arithmetic only); equal weight per bet across the arm's bets, a bet not held in cash (batch 1). (8) HOLDOUT, only for a walk-forward PASS, by holdout.py, once: the same walk-forward continued into the sealed sessions 2026-07-13 -> 2026-10-09 (refit every 21 sessions on every row up to two sessions before, sealed rows included once past), sealed ^VIX bars read in that one pass only. (9) Described, never judged: trades, days in cash, rows dropped, mean prediction vs mean realised gross on traded days (calibration).",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box B (S6 batch 2, the combined model); registered alone, in its own commit, before any model code exists"
+  },
+  {
+   "kind": "drill",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "side": "long-only",
+   "holdout": "no holdout run (a measuring instrument)",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box E (the model's birth certificate), registered with CM-* before any model code; honest runs logged kind=drill, counted 0; red-firsts on deliberately broken code logged nowhere",
+   "id": "KN-CM-NULL",
+   "rule": "cm_null",
+   "name": "the worthless are rejected (Gate 1): the link between each name's features and its own outcome is destroyed, so both models must be REJECTED at 1x and 2x on the LON arm",
+   "parameters": {
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "models": [
+     "ridge",
+     "gbt"
+    ],
+    "as_trials": "everything as CM-L-LON / CM-G-LON (features, target, walk-forward, trade rule, stop, grading) except the line below",
+    "shuffle": "targets shuffled across names within each session: done from the feature side -- each session's eligible feature vectors are permuted among that session's names (numpy default_rng([0, the session's date ordinal])), so each name keeps its own real price moves and its trades earn them. For the fit this is the same shuffle as permuting the targets; it is done this way so the model never scores REAL features at test time (a model fit on shuffled targets but applied to real features could still pick by a real, if accidental, pattern -- not a null).",
+    "stresses": [
+     1.0,
+     2.0
+    ]
+   },
+   "expect": "FAIL",
+   "gate": "GREEN when, for each model at 1x and 2x, the verdict is not PASS and the luck test is not passed (p >= 0.05, or too few trades to test: INSUFFICIENT)",
+   "red_first": "fold boundary leaked: each block's model also fit on its own test sessions (the boundary moved to the end of the block it predicts) -> RED when the luck test passes (p < 0.05 with a positive net mean per bar) or the verdict is PASS. Required on the gradient-boosted model (the one able to memorise leaked rows); the ridge model's figure is reported -- a 17-coefficient linear fit on thousands of rows cannot memorise a leaked block, and its boundary is proven by the D2 fold test. The full verdict is reported beside it. Not seen = the known-null is NOT PROVEN for that breakage -> STOP rule (no trial run)."
+  },
+  {
+   "kind": "drill",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "side": "long-only",
+   "holdout": "no holdout run (a measuring instrument)",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box E (the model's birth certificate), registered with CM-* before any model code; honest runs logged kind=drill, counted 0; red-firsts on deliberately broken code logged nowhere",
+   "id": "KN-CM-EDGE",
+   "rule": "cm_planted",
+   "name": "the exploitable passes after costs (Gate 2): a planted edge three times the 2x round-trip cost must PASS at 1x and 2x, both models",
+   "parameters": {
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "models": [
+     "ridge",
+     "gbt"
+    ],
+    "as_trials": "everything as CM-L-LON / CM-G-LON (features, target, walk-forward, trade rule, stop, grading) except the line below",
+    "plant": "F_p = one N(0,1) draw per (bet, session), numpy default_rng([0, the bet's index, the session's date ordinal]), both lines of a bet sharing it; given to both models as an 18th feature (drills only). Every name of the arm is planted: on a name's sessions with F_p > 0 its fill -> E return gets +X -- on a COPY of its bars (never the store) the fill bar's high, low and close and every price of the session's later bars are multiplied by (1 + X); the fill bar's open (the entry) is unchanged, high/low re-formed, the next session unscaled. X is sized to the name's own round-trip cost (costs.round_trip at GBP 300).",
+    "x": "3 x the name's own 2x round-trip cost",
+    "stresses": [
+     1.0,
+     2.0
+    ]
+   },
+   "expect": "PASS",
+   "gate": "GREEN when the verdict is PASS for each model at 1x and 2x"
+  },
+  {
+   "kind": "drill",
+   "bar_size": "1h",
+   "universe": "bot-universe-v1: arm London = sleeves uk_etf + uk_share (20 names; VALL.L has no unsealed 1h bars; VUAG/VUSA one bet), each instrument costed as itself (stamp duty on shares only). 1-hour bars of the REAL clean store, unsealed (before 2026-07-13); long only, at most one entry per name per day; P15 via the history rule (operator GO 2026-10-16, qb2/research/p15_history.py), asked as the sender asks it; equal weight per bet across the arm's bets (a bet not held sits in cash). ^VIX's 1-hour bars of the same store (unsealed) feed feature F15 only; ^VIX is never traded.",
+   "exit_rule": "Every trade ends at the open of E unless stopped earlier: E = the session's first bar that ends after the P4 cut (15 minutes before the close) -- US 15:30, London 16:00, half days by the exchange calendar; nothing held overnight. Fills: QT-17's rule -- the open of the first bar starting at or after the deciding bar's close plus the market's delay (US 1.25 min, London 16.66 min) = two bars later on 1h ('the next allowed open'). Stop (the S5 stop): initial level = entry (the fill bar's open) - 3 x Wilder ATR(14, 1h) as of the last bar closed before the entry; on each held bar's close: crossed if close <= level -> sold at the next allowed open; else level = max(level, close - 3 x ATR(14) at that close), raised only. k = 3 throughout (the unsettled k = 2 needs brake/VIX state, which back-tests do not apply).",
+   "side": "long-only",
+   "holdout": "no holdout run (a measuring instrument)",
+   "note": "Why (QT-27 box B): S6 batch 1's 24 rules had about zero edge before costs (docs/research/S6_batch1_results_2026-10.md). Simons' method combines many weak signals into one forecast and trades only when the forecast clears costs. The operator's own words, verbatim (docs/plan/PLAN_V2.md, 2026-09-20/21): \"I want to combine them, not just add more features\" and \"lets move more towards Simon's\"; on 2026-09-21 he accepted, at gist level, PLAN_V2 change 3, \"One model, not a folder of strategies\" (signals \"combined into one calibrated probability per instrument per day\"). The box's summary of it -- \"one combined model of many small signals producing the confidence score\" -- is the mentor's wording; it is not found verbatim in the repo. Treated as S6 signals in their own right: each model x arm = ONE trial through the full firewall alone.",
+   "date": "2026-10-28",
+   "source": "QT-27 box E (the model's birth certificate), registered with CM-* before any model code; honest runs logged kind=drill, counted 0; red-firsts on deliberately broken code logged nowhere",
+   "id": "KN-CM-BELOW",
+   "rule": "cm_planted",
+   "name": "an edge below costs is rejected (Gate 2): the same plant at half the 1x round-trip cost must be REJECTED at 1x and 2x, both models",
+   "parameters": {
+    "arm": "LON",
+    "sleeves": [
+     "uk_etf",
+     "uk_share"
+    ],
+    "models": [
+     "ridge",
+     "gbt"
+    ],
+    "as_trials": "everything as CM-L-LON / CM-G-LON (features, target, walk-forward, trade rule, stop, grading) except the line below",
+    "plant": "F_p = one N(0,1) draw per (bet, session), numpy default_rng([0, the bet's index, the session's date ordinal]), both lines of a bet sharing it; given to both models as an 18th feature (drills only). Every name of the arm is planted: on a name's sessions with F_p > 0 its fill -> E return gets +X -- on a COPY of its bars (never the store) the fill bar's high, low and close and every price of the session's later bars are multiplied by (1 + X); the fill bar's open (the entry) is unchanged, high/low re-formed, the next session unscaled. X is sized to the name's own round-trip cost (costs.round_trip at GBP 300).",
+    "x": "0.5 x the name's own 1x round-trip cost",
+    "stresses": [
+     1.0,
+     2.0
+    ]
+   },
+   "expect": "FAIL",
+   "gate": "GREEN when, for each model at 1x and 2x, the verdict is not PASS and costs are what reject it: a net mean per bar not above zero, or too few trades because few forecasts clear the cost bar (INSUFFICIENT)",
+   "red_first": "costs off (the cost model returns zero on every leg AND in the trade rule's cost bar) -> RED when the net mean per bar turns positive and the luck test passes, or the verdict is PASS, on at least one model. The full verdict is reported beside it: a PASS also needs VWRP beaten, and 3 slots of 19 earning +0.5x cost compound to roughly +20% over the period, so the box's literal 'turns PASS' is not expected even with costs off; the gate's own check (costs) turning is the red. Not seen = NOT PROVEN -> STOP rule (no trial run)."
   }
  ],
  "promotion_gos": [
