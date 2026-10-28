@@ -1,0 +1,18 @@
+QT-28 C -- fail-first record: tests/qb2/test_qt28_drills.py run on the OLD cm_drills.py (787d4a27), then on the new one.
+Worktree C:/Users/mtrem/AppData/Local/Temp/claude/C--Users-mtrem-TRADING/abb6d72c-7a69-4a9e-b5d2-ce35e39d3128/scratchpad/qt28/wt, main's .venv-qb2, inside the cap. Exit codes read from the saved output.
+
+== OLD code (2026-10-28T20:59:01Z UTC)
+FAILED tests/qb2/test_qt28_drills.py::test_qt27s_null_gbt_case_v1_words_red_the_firewall_and_v2_green
+FAILED tests/qb2/test_qt28_drills.py::test_v1_still_returns_qt27s_verdicts_and_v2_greens_the_same_twelve
+FAILED tests/qb2/test_qt28_drills.py::test_each_v2_gate_is_the_verdict_alone_over_all_four_runs
+FAILED tests/qb2/test_qt28_drills.py::test_a_red_first_is_seen_only_through_the_firewalls_gate_1
+FAILED tests/qb2/test_qt28_drills.py::test_proven_needs_every_v2_gate_green_and_both_red_firsts_seen
+FAILED tests/qb2/test_qt28_drills.py::test_below_v2_is_sized_by_the_registered_k_below_the_1x_round_trip
+FAILED tests/qb2/test_qt28_drills.py::test_the_front_door_refuses_a_v2_entry_the_code_does_not_implement
+7 failed, 1 passed in 2.36s
+rc=1
+(the one pass reads only the register committed in 787d4a27 -- the v2 entries -- no drill code)
+
+== NEW code (worktree, about 21:02 UTC; test_qt28_drills 8 + test_qt27_drills 6 = 14)
+14 passed in 4.47s
+rc=0

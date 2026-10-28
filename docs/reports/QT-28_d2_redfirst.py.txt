@@ -1,0 +1,73 @@
+"""QT-28 D2: the combined model's red-firsts for drills v2, on deliberately broken code, NOTHING
+logged (kept as .txt: a record, not code). Run from the repo root under the cap, after the honest
+drills (register 787d4a27: KN-CM-NULL-v2 and KN-CM-BELOW-v2 red_first), then merge the page:
+
+    python -I <a .py copy of this file> <out.json>
+    python -m qb2.research.cm_drills --page <out.json>
+
+a. fold boundary leaked -- combined.train_last moved to the end of the block it predicts, so each
+   model is also fit on its own test sessions: KN-CM-NULL-v2, both models, 1x. SEEN when gbt clears
+   the firewall's Gate 1 (luck p < 0.05 AND a positive net mean per bar) or PASSes; ridge reported.
+b. costs off -- every leg 1e-12 in the firewall (simulate.leg_fractions, as QT-18) AND in the trade
+   rule's cost bar (cm_book.round_trip); X keeps its registered size (0.9 x the REAL 1x round trip,
+   cm_drills.SIZE reads costs.round_trip, which is not patched): KN-CM-BELOW-v2, both models, 1x.
+   SEEN when at least one model clears Gate 1 or PASSes: proof that costs are what reject it.
+Judged by cm_drills.shows / cm_drills.seen, the functions the page uses (QT-27's script judged inline).
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+
+from qb2.model import combined  # noqa: E402
+from qb2.research import cm_arm, cm_book, cm_drills, firewall, holdout, preregister, s6_run, simulate  # noqa: E402
+from qb2.tools import run_window  # noqa: E402
+from qb2.tools.governor import assert_capped  # noqa: E402
+
+assert_capped()
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("qt28_d2.json")
+t0 = time.monotonic()
+entry = preregister.require("KN-CM-NULL-v2").entry
+base, skipped = firewall.load("1h", entries=s6_run.arm_entries(entry))
+vix = holdout.research_bars(cm_arm.VIX, "1h", "US")
+results: dict[str, list[dict[str, object]]] = {"fold_boundary_leaked": [], "costs_off": []}
+
+
+def one(drill: str, arm: cm_arm.Arm, model: str) -> dict[str, object]:
+    run_window.wait_clear()
+    token = preregister.require(drill)
+    cm_drills.check_entry(token.entry)
+    r, extras = cm_arm.score(token, arm, model, stress=1.0, log_path=None, columns=cm_drills.columns(drill))
+    fig = cm_drills.figures(drill, model, 1.0, r, extras)
+    fig["red"] = cm_drills.shows(fig)
+    print(drill, model, fig["verdict"], "p", fig["p"], "mean", fig["mean_per_bar"], "trades", fig["trades"],
+          "RED" if fig["red"] else "not red", flush=True)
+    return fig
+
+
+real_last = combined.train_last
+try:                                                     # a. the fold boundary leaked
+    combined.train_last = lambda block: block.stop - 1
+    leaked = cm_drills.arm_for("KN-CM-NULL-v2", base, skipped, vix)
+    results["fold_boundary_leaked"] = [one("KN-CM-NULL-v2", leaked, m) for m in ("ridge", "gbt")]
+finally:
+    combined.train_last = real_last
+
+real_legs, real_trip = simulate.leg_fractions, cm_book.round_trip
+try:                                                     # b. costs off
+    simulate.leg_fractions = lambda inst, stress: simulate.LegFractions(1e-12, 1e-12)
+    cm_book.round_trip = lambda name: 1e-12
+    free = cm_drills.arm_for("KN-CM-BELOW-v2", base, skipped, vix)
+    results["costs_off"] = [one("KN-CM-BELOW-v2", free, m) for m in ("ridge", "gbt")]
+finally:
+    simulate.leg_fractions, cm_book.round_trip = real_legs, real_trip
+
+seen = cm_drills.seen(results)
+OUT.write_text(json.dumps({"red_first": results, "seen": seen, "seconds": round(time.monotonic() - t0)},
+                          indent=1, default=str), encoding="utf-8")
+print("red-first seen:", seen, f"({time.monotonic() - t0:.0f}s)")

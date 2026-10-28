@@ -1,0 +1,31 @@
+"""QT-28 smoke on the REAL store: an instrument, not a test of anything counted (as QT-27's).
+
+KN-CM-BELOW-v2 (a drill: the one v2 path that is new -- the v2 id, the front-door check, the k = 0.9
+plant), ridge, 1x, 2 null draws, logged NOWHERE: the machinery end to end on real bars and how long
+each step takes. No verdict, p or return is printed: only rows, dates, counts and seconds.
+"""
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+from qb2.research import cm_arm, cm_drills, firewall, holdout, preregister, s6_run  # noqa: E402
+from qb2.tools.governor import assert_capped  # noqa: E402
+
+assert_capped()
+t = time.monotonic()
+for drill in cm_drills.DRILLS_V2:
+    cm_drills.check_entry(preregister.require(drill).entry)
+token = preregister.require("KN-CM-BELOW-v2")
+base, skipped = firewall.load("1h", entries=s6_run.arm_entries(token.entry))
+vix = holdout.research_bars(cm_arm.VIX, "1h", "US")
+print(f"front door + load {time.monotonic() - t:.0f}s: {len(base)} names, skipped {skipped}", flush=True)
+t = time.monotonic()
+arm = cm_drills.arm_for("KN-CM-BELOW-v2", base, skipped, vix)
+print(f"assemble {time.monotonic() - t:.0f}s: rows {len(arm.rows)}, dropped {arm.dropped}, sessions {len(arm.sessions)}"
+      f" {arm.sessions[0]} -> {arm.sessions[-1]}, blocks {len(arm.blocks)}, first OOS {arm.sessions[arm.blocks[0].first]}",
+      flush=True)
+t = time.monotonic()
+r, ex = cm_arm.score(token, arm, "ridge", stress=1.0, n_null=2, log_path=None, columns=cm_drills.columns("KN-CM-BELOW-v2"))
+print(f"score (2 nulls) {time.monotonic() - t:.0f}s: graded {r.start} -> {r.end}, names {r.names}, "
+      f"fits {ex['fits']}, oos sessions {ex['oos_sessions']}", flush=True)

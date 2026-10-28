@@ -1,0 +1,14 @@
+QT-28 C -- mutants of qb2/research/cm_drills.py, each against tests/qb2/test_qt28_drills.py + test_qt27_drills.py (inside the cap, 2026-10-28 21:03 UTC).
+Required by the box: M1 (flip the net-mean sign check), M2 (drop the 2x column), M3a/M3b (k = 0.5). M4-M8 added. Not run: 'shows' without its PASS clause -- an equivalent mutant (the firewall's PASS needs Gate 1).
+
+target qb2\research\cm_drills.py sha256 79883ca6beee2d221840511855b6e1db0974b973803ff667f60d915b7fe1bc64
+M1 flip the net-mean sign check (Gate 1's 'positive' half): KILLED (rc 1; 2 failed, 12 passed in 2.48s; red: test_qt27s_null_gbt_case_v1_words_red_the_firewall_and_v2_green, test_a_red_first_is_seen_only_through_the_firewalls_gate_1)
+M2 drop the 2x column (each drill judged on its 1x runs only): KILLED (rc 1; 3 failed, 11 passed in 2.46s; red: test_each_v2_gate_is_the_verdict_alone_over_all_four_runs, test_proven_needs_every_v2_gate_green_and_both_red_firsts_seen, test_the_front_door_refuses_a_v2_entry_the_code_does_not_implement)
+M3a use k = 0.5 (the constant): KILLED (rc 1; 2 failed, 12 passed in 2.44s; red: test_below_v2_is_sized_by_the_registered_k_below_the_1x_round_trip, test_the_front_door_refuses_a_v2_entry_the_code_does_not_implement)
+M3b use k = 0.5 (the size only, the constant kept): KILLED (rc 1; 1 failed, 13 passed in 2.36s; red: test_below_v2_is_sized_by_the_registered_k_below_the_1x_round_trip)
+M4 v2 judged by v1's NULL words (luck p >= 0.05 as well): KILLED (rc 1; 4 failed, 10 passed in 2.46s; red: test_qt27s_null_gbt_case_v1_words_red_the_firewall_and_v2_green, test_v1_still_returns_qt27s_verdicts_and_v2_greens_the_same_twelve, test_each_v2_gate_is_the_verdict_alone_over_all_four_runs, test_proven_needs_every_v2_gate_green_and_both_red_firsts_seen)
+M5 the leak red-first seen on ridge too: KILLED (rc 1; 1 failed, 13 passed in 2.34s; red: test_a_red_first_is_seen_only_through_the_firewalls_gate_1)
+M6 proven ignores the red-firsts: KILLED (rc 1; 1 failed, 13 passed in 2.31s; red: test_proven_needs_every_v2_gate_green_and_both_red_firsts_seen)
+M7 the front door forgets BELOW-v2's k: KILLED (rc 1; 1 failed, 13 passed in 2.33s; red: test_the_front_door_refuses_a_v2_entry_the_code_does_not_implement)
+M8 the all-four-runs check dropped: KILLED (rc 1; 3 failed, 11 passed in 2.30s; red: test_v1_still_returns_qt27s_verdicts_and_v2_greens_the_same_twelve, test_each_v2_gate_is_the_verdict_alone_over_all_four_runs, test_proven_needs_every_v2_gate_green_and_both_red_firsts_seen)
+restored, sha256 79883ca6beee2d221840511855b6e1db0974b973803ff667f60d915b7fe1bc64 == pristine: True
