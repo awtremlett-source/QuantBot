@@ -107,6 +107,8 @@ def _holdout(token: preregister.Registered, entry: Mapping[str, Any], arm: cm_ar
         raise Defect("fingerprint (b) moved before the holdout run")
     try:
         final = holdout.open_final_run(token)
+    except holdout.Waiting as why:             # QT-29 E: no GO words yet -- nothing opened, asked again
+        return {"verdict": holdout.WAITING, "reasons": [str(why)]}
     except holdout.Sealed as why:              # opened before, no file: never repeated
         out: dict[str, Any] = {"verdict": "NOT RUN", "reasons": [f"holdout already opened, no result saved ({why}); "
                                                                  "never repeated"]}
@@ -167,7 +169,7 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path =
                         seconds=done["seconds"])
             ran += 1
             say(f"  {cid}: {done['verdict']} ({done['seconds']:.0f}s)")
-        if done["verdict"] == "PASS" and not done.get("holdout"):
+        if done["verdict"] == "PASS" and holdout.due(done):
             if key not in cache:
                 cache[key] = cm_arm.load(entry)
             done["holdout"] = _holdout(token, entry, cache[key], model, run_dir, number, prints["b"])

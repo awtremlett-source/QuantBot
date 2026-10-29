@@ -42,26 +42,26 @@ def holes(calendar: Sequence[date], have: Sequence[date], written: Sequence[Row]
     return [d for d in calendar if have and d < max(have) and d not in there and d.isoformat() not in done]
 
 
-def row(day: date, held: stops.Stop | None) -> dict[str, object]:
+def row(day: date, held: stops.Stop | None, name: str = "VWRL") -> dict[str, object]:
     return {"session": day.isoformat(), SKIPPED: True, "held": held is not None, "close": None,
             "stop": held.level if held else None,
-            "reason": "no sane VWRL close in the store when a later session was processed"}
+            "reason": f"no sane {name} close in the store when a later session was processed"}
 
 
-def lines(written: Sequence[Row], late: Mapping[date, float]) -> list[str]:
+def lines(written: Sequence[Row], late: Mapping[date, float], name: str = "VWRL") -> list[str]:
     """UNCHECKED for each skipped session still without a sane close; final once one came late."""
     out, shown = [], {str(r["session"]) for r in written[-ROWS:]}
     for r in (r for r in written if is_skip(r)):
         d = date.fromisoformat(str(r["session"]))
         if (close := late.get(d)) is None:
-            out.append(f"UNCHECKED: {d:%a %d %b} ({d}) has no sane VWRL close -- the as-if record skips that "
-                       "session, and the stop was checked only against later closes. Look at VWRL's close "
+            out.append(f"UNCHECKED: {d:%a %d %b} ({d}) has no sane {name} close -- the as-if record skips that "
+                       f"session, and the stop was checked only against later closes. Look at {name}'s close "
                        "that day yourself.")
         elif d.isoformat() in shown:
             level = r.get("stop")
             then = (f", {'above' if close > level else 'AT OR BELOW'} the stop of £{level:,.2f} then"
                     if isinstance(level, (int, float)) else "")
-            out.append(f"SKIPPED for good: {d:%a %d %b} ({d})'s VWRL close came after a later session was "
+            out.append(f"SKIPPED for good: {d:%a %d %b} ({d})'s {name} close came after a later session was "
                        f"processed (£{close:,.2f}{then}) -- the as-if record keeps it skipped; nothing "
                        "recorded changes.")
     return out

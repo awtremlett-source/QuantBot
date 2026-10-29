@@ -106,8 +106,7 @@ def sealed_names(data: Sequence[firewall.NameData], interval: str, final: holdou
     return out
 
 
-def run(*, new_batch: str | None = None, run_dir: Path = RUN_DIR,
-        log_path: Path = trial_log.DEFAULT_TRIAL_LOG,
+def run(*, new_batch: str | None = None, run_dir: Path = RUN_DIR, log_path: Path = trial_log.DEFAULT_TRIAL_LOG,
         require: Callable[[str], preregister.Registered] = preregister.require,
         load: Loader = firewall.load, score: Callable[..., firewall.FirewallResult]
         = firewall.score, open_final: Callable[..., holdout.HoldoutPass]
@@ -166,10 +165,12 @@ def _holdout(token: preregister.Registered, make: Callable[..., Any],
              data: Sequence[firewall.NameData], interval: str, n_null: int, n_full: int,
              open_final: Callable[..., holdout.HoldoutPass],
              bench: Callable[[date, date], benchmark.Benchmark] | None, log_path: Path,
-             clean_root: Path | None,
-             score: Callable[..., firewall.FirewallResult]) -> dict[str, Any]:
+             clean_root: Path | None, score: Callable[..., firewall.FirewallResult]) -> dict[str, Any]:
     """The ONE final run. Logged as kind "holdout" (never a selection trial)."""
-    final = open_final(token, log_path=log_path)
+    try:
+        final = open_final(token, log_path=log_path)
+    except holdout.Waiting as why:             # QT-29 E: no GO words yet -- nothing opened, result kept
+        return {"verdict": holdout.WAITING, "reasons": [str(why)]}
     sealed = sealed_names(data, interval, final, clean_root)
     result = score(token, make, sealed, interval=interval, stress=STRESS, n_null=n_null,
                    bench=bench, log_path=None, n_trials=n_full, final=final)
@@ -234,8 +235,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--new-batch", metavar="DEFECT", default=None,
                         help="re-run all 18 from the start, naming the defect fixed")
-    parser.add_argument("--page-only", action="store_true",
-                        help="rewrite the results page from what is on disk")
+    parser.add_argument("--page-only", action="store_true", help="rewrite the results page from what is on disk")
     args = parser.parse_args(argv)
     t0 = time.monotonic()
     if not args.page_only:

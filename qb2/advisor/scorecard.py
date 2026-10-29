@@ -7,7 +7,8 @@
   with 2x beside; dividends (P3) as in every back-test here (advisor_rules.income: OK payouts /
   the previous close, on the first bar on or after the ex-date); compounded from the arm date
   and marked as if sold at THAT day's close. In % with a notional pound figure beside: the pot
-  is 70% of a notional GBP 10,000 account = GBP 7,000 (a display scale, a STARTING FIGURE).
+  is 70% of a notional GBP 10,000 account = GBP 7,000 (a display scale, a STARTING FIGURE); the
+  bot pot's, 30% = GBP 3,000 (P21, QT-29), through ``pot``.
 * RECONCILED DAILY: the whole record is recomputed from the suggestions and the bars every run
   and must equal every line written before, to the penny (:func:`reconcile`); a difference is
   RED and names the day -- a revised price or dividend, never silently absorbed.
@@ -45,9 +46,10 @@ class Day:
     held: bool                          # held at this close
     close: float
     value: dict[float, float]           # stress -> pounds, marked as if sold at this close
+    pot: float = POT_GBP                # the notional start (the bot pot's: 3,000)
 
     def pct(self, stress: float = 1.0) -> float:
-        return self.value[stress] / POT_GBP - 1.0
+        return self.value[stress] / self.pot - 1.0
 
 
 def fill_session(issued: datetime, sessions: Sequence[date],
@@ -97,21 +99,21 @@ def held_path(sessions: Sequence[date], book: Sequence[Fill]) -> np.ndarray:
 
 
 def day(bars: pd.DataFrame, sessions: Sequence[date], book: Sequence[Fill], income: np.ndarray,
-        instrument: costs.Instrument, k: int) -> Day:
+        instrument: costs.Instrument, k: int, pot: float = POT_GBP) -> Day:
     """Session k's as-if value, 1x and 2x: the one arithmetic on the record cut at k, so it is
     marked as if sold at THAT close (simulate.run sells a position still open at its end)."""
     held = held_path(sessions[:k + 1], book)
     opens, closes = bars["open"].to_numpy(dtype=float), bars["close"].to_numpy(dtype=float)
-    value = {s: POT_GBP * float(np.prod(1.0 + simulate.run(
+    value = {s: pot * float(np.prod(1.0 + simulate.run(
         opens[:k + 1], closes[:k + 1], held, simulate.leg_fractions(instrument, s), 0.0,
         income[:k + 1]).net)) for s in STRESSES}
-    return Day(sessions[k], bool(held[k]), float(closes[k]), value)
+    return Day(sessions[k], bool(held[k]), float(closes[k]), value, pot)
 
 
 def record(bars: pd.DataFrame, sessions: Sequence[date], book: Sequence[Fill],
-           income: np.ndarray, instrument: costs.Instrument) -> list[Day]:
+           income: np.ndarray, instrument: costs.Instrument, pot: float = POT_GBP) -> list[Day]:
     """Every session's as-if day, recomputed from scratch (the daily reconciliation)."""
-    return [day(bars, sessions, book, income, instrument, k) for k in range(len(sessions))]
+    return [day(bars, sessions, book, income, instrument, k, pot) for k in range(len(sessions))]
 
 
 def reconcile(written: Sequence[Mapping[str, object]], fresh: Sequence[Day]) -> list[str]:

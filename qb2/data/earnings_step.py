@@ -117,8 +117,9 @@ def _advisor(now: datetime, clean_root: Path | None) -> str:
 
 def advise(now: datetime, clean_root: Path | None, paths: Any) -> str:
     """The advisor's step, inside the cap. A STOP or a RED (an overdue, unchecked stop included) is
-    RAISED, so the recorder's run is NOT CLEAN (record_now makes it a complaint) -- never quiet."""
-    from qb2.advisor import daily
+    RAISED, so the recorder's run is NOT CLEAN (record_now makes it a complaint) -- never quiet. Then the
+    bot pot (P21, QT-29: paper only), whose own fault is a RED in this line, never a raise."""
+    from qb2.advisor import bot_pot, daily
     from qb2.tools import governor
     try:
         governor.assert_capped()
@@ -129,7 +130,7 @@ def advise(now: datetime, clean_root: Path | None, paths: Any) -> str:
         raise RuntimeError(f"ADVISOR STOPPED: {why}") from why
     if loud := [x for x in lines if x.startswith("RED")]:
         raise RuntimeError("advisor: " + "; ".join(loud))
-    return "Advisor: " + " · ".join(lines)
+    return "Advisor: " + " · ".join(lines) + " · " + bot_pot.step(now, clean_root, paths)
 
 
 def _digest(now: datetime, line: str, digest_dir: Path | None = None) -> str:

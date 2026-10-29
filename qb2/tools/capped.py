@@ -16,6 +16,10 @@ python.exe is a launcher with a job of its own -- but a child just made can be p
 made elsewhere (Task Scheduler vs a console) that will not take the child is waited for: never
 two budgets at once. FAIL CLOSED: not Windows, a library missing or the job refused -> exit 3, in
 plain words. The whole PC's memory, QuantBot's or not, is qb2.tools.governor's watch.
+
+``--clear-of-schedule`` (QT-29 F, research runners): first wait until no recorder run is going and no
+scheduled start is due within 15 minutes (run_window). Default OFF: the recorder itself runs through
+this wrapper and must never wait for its own run.
 """
 
 from __future__ import annotations
@@ -133,7 +137,7 @@ def launch(command: Sequence[str], *, mem_share: float = MEM_SHARE, cpu_share: f
     return int(code)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None, *, wait: Callable[..., float] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     cut = args.index("--") if "--" in args else len(args)     # no command: refused below
     parser = argparse.ArgumentParser(usage="python -m qb2.tools.capped [--mem-share 0.05] -- <command ...>",
@@ -141,7 +145,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--mem-share", type=float, default=MEM_SHARE,
                         help="LOWER the memory cap (a test, a demo); never above 0.80")
     parser.add_argument("--cpu-share", type=float, default=CPU_SHARE, help="LOWER the CPU cap, likewise")
+    parser.add_argument("--clear-of-schedule", action="store_true",
+                        help="wait until no scheduled run is due within 15 minutes (research only)")
     opts = parser.parse_args(args[:cut])
+    if opts.clear_of_schedule:
+        from qb2.tools import run_window    # only then: the recorder's launcher never loads it
+        waited = (wait or run_window.wait_clear)(margin=run_window.MARGIN, say=log)
+        log(f"clear of the schedule (waited {waited / 60:.0f} min)")
     try:
         return launch(args[cut + 1:], mem_share=opts.mem_share, cpu_share=opts.cpu_share)
     except CapError as why:

@@ -46,6 +46,7 @@ RECORDER_LOGS = REPO_ROOT / "logs" / "recorder"
 STATUS_REF = "refs/heads/status"           # never main: the only ref we push
 STATUS_PATH = ("status", "recorder_status.md")
 ADVISOR_PAGE = REPO_ROOT / "logs" / "advisor" / "advisor.md"    # QT-23 D: beside it, same scan
+BOT_POT_PAGE = ADVISOR_PAGE.parent / "bot_pot.md"                 # QT-29 B4: its block, under the advisor's
 REMOTE = "origin"
 
 UK = ZoneInfo("Europe/London")
@@ -216,6 +217,14 @@ def publish(status: Path, log: Path, repo: Path, *, env_values: Mapping[str, str
     return 0
 
 
+def advisor_page(out: Path, pages: Sequence[Path] = (ADVISOR_PAGE, BOT_POT_PAGE)) -> Path:
+    """The advisor's page with the bot pot's block under it (QT-29 B4), written to ``out`` for the push."""
+    if not (parts := [p.read_text(encoding="utf-8").rstrip("\n") for p in pages if p.is_file()]):
+        return pages[0]                  # no page yet: publish skips a missing one, never a stale copy
+    out.write_text("\n".join(parts) + "\n", encoding="utf-8", newline="\n")
+    return out
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     if (code := governor.run_capped("qb2.tools.status_push", argv)) is not None:   # QT-23R: in the cap
         return code
@@ -227,13 +236,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                             datetime.now(timezone.utc), push_log=PUSH_LOG)
         STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
         STATUS_FILE.write_text(text, encoding="utf-8", newline="\n")
+        page = advisor_page(OUT_DIR / ADVISOR_PAGE.name)
     except Exception as exc:        # logged, never silent (Scar #12)
         _log(PUSH_LOG, f"STATUS FAILED: {type(exc).__name__}: {exc}")
         return 1
     if "--no-push" in args:
         _log(PUSH_LOG, "status written, push skipped (--no-push)")
         return 0
-    return publish(STATUS_FILE, PUSH_LOG, REPO_ROOT, env_values=read_env_file(), extra=[ADVISOR_PAGE])
+    return publish(STATUS_FILE, PUSH_LOG, REPO_ROOT, env_values=read_env_file(), extra=[page])
 
 
 if __name__ == "__main__":

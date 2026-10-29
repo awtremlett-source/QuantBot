@@ -9,7 +9,6 @@ here also prove each gate goes RED on the breakage it guards: the delay removed
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 from datetime import date
 from pathlib import Path
@@ -42,10 +41,14 @@ def _git(root: Path, *args: str) -> None:
 
 @pytest.fixture(scope="module")
 def register_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """A git repo holding a COMMITTED copy of the real register."""
+    """A git repo holding a COMMITTED copy of the real register -- with a stand-in for his GO words on the
+    P19 entries, whose holdout these tests open (QT-29 E: the seal opens only on them)."""
     root = tmp_path_factory.mktemp("reg")
     (root / "docs" / "research").mkdir(parents=True)
-    shutil.copy(REPO / preregister.REGISTER_REL, root / preregister.REGISTER_REL)
+    doc = json.loads((REPO / preregister.REGISTER_REL).read_text(encoding="utf-8"))
+    for e in (e for e in doc["entries"] if str(e["id"]).startswith("P19-")):
+        e["holdout_go"] = {"words": holdout.GO_WORDS.format(e["id"]), "at": "test", "source": "test fixture"}
+    (root / preregister.REGISTER_REL).write_text(json.dumps(doc, indent=1), encoding="utf-8")
     _git(root, "init", "-q")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "register")

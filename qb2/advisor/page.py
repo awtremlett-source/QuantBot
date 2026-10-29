@@ -16,6 +16,7 @@ from qb2.advisor.scorecard import POT_GBP
 
 UK = ZoneInfo("Europe/London")
 ROWS = 10                          # the as-if record's last rows on the page (skips.py: final notes)
+BOT_ROWS = 5                       # the bot pot's block (P21)
 
 
 def age(of: date | str | None, today: date) -> str:
@@ -94,4 +95,24 @@ def build(now: datetime, *, arm: date | None, days: Sequence[Mapping[str, Any]],
         out += ["## Weekly reviews", ""] + [
             f"- {r.get('friday') or 'first review'}: " + ("**MISSED**" if r.get("missed") else
             "caught up late" if r.get("late") else "done") for r in reviews] + [""]
+    return "\n".join(out)
+
+
+def bot_block(arm: date | None, days: Sequence[Mapping[str, Any]], lines: Sequence[str]) -> str:
+    """The bot pot's block, under the advisor's on the status page (P21, QT-29 B4): plain words, then
+    the record's last rows (bot_pot.py writes it; status_push joins it on)."""
+    out = ["", "## Bot pot (follows the index)", "",
+           "Paper only. Until a bot strategy survives, the bot's 30% -- a notional £3,000 -- follows the "
+           "advisor's default above: it holds VWRP (the same world index fund, its dividends kept inside "
+           "the fund) whenever the advisor holds VWRL, with its own 15% big-fall stop (10% when markets are "
+           "jumpy) and the bot's brake. Your G3 choice of 29 Oct 2026. Nothing is sent to Trading 212."
+           + (f" Armed from {arm}." if arm else ""), ""]
+    out += [f"- {x}" for x in lines] + [""]
+    if days:
+        out += ["| session | held | VWRP close | stop | value 1x costs | value 2x costs |", "|---|---|---|---|---|---|"]
+        out += [f"| {d['session']} | skipped | no sane close | — | — | — |" if d.get("skipped") else
+                f"| {d['session']} | {'yes' if d['held'] else 'cash'} | £{float(d['close']):,.2f} | "
+                + (f"£{float(d['stop']):,.2f}" if d.get("stop") else "—") + " | "
+                f"£{float(d['value_1x']):,.2f} ({float(d['pct_1x']):+.2f}%) | "
+                f"£{float(d['value_2x']):,.2f} ({float(d['pct_2x']):+.2f}%) |" for d in days[-BOT_ROWS:]] + [""]
     return "\n".join(out)

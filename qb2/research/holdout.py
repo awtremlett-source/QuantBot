@@ -16,6 +16,12 @@ scoring path re-checks the bars it is handed (:func:`check_unsealed`), so sealed
 rows cannot be slipped in from elsewhere. The final run is :func:`open_final_run`:
 once per candidate, logged, never twice. A holdout looked at twice is not a holdout.
 
+QT-29 E (QT-28 PROPOSE 7): it opens only on the operator's own words. The trial's register entry must
+hold ``holdout_go``: his words verbatim, exactly "GO on holdout for <trial id>", with when and where
+he said them (:func:`go_missing`). Without them it raises :class:`Waiting` before anything is opened
+or logged; every runner keeps the walk-forward result, marks the holdout WAITING, and carries on --
+the next run asks again (:func:`due`). Runners: s6_run, cm_run, advisor_run, p19_run (_holdout).
+
 QT-17 A1: QT-16's stop description read the sealed daily year by calling the
 daily loader itself. tests/wall/test_sealed_doors.py now makes any raw bar read
 under qb2/research or qb2/tools RED, so this file is the only door.
@@ -27,9 +33,11 @@ read recent bars to watch the feed, and score nothing.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -42,10 +50,15 @@ SEALED_FROM = {"1d": date(2025, 10, 10), "5m": date(2026, 9, 21),
                "1h": date(2026, 7, 13)}
 EXCHANGE_TZ = {"US": "America/New_York", "LSE": "Europe/London"}
 SPENT = REPO_ROOT / "data" / "qb2" / "holdout_spent.jsonl"
+WAITING, GO_WORDS = "WAITING", "GO on holdout for {}"        # QT-29 E: his words, exactly
 
 
 class Sealed(RuntimeError):
     """A read of sealed data outside the single final holdout run."""
+
+
+class Waiting(RuntimeError):
+    """No GO words for this trial's holdout yet: nothing was opened or logged (QT-29 E)."""
 
 
 _KEY = object()
@@ -130,10 +143,30 @@ def bars_through(symbol: str, interval: str, market: str, *, through: date | Non
     return frame[pd.Series(frame.index.date, index=frame.index).le(through).to_numpy()]
 
 
+def go_missing(entry: Mapping[str, Any]) -> str | None:
+    """Why the register entry does NOT hold his GO for its holdout; None when it does."""
+    go, words = entry.get("holdout_go"), GO_WORDS.format(entry.get("id"))
+    if not isinstance(go, Mapping):
+        return "its register entry holds no holdout_go"
+    if go.get("words") != words:
+        return f"its holdout_go words are not exactly {words!r}"
+    if not str(go.get("at") or "").strip() or not str(go.get("source") or "").strip():
+        return "its holdout_go does not say when and where he gave it"
+    return None
+
+
+def due(done: Mapping[str, Any]) -> bool:
+    """A walk-forward PASS whose holdout has not run yet, or is still WAITING for his words."""
+    return bool((done.get("holdout") or {}).get("verdict", WAITING) == WAITING)
+
+
 def open_final_run(token: preregister.Registered, *, spent: Path | None = None,
                    log_path: Path | None = None) -> HoldoutPass:
-    """The one look. Refused if this candidate has already had it."""
+    """The one look: only on his GO words (else :class:`Waiting`, nothing opened); never twice."""
     registered = preregister.check(token)
+    if (why := go_missing(registered.entry)) is not None:
+        raise Waiting(f"{registered.id}: the holdout WAITS for the operator's words "
+                      f"({GO_WORDS.format(registered.id)!r}): {why} -- nothing opened")
     target = spent or SPENT
     used = [json.loads(line) for line in target.read_text(encoding="utf-8").splitlines()
             if line.strip()] if target.is_file() else []

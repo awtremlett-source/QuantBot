@@ -48,7 +48,7 @@ FX_PAIR = "GBPUSD=X"
 # consistent split adjustment); a shorter routine fetch would cut the history back.
 HISTORY_START = "2010-01-01"
 COLUMNS = ("open", "high", "low", "close", "volume")
-NOT_CLOSED = "its session had not closed on its exchange's clock when fetched (QT-25 B)"
+NOT_CLOSED = "its session had not closed on its exchange's clock when fetched (QT-25 B; ^VIX: not settled, QT-29 D)"
 
 
 @dataclass(slots=True)
@@ -115,12 +115,12 @@ def close_on(symbol: str, day: object, clean_root: Path | None = None,
     return float(frame["close"].to_numpy()[list(naive).index(nearest)])
 
 
-def unclosed(frame: pd.DataFrame, market: str | None, now: datetime) -> pd.Series:
-    """True on a row (dated on its exchange's clock) whose session had not closed at ``now``, the
-    fetch: never a close. The pound/dollar rate has no exchange close, so no row of it is judged."""
-    from qb2.data import clean_step                   # clean_step -> daily_step -> this module
+def unclosed(frame: pd.DataFrame, market: str | None, now: datetime, symbol: str = "") -> pd.Series:
+    """True on a row (dated on its exchange's clock) whose session had not closed at ``now``, the fetch
+    (^VIX: not settled, daily_step.closed): never a close. The pound/dollar rate has no exchange close."""
+    from qb2.data import daily_step                   # clean_step -> daily_step -> this module
     recent = (now - timedelta(days=7)).date()          # older sessions closed long before
-    return pd.Series([market is not None and d >= recent and clean_step.closed(market, d, now) is False
+    return pd.Series([market is not None and d >= recent and daily_step.closed(symbol, market, d, now) is False
                       for d in pd.DatetimeIndex(frame.index).date], index=frame.index, dtype=bool)
 
 
@@ -150,7 +150,7 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
 
             bad = impossible_rows(frame) if set(COLUMNS) <= set(frame.columns) \
                 else pd.Series(False, index=frame.index)
-            broken = set(pd.DatetimeIndex(frame.index[(bad & ~unclosed(frame, market, moment)).to_numpy()]).date)
+            broken = set(pd.DatetimeIndex(frame.index[(bad & ~unclosed(frame, market, moment, symbol)).to_numpy()]).date)
             if bool(bad.any()):
                 # KEPT, not dropped. These are real and worth seeing: BP.L has a
                 # day whose open sits above its own high, and the GBP/USD series
@@ -179,7 +179,7 @@ def ingest(entries: Sequence[Mapping[str, object]], *,
                 # label the provider carries (^VIX arrives on Chicago's)
                 frame.index = pd.DatetimeIndex(frame.index).tz_convert(EXCHANGE_TZ[market])
             frame.index.name = "date"
-            if bool((early := unclosed(frame, market, moment).to_numpy()).any()):   # QT-25 B: said
+            if bool((early := unclosed(frame, market, moment, symbol).to_numpy()).any()):   # QT-25 B: said
                 refused = outcome.refused[symbol] = [str(d) for d in pd.DatetimeIndex(frame.index[early]).date]
                 _append_manifest({"event": "refused", "table": "daily", "symbol": symbol, "sessions": refused,
                                   "at": moment.isoformat(timespec="seconds"), "reason": NOT_CLOSED,

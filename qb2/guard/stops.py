@@ -1,7 +1,7 @@
 """The stop ledger: one stop per open position, raised only (PLAN_V3 P10; QT-16 B1; QT-23 B).
 
 Each pot's rule (RULE_OF): BOT and MANUAL entry - k x Wilder ATR(14) (R4); the ADVISOR's big-fall
-stop, whose ONE copy is :func:`fall_level`, shared with advisor_book (GO 2026-10-19; R3, R5).
+stop, whose ONE copy is :func:`fall_level`, shared with advisor_book (R3, R5) and the bot pot (P21: ``rule``).
 Levels move only through :meth:`Ledger.raise_to`: lower is refused and LOGGED; a file showing one
 lowered (a raise, or a re-justified advisor record opening below the one it replaces) is not
 trusted. Figures and crossed-stop actions: qb2/guard/__init__.py. Append-only JSON lines in
@@ -104,10 +104,10 @@ def plan(ticker: str, entry: float | None, atr: float | None, k: float = STOP_K,
     return StopPlan(ticker, price, float(atr or 0) if f is None else 0.0, k if f is None else f, level)
 
 
-def plan_for(pot: str, ticker: str, entry: float | None, atr: float | None, *,
-             unsettled: bool | None, k: float = STOP_K, floor: float | None = None) -> StopPlan:
-    """The pot's own rule (RULE_OF). The advisor's must be told whether markets are unsettled."""
-    if (fall := RULE_OF.get(pot) == FALL_RULE) and unsettled is None:
+def plan_for(pot: str, ticker: str, entry: float | None, atr: float | None, *, unsettled: bool | None,
+             k: float = STOP_K, floor: float | None = None, rule: str | None = None) -> StopPlan:
+    """The pot's own rule (RULE_OF), or ``rule``. A big fall must be told whether markets are unsettled."""
+    if (fall := (rule or RULE_OF.get(pot)) == FALL_RULE) and unsettled is None:
         raise Blocked(f"{ticker}: the advisor's stop needs to know whether markets are unsettled "
                       "(VIX, the brake) -- no figure, no stop")
     return plan(ticker, entry, atr, k, f=FALLS[bool(unsettled)] if fall else None, floor=floor)
@@ -179,18 +179,18 @@ class Ledger:
         return stop
 
     def open(self, *, position_id: str, pot: str, ticker: str, market: str, opened_at: str,
-             entry: float | None, atr: float | None, reason: str, k: float = STOP_K,
-             unsettled: bool | None = None, floor: float | None = None, replaces: str | None = None) -> Stop:
+             entry: float | None, atr: float | None, reason: str, k: float = STOP_K, unsettled: bool | None = None,
+             floor: float | None = None, replaces: str | None = None, rule: str | None = None) -> Stop:
         if pot not in BAR_OF:
             raise Blocked(f"unknown pot {pot!r}: a stop belongs to bot, advisor or manual")
         if position_id in self.stops():
             raise Blocked(f"{position_id} already has a stop; a held position is never "
                           "re-opened (past 12 months: age.rebuy makes a NEW record)")
-        made = plan_for(pot, ticker, entry, atr, unsettled=unsettled, k=k, floor=floor)
+        made = plan_for(pot, ticker, entry, atr, unsettled=unsettled, k=k, floor=floor, rule=(rule := rule or RULE_OF[pot]))
         self._write({"event": "open", "position_id": position_id, "pot": pot, "ticker": ticker,
                      "market": market, "opened_at": opened_at, "entry": made.entry, "atr": made.atr,
-                     "k": made.k, "bar": BAR_OF[pot], "level": made.level, "reason": reason,
-                     "rule": RULE_OF[pot], **({"replaces": replaces} if replaces else {})})
+                     "k": made.k, "bar": "1d" if rule == FALL_RULE else BAR_OF[pot], "level": made.level,
+                     "reason": reason, "rule": rule, **({"replaces": replaces} if replaces else {})})
         return self.get(position_id)
 
     def raise_to(self, position_id: str, level: float, reason: str) -> Stop:

@@ -11,7 +11,7 @@ every bar from daily.HISTORY_START, so a day missed while the laptop was off is
 filled by the next run. A name whose fetch fails is NAMED in the marker and only those names are
 retried on the next run. A row whose session had not closed when fetched is refused at the door
 (daily.unclosed, QT-25 B), NAMED in the line, and taken by the next top-up, which comes only once
-that session has closed. A sane stored row whose re-fetch came back broken is kept, and a stored
+that session has closed -- for ^VIX, once Cboe has settled its close (:func:`closed`, QT-29 D). A sane stored row whose re-fetch came back broken is kept, and a stored
 close the provider changed is replaced -- both NAMED in the line (QT-26 B, daily.py -> refetch.py).
 Nothing here raises into the recorder.
 
@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping, Sequence
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -47,6 +47,7 @@ PREFIX = "Daily store:"
 D3_SERIES: tuple[dict[str, Any], ...] = (
     {"yfinance": "VWRP.L", "quote_currency": "GBP", "exchange": "London Stock Exchange"},)
 GAUGE, LEAD, MAX_GAUGE_LAG = "^VIX", "VWRL.L", 1     # QT-24: London sessions ^VIX may trail VWRL
+GAUGE_FINAL, NEW_YORK = time(16, 20), ZoneInfo("America/New_York")   # QT-29 D: Cboe settles 16:15 NY
 GAUGE_SERIES: tuple[dict[str, Any], ...] = (
     {"yfinance": GAUGE, "quote_currency": "USD", "exchange": "Cboe (New York clock)"},)
 Fetch = Callable[[str], pd.DataFrame | None]
@@ -58,6 +59,19 @@ def wanted() -> list[dict[str, Any]]:
     for entry in [*universe.bot_entries(), *universe.advisor_entries(), *D3_SERIES, *GAUGE_SERIES]:
         out.setdefault(str(entry["yfinance"]), dict(entry))
     return list(out.values())
+
+
+def closed(symbol: str, market: str | None, day: date, now: datetime) -> bool | None:
+    """Was ``symbol``'s row for ``day`` final at ``now``? Its exchange's session had closed -- and for
+    ^VIX, Cboe had settled it too: VIX's official close is struck at 16:15 New York, after the bell, so
+    its row waits for 16:20 on New York's own clock, whichever side of a clock change (QT-29 D: rows
+    taken at 16:08 New York were corrected the next evening). None: no session that day, or no exchange."""
+    from qb2.data import clean_step            # clean_step imports this module
+
+    shut = None if market is None else clean_step.closed(market, day, now)
+    if symbol != GAUGE or not shut:
+        return shut
+    return datetime.combine(day, GAUGE_FINAL, NEW_YORK) <= now
 
 
 def newest_by_market(entries: Sequence[Mapping[str, Any]],

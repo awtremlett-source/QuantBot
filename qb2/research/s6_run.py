@@ -130,8 +130,7 @@ def _log_line(record: Mapping[str, Any], token: preregister.Registered, run: int
         "register_commit": token.commit, "strategy_name": str(token.entry["rule"]),
         "params": {"stress": STRESS, "n_null": N_NULL, "seed": 0, "verdict": record["verdict"],
                    "p_value": record["p"], "null": "turnover-matched", "dsr": record["dsr"],
-                   "trades": record["trades"], "benchmark": record["vwrp_symbol"],
-                   "s6_run": run},
+                   "trades": record["trades"], "benchmark": record["vwrp_symbol"], "s6_run": run},
         "metric_name": "oos_sharpe_per_bar_marked", "metric_value": record["sharpe"],
         "n_bars": record["n_bars"]})
 
@@ -151,9 +150,10 @@ def _holdout(token: preregister.Registered, entry: Mapping[str, Any],
         raise Defect("fingerprint (b) moved before the holdout run")
     try:
         final = holdout.open_final_run(token)
+    except holdout.Waiting as why:             # QT-29 E: no GO words yet -- nothing opened, asked again
+        return {"verdict": holdout.WAITING, "reasons": [str(why)]}
     except holdout.Sealed as why:              # opened before, no file: never repeated
-        out = {"verdict": "NOT RUN", "reasons": [f"holdout already opened, no result saved "
-                                                 f"({why}); never repeated"]}
+        out = {"verdict": "NOT RUN", "reasons": [f"holdout already opened, no result saved ({why}); never repeated"]}
         atomic_write(path, out)
         return out
     note(run_dir, event="holdout_opened", run=run, id=token.id)
@@ -221,7 +221,7 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path =
                  seconds=done["seconds"])
             ran += 1
             say(f"  {cid}: {done['verdict']} ({done['seconds']:.0f}s)")
-        if done["verdict"] == "PASS" and not done.get("holdout"):
+        if done["verdict"] == "PASS" and holdout.due(done):
             done["holdout"] = _holdout(token, entry, arm(entry)[0], run_dir, number, prints["b"])
             atomic_write(path, done)
             note(run_dir, event="holdout_done", run=number, id=cid, verdict=done["holdout"]["verdict"])

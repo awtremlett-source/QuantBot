@@ -110,8 +110,7 @@ def summary(token: preregister.Registered, result: firewall.FirewallResult,
 def _log_line(record: Mapping[str, Any], token: preregister.Registered, run: int) -> None:
     trial_log.log_trial({
         "utc_time": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"),
-        "kind": trial_log.FIREWALL, "candidate_id": token.id, "register_commit": token.commit,
-        "strategy_name": str(token.entry["rule"]),
+        "kind": trial_log.FIREWALL, "candidate_id": token.id, "register_commit": token.commit, "strategy_name": str(token.entry["rule"]),
         "params": {"stress": STRESS, "n_null": N_NULL, "seed": 0, "verdict": record["verdict"],
                    "p_value": record["p"], "null": "turnover-matched", "dsr": record["dsr"],
                    "trades": record["trades"], "benchmark": record["vwrp_symbol"], "advisor_run": run},
@@ -133,6 +132,8 @@ def _holdout(token: preregister.Registered, data: Sequence[firewall.NameData], f
         raise Defect("fingerprint (b) moved before the holdout run")
     try:
         final = holdout.open_final_run(token)
+    except holdout.Waiting as why:             # QT-29 E: no GO words yet -- nothing opened, asked again
+        return {"verdict": holdout.WAITING, "reasons": [str(why)]}
     except holdout.Sealed as why:              # opened before, no file: never repeated
         out = {"verdict": "NOT RUN", "reasons": [f"holdout already opened ({why})"]}
         atomic_write(path, out)
@@ -145,8 +146,7 @@ def _holdout(token: preregister.Registered, data: Sequence[firewall.NameData], f
     atomic_write(path, out)                    # saved before anything else is done
     trial_log.log_trial({
         "utc_time": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"),
-        "kind": trial_log.HOLDOUT, "candidate_id": token.id, "register_commit": token.commit,
-        "strategy_name": str(token.entry["rule"]),
+        "kind": trial_log.HOLDOUT, "candidate_id": token.id, "register_commit": token.commit, "strategy_name": str(token.entry["rule"]),
         "params": {"stress": STRESS, "verdict": out["verdict"], "through": "2026-10-09",
                    "p_value": out["p"], "dsr": out["dsr"], "advisor_run": run},
         "metric_name": "holdout_sharpe_per_bar_marked", "metric_value": out["sharpe"],
@@ -191,7 +191,7 @@ def run(*, new_run: str | None = None, limit: int | None = None, run_dir: Path |
                  seconds=done["seconds"])
             ran += 1
             say(f"  {cid}: {done['verdict']} ({done['seconds']:.0f}s)")
-        if done["verdict"] == "PASS" and not done.get("holdout"):
+        if done["verdict"] == "PASS" and holdout.due(done):
             done["holdout"] = _holdout(token, data, folder, prints["b"], run_dir, number, n_trials)
             atomic_write(path, done)
             note(run_dir, event="holdout_done", run=number, id=cid, verdict=done["holdout"]["verdict"])
