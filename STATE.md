@@ -32,9 +32,10 @@ processors, 80% RAM, below-normal priority). Research runners: add `--clear-of-s
   bot pot's 15% pause — `--pot bot`.
 
 ## NEXT
-1. **Mentor: QT-29 Part G** — check tonight's 20:00 run (the bot pot's first line, ^VIX 29 Oct refused,
-   the 28 Oct correction 16.81 → 16.91) unless already in the report's addendum.
-2. **Fri 30 Oct 20:00**: the ^VIX 29 Oct row arrives; the bot pot's VWRP fill at Friday's open shows.
+1. QT-29 Part G DONE (report addendum): Thu 20:00 run exit 0; ^VIX 29 Oct refused at 16:06 New York; the
+   28 Oct correction 16.81 → 16.91; advisor £6,979.95; bot pot £3,000.00 in cash, BUY waiting.
+2. **Fri 30 Oct 20:00** — check by hand: ^VIX 29 Oct arrives (probe: 17.11); the bot pot's VWRP fill at
+   Friday's open and its first stop (15%).
 3. **Tue 3 Nov 07:00**: Monday 2 Nov processed (first morning after the clock change) — check by hand.
 4. OPERATOR: **keep the PC on or asleep, plugged in** (it should wake itself at 07:00; on Thu 29 Oct it
    did not — QT-29 A1, cause UNKNOWN).
