@@ -113,7 +113,7 @@ practice account.
 
 ## Decisions
 
-Sixteen decisions. Each has a rule and an **Enforcer** — the test or check that
+Twenty-one decisions. Each has a rule and an **Enforcer** — the test or check that
 holds it. Numbers that have not been tested yet are labelled a *starting figure,
 tested first*, because an untested number that gets believed is how a plan
 quietly becomes a guess.
@@ -480,6 +480,64 @@ error, not a drift, so they stay on the strict side. Built in
 `qb2/execution/xcheck.py`, wired into the sender's chain (disarmed), and running
 in **SHADOW** in every in-session recorder run (`data/raw/xcheck/`) so the false
 alarm rate is measured before the check guards a trade.
+
+**P21 — Until a bot strategy survives, the bot's 30% follows the index fund, as if
+(G3, option (c); QT-29).** The operator's decision of 2026-10-29 07:42 UK. He
+CHOSE it from a question, he did not type the GO line. The mentor asked "what
+should the bot's 30% do?" and he chose, verbatim: *"(c) Follow index
+(Recommended)"*. The option text shown to him, verbatim: *"Until a bot strategy
+passes, the bot's 30% follows the index fund with the 15% big-fall stop."* It is
+recorded as QT-28's option (c) (docs/reports/QT-28.md, 5a3683e, DECISION REQUESTED
+G3), whose GO line reads: *"GO on bot to index: until a bot strategy survives, the
+bot's 30% follows ADV-0 with the big-fall stop."* Both are cited here and in
+docs/reports/QT-29.md.
+
+*What it is.* A bot pot beside the advisor's, scored by P9's method: a notional
+**£3,000**, 30% of the notional £10,000, so the two pots read 70/30. Results are
+in percent at 1× and 2× costs, against the same benchmark (D3). It is **paper
+only**. Nothing is sent to Trading 212, the sender stays DISARMED and no order
+object is built. **It is NOT a trial and NOT a strategy**, so the trial count N is
+unchanged. It is the bot's resting state while no bot strategy has survived. P17's
+"the bot stays off" still holds for trading. **S6 stays OPEN**, and a future
+survivor replaces this pot only on his words.
+
+*The mapping, written before any code (B2):*
+- **Instrument: VWRP**, Vanguard FTSE All-World, accumulating (ISIN IE00BK5BQT80,
+  `VWRPl_EQ`, London, GBP). It is already on the bot's list and is D3 itself. The
+  advisor holds VWRL. The two are kept apart on purpose (QT-23: no overlap), so
+  the pots never hold the same line. VWRP reinvests its dividends inside the fund,
+  so its price is its total return. Against D3, the pot's result then shows only
+  its costs and its timing.
+- **Timing: ADV-0's own signal.** The pot is in when ADV-0 is in, and out when
+  ADV-0 is out. On each session it processes, the run right after the advisor's
+  issues the bot pot's BUY or SELL whenever its state differs from ADV-0's. That
+  BUY or SELL fills by P9's rule, at the open of the first London session that
+  opens after it, which is the same open as ADV-0's own. Arm date = the first
+  session processed after the deploy. On that day the pot follows whatever ADV-0
+  then holds. No back-fill is counted as results.
+- **Its own stop on VWRP's closes.** It sits **15%** below the highest close since
+  the fill, or **10%** when unsettled: its own brake on, ^VIX's previous close
+  above 30, or no ^VIX close within 5 days. The stop only moves up. It uses the
+  same rule as ADV-0 (`stops.fall_level`, the one copy). A close at or below it →
+  the pot sells at the next open. The bot is automatic, so this is a sale, not an
+  alert. After its own stop, while ADV-0 still holds, it buys back by ADV-0's own
+  re-buy rule (R6) on VWRP's closes, or on ADV-0's next buy, whichever comes first.
+- **Its brake: the bot's own, as built (P12), unchanged.** At 10% below its peak:
+  no new buys, and the stop tightens to 10%. At 15%: PAUSED until his words
+  (`clear_pause`, pot bot). The bot's-brake decision stays open.
+- **Costs** come from costs.py at 1× and 2×: a London ETF in GBP pays the spread
+  and slippage, with no stamp duty and no FX. The pot is marked as if sold at each
+  close and reconciled to the penny every run. The record is kept in
+  `data/qb2/bot_pot/`, with its brake lines in `data/qb2/brakes.jsonl` (pot
+  `bot`). Its block sits under the advisor's on the status page.
+- The alternative, PROPOSED and not chosen: the bot pot holds VWRL too. That would
+  be one line for both pots and simpler, but the pots would overlap.
+
+*Enforcer:* tests/qb2/test_qt29_bot_pot.py checks each rule, written fail-first:
+it follows ADV-0's day, both in and out; the stop only moves up and is 10% when
+unsettled; the brake applies; it reconciles to the penny; and no order object can
+be built, with the sender's DISARMED state asserted. The qb2/advisor wall adds
+that no order path is imported.
 
 ---
 

@@ -88,8 +88,8 @@ OPERATOR_WORDS: tuple[str, ...] = (
     "mix — every attempt counted.",
 )
 
-# P18/P19 agreed 2026-10-03, P20 agreed 2026-10-04 -- all added verbatim.
-DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 21))
+# P18/P19 agreed 2026-10-03, P20 agreed 2026-10-04, P21 chosen 2026-10-29 (G3, QT-29) -- verbatim.
+DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 22))
 STAGE_IDS: tuple[str, ...] = (
     "S0", "S1", "S2a", "S2b", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
     "S11", "S12", "S13", "S14", "S15",
@@ -857,3 +857,25 @@ def test_the_resource_cap_is_a_standing_rule_in_his_own_words() -> None:
     flat = " ".join(plan_text().split())
     assert "STANDING RULE, 2026-10-20 (QT-23R): the resource cap — a FENCE." in flat
     assert "tests/qb2/test_qt23r_cap.py" in flat
+
+
+# ------------------------------------------ QT-29: G3 (c), the bot pot follows the index ---
+
+G3_CHOSEN = "(c) Follow index (Recommended)"
+G3_SHOWN = "Until a bot strategy passes, the bot's 30% follows the index fund with the 15% big-fall stop."
+G3_GO_LINE = ("GO on bot to index: until a bot strategy survives, the bot's 30% follows ADV-0 with the "
+              "big-fall stop.")
+
+
+def test_p21_records_g3_from_his_choice_and_cites_the_go_line() -> None:
+    """He chose (c) from a question, not by typing the GO line: both are kept, verbatim."""
+    block = " ".join(decision_blocks()["P21"].split())
+    for words in (G3_CHOSEN, G3_SHOWN, G3_GO_LINE):
+        assert words in block
+    assert "CHOSE it from a question" in block and "2026-10-29 07:42" in block
+
+
+def test_p21_is_paper_only_and_not_a_trial() -> None:
+    block = " ".join(decision_blocks()["P21"].split())
+    for must in ("paper only", "DISARMED", "NOT a trial", "S6 stays OPEN", "VWRP", "15%", "10%", "£3,000"):
+        assert must in block, must
