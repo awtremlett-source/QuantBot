@@ -1,6 +1,6 @@
 # MANIFEST — QuantBot system inventory (single page)
 
-Updated: 2026-10-05 (lines on qb2, the daily run and the scar count refreshed). What exists, what is proven, and what must be true before
+Updated: 2026-10-29 (QT-29). What exists, what is proven, and what must be true before
 this logic leaves NVDA or this laptop.
 
 ## ENVIRONMENT
@@ -21,8 +21,8 @@ this logic leaves NVDA or this laptop.
 - manual/ the operator's own app (walled off; two read-only doorways to v1)
 - qb2/ v2: data ingest research execution guard tools built; signals model sizing ui empty (-> qb2/README.md)
   - qb2/ingest/ recorder.py (RAW capture) · tickers.py (T212<->yfinance spelling)
-    verify_universe.py (resolve names against T212's OWN list; never constructs a
-    ticker) · constituents.py (index membership, parsed from a saved page)
+    verify_universe.py (names checked on T212's OWN list, never built) ·
+    constituents.py (index membership)
   - qb2/data/ front_door.py (the ONLY writer into data/clean) · census.py (how much
     data is really there, with a red-on-broken meter)
   - qb2/ingest/earnings.py when each company reports · dividends.py what each
@@ -30,7 +30,7 @@ this logic leaves NVDA or this laptop.
     daily.py daily bars + GBP/USD. All three carry knowable_time, so a back-test
     cannot use a fact before it was published
   - qb2/research/total_return.py P3's number: return in POUNDS = price + dividends
-    + the currency effect. Refuses Adj Close (that would count dividends twice)
+    + FX; never Adj Close (dividends twice)
   - qb2/data/access.py THE way a strategy reads bars; enforces the minute label
     (MINUTE_OK / FIVE_MIN_ONLY) so a series of real gaps never reaches a model
   - qb2/execution/ t212_client.py (GET-only) · costs.py · fill_recorder.py ·
@@ -50,17 +50,19 @@ this logic leaves NVDA or this laptop.
     s6_results.py (S6 batch 1) · signals/s6_rules.py · data/data_fingerprint.py ·
     (QT-21) data/cross_bar.py (daily unit-break/filler quarantine) · rank_null.py
     · (QT-26) ingest/refetch.py (re-fetch vs store) · advisor/skips.py · (QT-27/28)
-    model/ + cm_*.py (S6 batch 2, the combined model) · tools/run_window.py
+    model/ + cm_*.py (S6 batch 2, the combined model) · tools/run_window.py · (QT-29)
+    advisor/bot_pot.py (P21: the bot's 30% as if in the index) · `capped
+    --clear-of-schedule -- <runner>` · the holdout opens on his GO words only
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
     (which samples count; red under 3 a session) · status_push.py (QB2-StatusPush
-    task: hourly status file → orphan branch "status", secret scan first) · record_now.py (hourly top-up
+    task: hourly status → orphan branch "status", secret scan first) · record_now.py (hourly top-up
     vs after-hours catch-up, under a single-writer lock, with a per-name ledger) ·
     run_recorder.bat (one log per run, kept 30 days) · fingerprint.py · clear_pause.py
-    (his words clear the bot's 15% pause)
+    (his words clear a pause)
 - logs/recorder/ one log per recorder run, gitignored, rotated after 30 days
 - docs/universe/ the versioned universes + README (start here for what we trade)
-- reports/first_light/ the dated charts drawn from the clean store
+- reports/first_light/ dated charts from the clean store
 
 ## DATA
 - NVDA: 2,898 CLEAN daily bars, 2015-01-02 → present. Splits pass continuity

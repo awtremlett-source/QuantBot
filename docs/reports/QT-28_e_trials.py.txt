@@ -1,3 +1,9 @@
+"""RETIRED by QT-29 E (2026-10-29): holdout.open_final_run itself now refuses unless the trial's
+register entry holds the operator's words "GO on holdout for <trial id>" -- every runner keeps its
+result and marks the holdout WAITING. This wrapper is no longer needed. Kept unchanged below as the
+record of how QT-28's six trials ran (QT-28 report, Part E).
+"""
+
 """QT-28 E: the six CM trials through cm_run.run() exactly as registered -- with ONE thing withheld:
 the holdout. cm_run opens the seal by itself right after a walk-forward PASS (cm_run._holdout ->
 holdout.open_final_run); QT-28 forbids opening it while the operator is away (one-shot, irreversible).

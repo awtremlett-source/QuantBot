@@ -56,6 +56,7 @@ this page is only the running order. Earlier backlogs are archived whole at
 - [x] S5 Safety layer (QT-16, 2026-10-12): qb2/guard/ stops, brakes, pots, age,
       earnings; sender checks 6–9; brake replays; luck test turnover-matched
 - [ ] S6 Bot signals, one at a time, each pre-registered + moving buys (P11). Batch 1 0/24 (QT-18); batch 2, the combined model, 0/6 (QT-28)
+      Meanwhile the bot's 30% follows the index AS IF (P21, his G3 (c), QT-29): paper only, not a trial
 - [ ] S7 Bot combined model + calibration + sizing (D2) + inverse test; must beat
       best single signal, v1 AND the benchmark out-of-sample at 2× costs
 - [ ] S8 Bot evolution: challengers in shadow + machine search (stops on

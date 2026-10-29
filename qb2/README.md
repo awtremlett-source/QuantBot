@@ -39,13 +39,13 @@ to v1 and are frozen.
 | folder | holds |
 |---|---|
 | `data/` | prices, dividends, corporate actions, FX, the instrument universe (bot + advisor loaders); `daily_step.py` tops the daily store up after hours |
-| `research/` | firewall v2 (S4): `firewall.py` scores one registered candidate; `known_null.py` proves it; `preregister.py`, `holdout.py`, `trial_log.py` (data/qb2/trials.jsonl), `benchmark.py` (D3 = VWRP); `p19_run.py` runs P19's 18 trials (resumable), `p19_results.py` writes the page; `p15.py` + `p15_history.py` (QT-18: P15 history, back-tests only); `s6_run.py` runs S6 batch 1 (resumable; rules in `signals/s6_rules.py`, data pinned by `data/data_fingerprint.py`), `s6_results.py` writes its page |
+| `research/` | firewall v2 (S4): `firewall.py` scores one registered candidate; `known_null.py` proves it; `preregister.py`, `holdout.py` (opens only on his "GO on holdout for <trial id>", QT-29), `trial_log.py` (data/qb2/trials.jsonl), `benchmark.py` (D3 = VWRP); `p19_run.py` runs P19's 18 trials (resumable), `p19_results.py` writes the page; `p15.py` + `p15_history.py` (QT-18: P15 history, back-tests only); `s6_run.py` runs S6 batch 1 (resumable; rules in `signals/s6_rules.py`, data pinned by `data/data_fingerprint.py`), `s6_results.py` writes its page |
 | `signals/` | one small, testable signal per file |
 | `model/` | the combined model (QT-27, S6 batch 2): `features.py` (F1–F17, known at bar 1's close), `combined.py` (the two fixed fits and their walk-forward); run by `research/cm_run.py` (`cm_arm`, `cm_book`, `cm_drills`, `cm_results`) |
 | `sizing/` | position sizing, risk limits, the trailing-stop ledger |
 | `execution/` | the broker doorway: demo orders, throttle, killswitch, fill recorder |
 | `ui/` | the operator's screens |
-| `tools/` | scripts run by hand; `capped.py` + `governor.py` = the operator's resource cap (QT-23R); `run_window.py` = heavy work waits for the recorder (QT-27) |
+| `tools/` | scripts run by hand; `capped.py` + `governor.py` = the operator's resource cap (QT-23R); `run_window.py` = heavy work waits for the recorder (QT-27); `capped --clear-of-schedule -- <runner>` also waits until no scheduled run is due within 15 minutes (QT-29) |
 
 ## The resource cap (operator, 2026-10-20 — a fence)
 
