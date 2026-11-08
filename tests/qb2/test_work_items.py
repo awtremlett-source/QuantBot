@@ -62,12 +62,15 @@ def test_a_complete_item_is_accepted_and_read_back(ledger: Path, world: wi.World
     assert door.load(ledger, world) == [item()]
 
 
-@pytest.mark.parametrize("field", ["behaviour", "requirement", "assumption", "evidence",
-                                   "evidence_source", "premortem", "check"])
-def test_an_item_missing_any_required_field_is_refused(field: str, ledger: Path,
-                                                       world: wi.World) -> None:
-    with pytest.raises(wi.Refused, match=field):
-        door.add(item(100, **{field: "  "}), ledger, world)
+@pytest.mark.parametrize(("field", "value", "said"), [
+    *((f, "  ", f) for f in ("behaviour", "requirement", "assumption", "evidence",
+                             "evidence_source", "premortem", "check")),
+    ("evidence", "it looked wrong to me when I read the census", "measured"),
+    ("evidence_source", "no/such/file.txt", "evidence_source")])
+def test_an_item_missing_any_required_field_is_refused(field: str, value: str, said: str,
+                                                       ledger: Path, world: wi.World) -> None:
+    with pytest.raises(wi.Refused, match=said):
+        door.add(item(100, **{field: value}), ledger, world)
     assert not ledger.exists()
 
 
@@ -80,6 +83,7 @@ def test_a_brief_with_no_files_is_refused(files: tuple[str, ...], ledger: Path,
 
 @pytest.mark.parametrize("field", ["assumption", "premortem"])
 def test_a_token_answer_is_refused(field: str, ledger: Path, world: wi.World) -> None:
+    assert wi.MIN_WORDS == 5
     with pytest.raises(wi.Refused, match=field):
         door.add(item(100, **{field: "tbd"}), ledger, world)
 
@@ -127,6 +131,7 @@ def test_a_check_that_names_no_test_is_refused(ledger: Path, world: wi.World) ->
 
 
 def test_the_queue_is_capped(ledger: Path, world: wi.World) -> None:
+    assert wi.MAX_OPEN == 5
     for n in range(wi.MAX_OPEN):
         door.add(item(n), ledger, world)
     with pytest.raises(wi.Refused, match="open"):
@@ -150,6 +155,37 @@ def test_the_third_attempt_is_refused_without_a_design_note(ledger: Path, world:
     door.add(item(2, behaviour="the-stop-fires"), ledger, world)
     with pytest.raises(wi.Refused, match="design note"):
         door.add(item(3, behaviour="the-stop-fires"), ledger, world)
+    same = "tests/test_x.py::test_y8"                    # a new slug on the same check is the same
+    door.add(item(4, behaviour="check-a", check=same), ledger, world)
+    door.add(item(5, behaviour="check-b", check=same), ledger, world)
+    with pytest.raises(wi.Refused, match="design note"):
+        door.add(item(6, behaviour="check-c", check=same), ledger, world)
+
+
+def test_a_note_cannot_be_reused_under_another_spelling(ledger: Path, world: wi.World) -> None:
+    door.add(item(1, behaviour="the-stop-fires"), ledger, world)
+    door.add(item(2, behaviour="the-stop-fires"), ledger, world)
+    door.add(item(3, behaviour="the-stop-fires", design_note=note("the-stop-fires", world)),
+             ledger, world)
+    with pytest.raises(wi.Refused, match="design note"):
+        door.add(item(4, behaviour="the-stop-fires", design_note="./note.md"), ledger, world)
+
+
+def test_a_moved_note_does_not_jam_a_closed_item(ledger: Path, world: wi.World) -> None:
+    door.add(item(1, behaviour="the-stop-fires"), ledger, world)
+    door.add(item(2, behaviour="the-stop-fires"), ledger, world)
+    door.add(item(3, behaviour="the-stop-fires", design_note=note("the-stop-fires", world)),
+             ledger, world)
+    door.close("WI-0003", ledger, world)
+    (world.root / "note.md").unlink()
+    assert len(door.load(ledger, world)) == 3
+
+
+def test_a_check_inside_a_string_is_not_a_test(ledger: Path, world: wi.World) -> None:
+    (world.root / "tests" / "test_s.py").write_text('"""\ndef test_ghost():\n"""\n', encoding="utf-8")
+    door.add(item(check="tests/test_s.py::test_ghost"), ledger, world)
+    with pytest.raises(wi.Refused, match="test_ghost"):
+        door.close("WI-0100", ledger, world)
 
 
 def test_the_third_attempt_passes_with_a_note_about_that_behaviour(ledger: Path,
@@ -361,8 +397,9 @@ def _nowhere(name: str) -> str | None:
 
 
 def land(message: str, head: str, work: str, files: tuple[str, ...] = ("qb2/data/census.py",),
-         in_head: wi.Tree = _everywhere, in_index: wi.Tree = _nowhere) -> door.Landing:
-    return door.Landing(message, head, work, files, in_head, in_index)
+         in_head: wi.Tree = _everywhere, in_index: wi.Tree = _nowhere,
+         real_sha: bool = True, merge: bool = False) -> door.Landing:
+    return door.Landing(message, head, work, files, in_head, in_index, lambda _: real_sha, merge)
 
 
 def test_a_commit_naming_no_item_is_refused(ledger: Path, world: wi.World) -> None:
@@ -477,6 +514,31 @@ def test_a_real_revert_is_never_blocked(ledger: Path, world: wi.World) -> None:
 def test_a_fake_revert_is_refused(ledger: Path, world: wi.World) -> None:
     door.add(item(), ledger, world)
     assert door.commit_refusals(land('Revert "something else"\n', "", _text(ledger)), world)
+    invented = 'Revert "nothing"\n\nThis reverts commit 0000000.\n'
+    assert door.commit_refusals(land(invented, "", _text(ledger), real_sha=False), world)
+
+
+def test_a_revert_of_a_revert_is_never_blocked(ledger: Path, world: wi.World) -> None:
+    message = 'Reapply "QT-29 G: tonight"\n\nThis reverts commit 80feba2abc.\n'
+    assert door.commit_refusals(land(message, "", "this ledger is broken\n"), world) == []
+
+
+def test_a_real_merge_is_never_blocked(world: wi.World) -> None:
+    assert door.commit_refusals(land("Merge branch 'x'\n", "", "broken\n", merge=True), world) == []
+
+
+def test_a_hand_written_third_attempt_cannot_open_and_close_at_once(ledger: Path,
+                                                                    world: wi.World) -> None:
+    door.add(item(1, behaviour="same"), ledger, world)
+    door.add(item(2, behaviour="same"), ledger, world)
+    head = _text(ledger)
+    rows = _rows(ledger)
+    third = {**rows[1], "id": "WI-0003", "check": "tests/test_x.py::test_y3"}
+    rows += [third, {**third, "status": wi.DONE}]
+    _save(ledger, rows)
+    said = door.commit_refusals(land("WI-0003: x", head, _text(ledger),
+                                     in_index=wi.disk(world.root)), world)
+    assert said and "design note" in said[0]
 
 
 def test_a_rewritten_ledger_refuses_the_commit(ledger: Path, world: wi.World) -> None:
@@ -555,6 +617,45 @@ def test_the_door_reads_the_staged_files(repo: Path) -> None:
     assert door.main(_message(repo, "WI-0100: fix")) == 1
 
 
+def test_the_door_reads_the_staged_phase_line(repo: Path) -> None:
+    (repo / "qb2" / "data" / "census.py").write_text("x = 2\n", encoding="utf-8")
+    _in(repo, "add", "qb2/data/census.py")
+    _in(repo, "add", "-f", wi.LEDGER_NAME)
+    (repo / "STATE.md").write_text("no phase line on disk\n", encoding="utf-8")
+    assert door.main(_message(repo, "WI-0100: fix")) == 0
+    _in(repo, "add", "STATE.md")
+    assert door.main(_message(repo, "WI-0100: fix")) == 1
+
+
+def test_the_door_reads_the_staged_evidence(repo: Path) -> None:
+    (repo / "fresh.txt").write_text("measured on disk only\n", encoding="utf-8")
+    door.add(item(2, evidence_source="fresh.txt", files=("fresh.txt",)), wi.LEDGER,
+             wi.current_world(repo))
+    _in(repo, "add", "-f", wi.LEDGER_NAME)
+    assert door.main(_message(repo, "WI-0002: fix")) == 1
+    _in(repo, "add", "fresh.txt")
+    assert door.main(_message(repo, "WI-0002: fix")) == 0
+
+
+def test_a_seam_naming_a_folder_is_seen_in_the_index(repo: Path) -> None:
+    door.add(item(3, seam="prices", deletes=("qb2/data/",)), wi.LEDGER, wi.current_world(repo))
+    _in(repo, "add", "-f", wi.LEDGER_NAME)
+    assert door.main(_message(repo, "WI-0003: fix")) == 1
+    _in(repo, "rm", "-rq", "qb2/data")
+    assert door.main(_message(repo, "WI-0003: fix")) == 0
+
+
+def test_a_revert_lands_even_with_no_phase_line(repo: Path) -> None:
+    sha = _in(repo, "rev-parse", "HEAD").strip()
+    (repo / "STATE.md").unlink()
+    _in(repo, "add", "-A")
+    assert door.main(_message(repo, f'Revert "base"\n\nThis reverts commit {sha}.\n')) == 0
+
+
+def test_a_revert_of_an_invented_commit_is_refused(repo: Path) -> None:
+    assert door.main(_message(repo, 'Revert "x"\n\nThis reverts commit 0000000.\n')) == 1
+
+
 def test_list_shows_each_exception_by_name(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     urgent = item(7, requirement="EXCEPTION: a broker outage needs this before the phase allows")
     door.add(urgent, wi.LEDGER, wi.current_world(repo))
@@ -609,20 +710,29 @@ def test_the_real_ledger_is_tracked_by_git() -> None:
     assert _git("ls-files", "--", wi.LEDGER_NAME).strip() == wi.LEDGER_NAME
 
 
-def _open_at(ref: str) -> set[str]:
+def _open_at(ref: str) -> list[wi.WorkItem]:
     found = subprocess.run(["git", "show", f"{ref}:{wi.LEDGER_NAME}"], cwd=REPO_ROOT,
                            capture_output=True, text=True, encoding="utf-8")
     if found.returncode:
-        return set()
-    return {x.id for x in wi.current(wi.parse(found.stdout)) if x.status == wi.OPEN}
+        return []
+    return [x for x in wi.current(wi.parse(found.stdout)) if x.status == wi.OPEN]
+
+
+def _in_history(target: str, sha: str) -> bool:
+    return subprocess.run(["git", "merge-base", "--is-ancestor", target, sha], cwd=REPO_ROOT,
+                          capture_output=True).returncode == 0
 
 
 def test_every_commit_since_the_gate_named_an_open_item() -> None:
-    """The read side of the commit door: --no-verify cannot hide here."""
+    """The read side of the commit door: --no-verify cannot hide here. Merges are not work."""
     bad = []
-    for sha in _git("log", "--format=%H", f"{GATE_START}..HEAD").split():
+    for sha in _git("log", "--no-merges", "--format=%H", f"{GATE_START}..HEAD").split():
         message = _git("log", "-1", "--format=%B", sha)
+        if door.is_revert(message, lambda target: _in_history(target, sha)):
+            continue
         named = set(door.ID_NAMED.findall(message))
-        if not door.is_revert(message) and not named & (_open_at(sha) | _open_at(f"{sha}^")):
+        items = [x for x in [*_open_at(sha), *_open_at(f"{sha}^")] if x.id in named]
+        changed = [x for x in _git("show", "--name-only", "--format=", sha).split("\n") if x]
+        if not items or door.outside(changed, [f for x in items for f in x.files]):
             bad.append(sha)
     assert bad == []

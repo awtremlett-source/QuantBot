@@ -9,13 +9,13 @@ real, higher is a red flag, stricter than a limit of 2) all live in CLAUDE.md's 
 
 ## Data
 - One writer cleans data on entry. OWED: data-check
-- Nothing in qb2 outside the front door and recorder calls to_parquet directly. Other write routes are not caught yet. ENFORCED: `tests/qb2/test_s3d_dividends_and_return.py::test_only_the_front_door_writes_to_the_clean_store`
+- Nothing in qb2 but files named front_door.py or recorder.py calls to_parquet directly. Other write routes are not caught yet. ENFORCED: `tests/qb2/test_s3d_dividends_and_return.py::test_only_the_front_door_writes_to_the_clean_store`
 - A watcher that only reports is not a control; if the mandate says keep it clean, something must repair it. OWED: data-check
 - A quality score reads the store decisions read, per ticker, never as an average or median. Check its worst name. OWED: data-check
 - A blank bar must never reach a rule silently: recursive indicators can be poisoned permanently, so one bad day weeks ago can switch a strategy off with no warning. Serve priced bars only and name the missing dates. Never invent a price. OWED: data-check
 - A voided row must be able to heal: an empty row is absent evidence, so a clean new print fills it. Two real prints that disagree stay void. Wrong-unit and filler rows are not empty rows: they stay in sticky quarantine until the operator's words lift them (qb2/data/cross_bar.py). OWED: data-check
 - One price basis per series. Never splice adjusted and unadjusted history. OWED: data-check
-- An adjusted close is never stored, and adding dividends to one is refused. ENFORCED: `tests/qb2/test_s3d_dividends_and_return.py::test_adding_dividends_to_an_adjusted_close_is_refused`, `tests/qb2/test_s3d_dividends_and_return.py::test_the_clean_daily_store_never_holds_an_adjusted_close`
+- No column named adjusted close is stored, and adding dividends to one is refused. ENFORCED: `tests/qb2/test_s3d_dividends_and_return.py::test_adding_dividends_to_an_adjusted_close_is_refused`, `tests/qb2/test_s3d_dividends_and_return.py::test_the_clean_daily_store_never_holds_an_adjusted_close`
 - Handle splits, dividends, spin-offs, currency and pence units explicitly. OWED: data-check
 - Calendars and holidays are a checked input. OWED: data-check
 - Use point-in-time, survivorship-free universes for research. Until a list exists, PLAN_V3 S4's survivorship mark-down stands. OWED: research

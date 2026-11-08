@@ -7,6 +7,7 @@ Standard library only: tests/plan runs under both environments.
 
 from __future__ import annotations
 
+import ast
 import re
 import subprocess
 from collections.abc import Sequence
@@ -35,16 +36,18 @@ def _read(path: Path) -> str:
 
 def is_imported(text: str, line: str = IMPORT_LINE) -> bool:
     """A live import: at the start of its own line, outside code fences and HTML comments."""
-    fenced = commented = False
+    fence, commented = "", False
     for raw in text.splitlines():
         stripped = raw.strip()
         if commented:
             commented = "-->" not in stripped
+        elif fence:
+            fence = "" if stripped.startswith(fence) else fence
         elif stripped.startswith(("```", "~~~")):
-            fenced = not fenced
-        elif stripped.startswith("<!--"):
-            commented = "-->" not in stripped
-        elif not fenced and raw.rstrip() == line:
+            fence = stripped[:3]
+        elif "<!--" in stripped:
+            commented = "-->" not in stripped.split("<!--", 1)[1]
+        elif raw.rstrip() == line:
             return True
     return False
 
@@ -69,8 +72,9 @@ def name_exists(root: Path, spec: str) -> bool:
     path = root / name
     if not path.is_file() or path.suffix != ".py":
         return False
-    return not symbol or re.search(rf"^\s*(?:def|class)\s+{re.escape(symbol)}\b", _read(path),
-                                   re.MULTILINE) is not None
+    kinds = ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+    names = {n.name for n in ast.walk(ast.parse(_read(path))) if isinstance(n, kinds)}
+    return not symbol or symbol in names
 
 
 def tag_faults(text: str) -> list[str]:
@@ -205,6 +209,19 @@ def test_an_indented_import_is_not_an_import() -> None:
 
 def test_an_import_in_a_tilde_fence_is_not_an_import() -> None:
     assert not is_imported("~~~\n@docs/LESSONS_LEARNED.md\n~~~\n")
+
+
+def test_a_tilde_line_does_not_end_a_backtick_fence() -> None:
+    assert not is_imported("```\n~~~\n@docs/LESSONS_LEARNED.md\n```\n")
+
+
+def test_an_import_in_a_comment_opened_mid_line_is_not_an_import() -> None:
+    assert not is_imported("words <!-- start\n@docs/LESSONS_LEARNED.md\n-->\n")
+
+
+def test_a_name_inside_a_string_is_caught(tmp_path: Path) -> None:
+    (tmp_path / "t.py").write_text('"""\ndef test_gone():\n"""\n', encoding="utf-8")
+    assert enforced_faults("- Rule. ENFORCED: `t.py::test_gone`\n", tmp_path)
 
 
 def test_an_import_in_an_html_comment_is_not_an_import() -> None:

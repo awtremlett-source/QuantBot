@@ -5,7 +5,8 @@ it is committing, touch only the files that item names, and leave a declared sea
 the index. The ledger must have only grown since HEAD, and each row entering it is judged as ``add``
 and ``close`` would judge it. tests/qb2/test_work_items.py re-reads every commit, so --no-verify is
 seen afterwards. Everything is read from what is being committed, not from the working folder.
-Standard library only: this runs on every commit.
+A real merge, and a revert naming a commit in this history, land without paperwork; nothing checks
+that a revert truly undoes that commit. Standard library only: this runs on every commit.
 """
 
 from __future__ import annotations
@@ -14,14 +15,14 @@ import json
 import re
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 from qb2.tools import work_items as wi
 
 ID_NAMED = re.compile(r"\b[A-Z]{2,}-\d+[A-Za-z]?\b")
-REVERT = re.compile(r'^Revert ".*This reverts commit [0-9a-f]{7,40}', re.DOTALL)
+REVERT = re.compile(r'^(?:Revert|Reapply) ".*This reverts commit ([0-9a-f]{7,40})', re.DOTALL)
 ALWAYS_ALLOWED = (wi.LEDGER_NAME, wi.STATE)
 
 
@@ -35,6 +36,8 @@ class Landing:
     staged_files: tuple[str, ...]
     head: wi.Tree
     index: wi.Tree
+    in_history: Callable[[str], bool]
+    is_merge: bool
 
 
 def _append(item: wi.WorkItem, ledger: Path) -> None:
@@ -53,7 +56,7 @@ def add(item: wi.WorkItem, ledger: Path, world: wi.World) -> None:
     items = load(ledger, world)
     if item.id in {x.id for x in items}:
         raise wi.Refused(f"{item.id} is already in the ledger")
-    tree = wi.disk(world.root)
+    tree = wi.tree_of(world)
     said = wi.entry_refusals(item, world, tree) + wi.attempts([*items, item], tree)
     if item.status != wi.OPEN:
         said.append(f"{item.id}: a new item is open")
@@ -70,17 +73,18 @@ def close(item_id: str, ledger: Path, world: wi.World) -> None:
     if not found:
         raise wi.Refused(f"no open item called {item_id}")
     done = replace(found[0], status=wi.DONE)
-    if said := wi.done_refusals(done, wi.disk(world.root)):
+    if said := wi.done_refusals(done, wi.tree_of(world)):
         raise wi.Refused("\n".join(said))
     _append(done, ledger)
 
 
-def is_revert(message: str) -> bool:
-    """git's own revert message. A revert must never wait for paperwork."""
-    return REVERT.match(message) is not None
+def is_revert(message: str, in_history: Callable[[str], bool]) -> bool:
+    """git's own revert message, naming a commit that exists. A revert must not wait for paperwork."""
+    found = REVERT.match(message)
+    return found is not None and in_history(found.group(1))
 
 
-def _outside(staged: Sequence[str], named: Sequence[str]) -> list[str]:
+def outside(staged: Sequence[str], named: Sequence[str]) -> list[str]:
     allowed = [*named, *ALWAYS_ALLOWED]
     return [path for path in staged
             if not any(path == a or (a.endswith("/") and path.startswith(a)) for a in allowed)]
@@ -89,7 +93,7 @@ def _outside(staged: Sequence[str], named: Sequence[str]) -> list[str]:
 def commit_refusals(landing: Landing, world: wi.World) -> list[str]:
     """Why this commit may not land."""
     words = "\n".join(x for x in landing.message.splitlines() if not x.startswith("#"))
-    if is_revert(words):
+    if landing.is_merge or is_revert(words, landing.in_history):
         return []
     head, work = (t.replace("\r\n", "\n") for t in (landing.head_ledger, landing.staged_ledger))
     if not work.startswith(head):
@@ -99,9 +103,13 @@ def commit_refusals(landing: Landing, world: wi.World) -> list[str]:
     except wi.Refused as why:
         return [str(why)]
     said: list[str] = []
-    for row in wi.parse(work[len(head):]):
+    new = wi.parse(work[len(head):])
+    for row in new:
         said += (wi.entry_refusals(row, world, landing.head) if row.status == wi.OPEN
                  else wi.done_refusals(row, landing.index))
+    entering = {r.id for r in new}
+    said += wi.attempts([replace(x, status=wi.OPEN) if x.id in entering else x for x in items],
+                        wi.tree_of(world))
     was_open = {x.id for x in wi.current(wi.parse(head)) if x.status == wi.OPEN}
     named = set(ID_NAMED.findall(words))
     landing_on = [x for x in items if x.id in named and (x.status == wi.OPEN or x.id in was_open)]
@@ -111,32 +119,49 @@ def commit_refusals(landing: Landing, world: wi.World) -> list[str]:
     for item in landing_on:
         said += [f"{item.id}: {spec} is still staged: a seam change deletes the path it replaces"
                  for spec in item.deletes if wi.present(landing.index, spec)]
-    if stray := _outside(landing.staged_files, [f for x in landing_on for f in x.files]):
+    if stray := outside(landing.staged_files, [f for x in landing_on for f in x.files]):
         said.append(f"these files are not named by {sorted(x.id for x in landing_on)}: {stray}")
     return said
 
 
-def _git(*args: str) -> str:
+def _run(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *args], cwd=wi.REPO_ROOT, capture_output=True, text=True,
-                          encoding="utf-8", check=True).stdout
+                          encoding="utf-8", errors="replace")
+
+
+def _git(*args: str) -> str:
+    found = _run(*args)
+    found.check_returncode()
+    return found.stdout
 
 
 def _tree(prefix: str) -> wi.Tree:
     """A git tree as a reader: prefix "HEAD:" for the last commit, ":" for the index."""
     def read(name: str) -> str | None:
-        found = subprocess.run(["git", "show", f"{prefix}{name}"], cwd=wi.REPO_ROOT,
-                               capture_output=True, text=True, encoding="utf-8", errors="replace")
-        return found.stdout if found.returncode == 0 else None
+        found = _run("show", f"{prefix}{name}")
+        if found.returncode == 0:
+            return found.stdout
+        return "" if prefix == ":" and _run("ls-files", "--", name).stdout.strip() else None
     return read
+
+
+def _staged_world(index: wi.Tree) -> wi.World:
+    """The phase as it is being committed. No Phase line opens nothing; a revert still lands."""
+    try:
+        wanted = wi.phase_requirements(index(wi.STATE) or "")
+    except wi.Refused:
+        wanted = frozenset()
+    return wi.World(wi.REPO_ROOT, wanted, index)
 
 
 def _commit_msg(message_file: Path) -> list[str]:
     head, index = _tree("HEAD:"), _tree(":")
     staged = tuple(_git("diff", "--cached", "--name-only", "--no-renames").split("\n"))
-    return commit_refusals(Landing(message_file.read_text(encoding="utf-8"),
-                                   head(wi.LEDGER_NAME) or "", index(wi.LEDGER_NAME) or "",
-                                   tuple(x for x in staged if x), head, index),
-                           wi.current_world(wi.REPO_ROOT))
+    landing = Landing(message_file.read_text(encoding="utf-8"), head(wi.LEDGER_NAME) or "",
+                      index(wi.LEDGER_NAME) or "", tuple(x for x in staged if x), head, index,
+                      lambda sha: _run("merge-base", "--is-ancestor", sha, "HEAD").returncode == 0,
+                      _run("rev-parse", "-q", "--verify", "MERGE_HEAD").returncode == 0)
+    return commit_refusals(landing, _staged_world(index))
 
 
 def _list(world: wi.World) -> None:
@@ -152,15 +177,15 @@ def _list(world: wi.World) -> None:
 def main(argv: Sequence[str]) -> int:
     command, rest = argv[0], argv[1:]
     try:
-        world = wi.current_world(wi.REPO_ROOT)
         if command == "add":
             raw = json.loads(Path(rest[0]).read_text(encoding="utf-8"))
             add(wi.WorkItem(**{**raw, "files": tuple(raw["files"]),
-                                  "deletes": tuple(raw.get("deletes", ()))}), wi.LEDGER, world)
+                               "deletes": tuple(raw.get("deletes", ()))}),
+                wi.LEDGER, wi.current_world(wi.REPO_ROOT))
         elif command == "close":
-            close(rest[0], wi.LEDGER, world)
+            close(rest[0], wi.LEDGER, wi.current_world(wi.REPO_ROOT))
         elif command == "list":
-            _list(world)
+            _list(wi.current_world(wi.REPO_ROOT))
         elif command == "commit-msg":
             said = _commit_msg(Path(rest[0]))
             if said:

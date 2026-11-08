@@ -8,8 +8,8 @@ A work item is one piece of work, written down before it starts. Three refusals 
 3. A design-seam change must name what it deletes, and cannot close while that path survives.
 
 These are the rules; the doors that apply them are in qb2/tools/work_door.py. Every read re-checks
-every open row and the queue, so a hand-edited ledger is refused too. An old closed row is not
-re-judged: a revert can legitimately bring a path back, and that must not jam every later commit.
+each open row's fields and the queue, so a hand-edited ledger is refused too. An old closed row is
+not re-judged: a revert can legitimately bring a path back, and that must not jam every later commit.
 What code cannot judge is the quality of the words: that is read by people.
 
 Standard library only: the commit hook runs this on every commit. Nothing here can trade.
@@ -17,7 +17,9 @@ Standard library only: the commit hook runs this on every commit. Nothing here c
 
 from __future__ import annotations
 
+import ast
 import json
+import posixpath
 import re
 from collections import Counter
 from collections.abc import Callable, Sequence
@@ -73,6 +75,7 @@ class World:
 
     root: Path
     requirements: frozenset[str]
+    tree: Tree | None = None         # where its files are read: the folder, unless told otherwise
 
 
 def phase_requirements(state_text: str) -> frozenset[str]:
@@ -97,6 +100,10 @@ def disk(root: Path) -> Tree:
     return read
 
 
+def tree_of(world: World) -> Tree:
+    return world.tree or disk(world.root)
+
+
 def present(tree: Tree, spec: str) -> bool:
     """Is this path, or this name as a whole word inside it, in the tree?"""
     name, _, symbol = spec.partition("::")
@@ -106,9 +113,14 @@ def present(tree: Tree, spec: str) -> bool:
 
 
 def _defined(tree: Tree, spec: str) -> bool:
-    """Is this check a real test function, not a word in a comment?"""
+    """Is this check a real test function, not a word in a comment or a string?"""
     name, _, symbol = spec.partition("::")
-    return re.search(rf"^\s*def\s+{re.escape(symbol)}\b", tree(name) or "", re.MULTILINE) is not None
+    try:
+        nodes = ast.walk(ast.parse(tree(name) or ""))
+    except SyntaxError:
+        return False
+    names = {n.name for n in nodes if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef)}
+    return symbol in names
 
 
 def _shape(item: WorkItem) -> list[str]:
@@ -141,7 +153,7 @@ def _when_open(item: WorkItem, world: World) -> list[str]:
     elif item.requirement.strip() and item.requirement not in world.requirements:
         said.append(f"{item.id}: {item.requirement!r} is not open in the current phase "
                     f"({sorted(world.requirements)})")
-    if item.evidence_source.strip() and not disk(world.root)(item.evidence_source):
+    if item.evidence_source.strip() and not tree_of(world)(item.evidence_source):
         said.append(f"{item.id}: evidence_source {item.evidence_source!r} is not a file with content")
     return said
 
@@ -163,7 +175,7 @@ def done_refusals(item: WorkItem, tree: Tree) -> list[str]:
 
 
 def attempts(items: Sequence[WorkItem], tree: Tree) -> list[str]:
-    """From the third item on one behaviour or one check, each needs its own real note."""
+    """From the third item on one behaviour or one check, each open one needs its own real note."""
     count: Counter[str] = Counter()
     used: set[str] = set()
     said = []
@@ -171,13 +183,13 @@ def attempts(items: Sequence[WorkItem], tree: Tree) -> list[str]:
         count[item.behaviour] += 1
         count[item.check] += 1
         attempt = max(count[item.behaviour], count[item.check])
-        if attempt < THIRD_ATTEMPT:
-            continue
-        note, text = item.design_note, tree(item.design_note) if item.design_note else None
-        if not (note.endswith(".md") and note not in used and text is not None
-                and item.behaviour in text and len(text.split()) >= MIN_NOTE_WORDS):
-            said.append(f"{item.id}: attempt {attempt} on {item.behaviour!r} needs its own design "
-                        f"note (.md, {MIN_NOTE_WORDS}+ words) saying why the earlier attempts failed")
+        note = posixpath.normpath(item.design_note) if item.design_note else ""
+        if item.status == OPEN and attempt >= THIRD_ATTEMPT:
+            text = tree(note) if note else None
+            if not (note.endswith(".md") and note not in used and text is not None
+                    and item.behaviour in text and len(text.split()) >= MIN_NOTE_WORDS):
+                said.append(f"{item.id}: attempt {attempt} on {item.behaviour!r} needs its own design "
+                            f"note (.md, {MIN_NOTE_WORDS}+ words) saying why the earlier attempts failed")
         used.add(note)
     return said
 
@@ -220,7 +232,7 @@ def checked(text: str, world: World) -> list[WorkItem]:
     items = current(parse(text))
     said = [x for item in items for x in _shape(item)]
     said += [x for item in items if item.status == OPEN for x in _when_open(item, world)]
-    said += attempts(items, disk(world.root))
+    said += attempts(items, tree_of(world))
     opened = sum(x.status == OPEN for x in items)
     if opened > MAX_OPEN:
         said.append(f"{opened} items are open; the limit is {MAX_OPEN}")
