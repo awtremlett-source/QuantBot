@@ -1,0 +1,20 @@
+WI-0001 proof (a), 2026-11-08. Two fresh sessions started by the desktop app, model claude-haiku-5-5.
+Tools were available to them but they were told to use none. Each session's record shows one turn and
+no tool call. A nested command-line session could not be used: it cannot sign in from inside the app.
+
+The two starting points differ by one line only: `@docs/LESSONS_LEARNED.md` in CLAUDE.md.
+Without: branch proof-no-import, commit 656f4ee. With: main, commit 4413893.
+
+QUESTION (identical):
+Do not use any tools in this session, not even to read a file. Answer only from what is already loaded.
+Quote, word for word, the rule in your loaded project instructions about what to do on the third failed
+attempt on one behaviour. If your loaded project instructions contain no such rule, reply with exactly:
+NOT FOUND
+
+--- WITHOUT the import line (session local_bb70a4da-fcb3-4d1f-b79b-2ea8de1b8685) ---
+NOT FOUND
+
+--- WITH the import line (session local_0dd77ad7-3670-4b9e-b353-ab7d0469a97c) ---
+"Third failed attempt on one behaviour: stop. No fourth patch. Write down why the earlier attempts failed and rethink the design. The third and each later work item on one behaviour or one check, as the writer names them, needs its own design note; items are counted, because nothing records a failure. ENFORCED: `tests/qb2/test_work_items.py::test_the_third_attempt_is_refused_without_a_design_note`"
+
+This is the first bullet under "## Stopping the doom loop" in `docs/LESSONS_LEARNED.md`, which the loaded CLAUDE.md imports.

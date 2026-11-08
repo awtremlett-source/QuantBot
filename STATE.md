@@ -1,11 +1,16 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-10-29. History → docs/archive/STATE_2026-10-29_QT28.md (verbatim). Box done: QT-29 →
+Updated: 2026-11-08 (WI-0001). History → docs/archive/STATE_2026-10-29_QT28.md (verbatim). Box done: QT-29 →
 docs/reports/QT-29.md (its Part G addendum = tonight's 20:00 run, checked by hand).
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN; S9 OPEN — the advisor is LIVE (armed 2026-10-20)**
 (S3 close = QT-13 + QT-13b). No pick has survived (S6 0/30, S9 0/12, P19 0/18).
 **Trial count N = 62.** Sender DISARMED. No holdout ever opened.
+
+## Rule system (WI-0001 → docs/reports/WI-0001.md)
+Every commit names an open work item: `python -m qb2.tools.work_door add item.json | close ID | list`.
+18 rules ENFORCED, 88 OWED (may only fall). Baseline tag known-good-2026-11-08. NEXT job: requirement
+checks, then the landing path.
 
 ## QT-29 (code 84e3eee, deployed 09:11 UTC 29 Oct)
 - **G3 answered: option (c), P21** (2046702). His words, 07:42: "(c) Follow index (Recommended)" — chosen from the
@@ -50,6 +55,7 @@ processors, 80% RAM, below-normal priority). Research runners: add `--clear-of-s
 - Holdout WAITING: none. v1's QuantBot-Daily/-Monthly run outside the cap (frozen): leave, report.
 
 ## Standing GOs (operator words, verbatim)
+- 2026-11-08: *"GO with defaults"* = CLAUDE.md limit 4,100; any order still needs the operator's words; P10 stands until S10.
 - 2026-10-29 (G3, chosen from a question): *"(c) Follow index (Recommended)"* = QT-28's (c), PLAN_V3 P21.
 - 2026-10-23: *"Keep ADV-0's stop as the default for now; S-07 stays a shadow."* · *"GO on the
   advisor's 10% brake: after an urgent exit, my own words also clear the advisor's 10% brake and
