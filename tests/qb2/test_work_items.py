@@ -558,6 +558,7 @@ def test_the_door_reads_the_staged_files(repo: Path) -> None:
 def test_list_shows_each_exception_by_name(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     urgent = item(7, requirement="EXCEPTION: a broker outage needs this before the phase allows")
     door.add(urgent, wi.LEDGER, wi.current_world(repo))
+    door.close(urgent.id, wi.LEDGER, wi.current_world(repo))   # closed items stay counted and named
     assert door.main(["list"]) == 0
     shown = capsys.readouterr().out
     assert "exceptions so far: 1" in shown and "WI-0007" in shown and "broker outage" in shown
