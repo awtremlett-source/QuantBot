@@ -69,7 +69,7 @@ STAGE_LINES: tuple[str, ...] = ("Exit gate:", "Enforcer:", "Built/Wired/Armed:")
 
 # Budgets from CLAUDE.md's own token rules.
 BUDGETS: tuple[tuple[str, int], ...] = (
-    ("CLAUDE.md", 4_000),
+    ("CLAUDE.md", 4_100),        # operator's GO, 2026-11-08: room for the import, no words removed
     ("GRAND_TODO.md", 10_000),
 )
 

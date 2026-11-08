@@ -105,7 +105,8 @@ PINNED_FIGURES: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 BUDGETS: tuple[tuple[str, int], ...] = (
-    ("CLAUDE.md", 4_000),        # "must stay ≤4k chars" (LEAN-CODE GO 2026-10-05); QT-04 had 3,600
+    ("CLAUDE.md", 4_100),        # was 4,000 (LEAN-CODE GO 2026-10-05); operator's GO 2026-11-08: room for the import
+    ("docs/LESSONS_LEARNED.md", 14_000),   # imported into every session (GO 2026-11-08)
     ("GRAND_TODO.md", 10_000),
     ("STATE.md", 6_000),          # read every resume; history → docs/archive (GO 2026-10-05)
     ("docs/MANIFEST.md", 8_000),

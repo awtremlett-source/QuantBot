@@ -45,7 +45,7 @@ to v1 and are frozen.
 | `sizing/` | position sizing, risk limits, the trailing-stop ledger |
 | `execution/` | the broker doorway: demo orders, throttle, killswitch, fill recorder |
 | `ui/` | the operator's screens |
-| `tools/` | scripts run by hand; `capped.py` + `governor.py` = the operator's resource cap (QT-23R); `run_window.py` = heavy work waits for the recorder (QT-27); `capped --clear-of-schedule -- <runner>` also waits until no scheduled run is due within 15 minutes (QT-29) |
+| `tools/` | scripts run by hand; `capped.py` + `governor.py` = the operator's resource cap (QT-23R); `run_window.py` = heavy work waits for the recorder (QT-27); `capped --clear-of-schedule -- <runner>` also waits until no scheduled run is due within 15 minutes (QT-29); `work_items.py` + `work_door.py` = the work-item front door and commit gate (WI-0001) |
 
 ## The resource cap (operator, 2026-10-20 — a fence)
 

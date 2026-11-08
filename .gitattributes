@@ -1,0 +1,2 @@
+# A git hook must keep Unix line endings on Windows, or the shell cannot run it (WI-0001).
+qb2/tools/hooks/* text eol=lf

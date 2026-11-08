@@ -1,0 +1,5 @@
+#!/bin/sh
+# Gates 1-3 at the door where work lands: qb2/tools/work_items.py, through work_door.py.
+# The status push uses commit-tree, so it never passes through here.
+root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+exec "$root/.venv-qb2/Scripts/python.exe" -m qb2.tools.work_door commit-msg "$1"

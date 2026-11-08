@@ -56,11 +56,13 @@ FOUNDING_DIRECTIVE and docs/sessions/ only when asked.
   Per-file +/− → commit message, not the report.
 
 ## Token rules
-Budgets (tests/plan): CLAUDE 4k · STATE 6k · GRAND_TODO 10k · MANIFEST 8k.
+Budgets (tests/plan): CLAUDE 4.1k · STATE 6k · GRAND_TODO 10k · MANIFEST 8k.
 STATE = current only; history → docs/archive/. Surgical edits; grep-then-read-range; never cat data files.
 End of task: update STATE.md, commit, push, end the report with
 "CLEAR ME NOW (/clear) — state is saved."
 
 ## Pointers
 Plan → docs/plan/PLAN_V3.md · Backlog → GRAND_TODO.md · Deploy → docs/DEPLOY.md ·
-Constitution → docs/FOUNDING_DIRECTIVE.md · Curriculum → docs/EDUCATION.md
+Constitution → docs/FOUNDING_DIRECTIVE.md · Curriculum → docs/EDUCATION.md ·
+Desk standards (on demand) → docs/DESK_STANDARDS.md
+@docs/LESSONS_LEARNED.md
