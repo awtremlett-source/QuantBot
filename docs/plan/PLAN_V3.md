@@ -539,6 +539,51 @@ unsettled; the brake applies; it reconciles to the penny; and no order object ca
 be built, with the sender's DISARMED state asserted. The qb2/advisor wall adds
 that no order path is imported.
 
+**P22 — A second price check on every closing price that drives a stop (QT-30).**
+The operator's words, verbatim: 2026-11-08 00:41 *"cant you find the closing price
+to confirm it elsewhere?"*; 01:09 *"it could use a secondary confirmation,
+thoughts?"*; 02:38 *"Alright give me QT-30, and tell me when to paste it"*; 02:39
+*"ok. update this QT-30 for 6pm"*. He accepted the mentor's proposal by replying
+"Alright give me QT-30"; he did not type its suggested GO line, which reads: *"GO on
+second price check: confirm every closing price that drives a stop with Trading
+212, with a practice-account VWRL anchor inside the £100 cap."* Both are cited here
+and in docs/reports/QT-30.md. **Not a trial; the trial count N is unchanged.** Paper
+only: nothing here can trade.
+
+*The second prices, defined before any code.*
+- **Trading 212's closing price** for a London session is the broker's
+  `currentPrice`, read by the newest recorder run from 10 minutes after that
+  session's close until the next London open. Trading 212 gives a live price only,
+  never a stored close, and only for a name we hold (FACTS row h): VWRP is held (an
+  anchor, 0.0070 shares), VWRL is not. Read at any other time, it is not that
+  session's close and does not count.
+- **The backup feed** is CNBC's daily bars, independent of Yahoo: read for 68
+  sessions (3 Aug to 5 Nov 2026) for each fund, every close matched the store to
+  the penny. Both probably carry the exchange's own official close, so this catches
+  a fault in a feed, not an error at the exchange. Stooq, the first choice, now
+  sits behind a browser check, which is not to be got round. The feed is
+  undocumented; see the report's "Decided while you were away".
+- Trading 212 comes first. The backup is used only when Trading 212 has no close
+  for that session. Until VWRL's anchor exists it is checked by the backup alone,
+  and its status line says "backup feed only — Trading 212 anchor pending".
+
+*The rule.* `gap` = |store's close − second price| ÷ second price, both in pounds.
+- Each stop-driving close gets one status: **CONFIRMED** (gap ≤ 0.5%), **DISAGREE**
+  (gap > 0.5%), or **UNCONFIRMED** (no second price).
+- **The stop is RAISED only on a CONFIRMED close.**
+- **A stop HIT is never suppressed.** A store close at or below the stop issues the
+  SELL whatever the status; if not CONFIRMED it is marked "UNCONFIRMED — check the
+  price yourself". On DISAGREE, if ANY price we hold for that session is at or
+  below the stop, the SELL is issued, flagged: missing a real crash is worse than a
+  false alarm.
+- One line per stop-driving close in an append-only journal
+  (`data/qb2/price_check/journal.jsonl`): the prices, gap %, source, fetch time.
+
+*Enforcer:* tests/qb2/test_qt30_price_check.py, written fail-first: confirmed
+raises; unconfirmed does not; a hit on an unconfirmed close still SELLs, flagged;
+disagree with one source at or below the stop SELLs; the 0.5% edge on both sides;
+pence against pounds; a missing feed is never CONFIRMED; the journal only appends.
+
 ---
 
 ## Carried from V2

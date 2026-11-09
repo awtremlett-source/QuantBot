@@ -88,8 +88,9 @@ OPERATOR_WORDS: tuple[str, ...] = (
     "mix — every attempt counted.",
 )
 
-# P18/P19 agreed 2026-10-03, P20 agreed 2026-10-04, P21 chosen 2026-10-29 (G3, QT-29) -- verbatim.
-DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 22))
+# P18/P19 agreed 2026-10-03, P20 agreed 2026-10-04, P21 chosen 2026-10-29 (G3, QT-29),
+# P22 accepted 2026-11-08 (QT-30) -- verbatim.
+DECISION_IDS: tuple[str, ...] = tuple(f"P{n}" for n in range(1, 23))
 STAGE_IDS: tuple[str, ...] = (
     "S0", "S1", "S2a", "S2b", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10",
     "S11", "S12", "S13", "S14", "S15",
@@ -879,4 +880,24 @@ def test_p21_records_g3_from_his_choice_and_cites_the_go_line() -> None:
 def test_p21_is_paper_only_and_not_a_trial() -> None:
     block = " ".join(decision_blocks()["P21"].split())
     for must in ("paper only", "DISARMED", "NOT a trial", "S6 stays OPEN", "VWRP", "15%", "10%", "£3,000"):
+        assert must in block, must
+
+
+# ------------------------------------------- QT-30: the second price check, P22 ---
+
+P22_WORDS = ("cant you find the closing price to confirm it elsewhere?",
+             "it could use a secondary confirmation, thoughts?",
+             "Alright give me QT-30, and tell me when to paste it",
+             "ok. update this QT-30 for 6pm",
+             "GO on second price check: confirm every closing price that drives a stop with Trading 212, "
+             "with a practice-account VWRL anchor inside the £100 cap.")
+
+
+def test_p22_keeps_his_words_and_the_rule() -> None:
+    """He accepted by replying, not by typing the GO line: both are kept, verbatim."""
+    block = " ".join(decision_blocks()["P22"].split())
+    for words in P22_WORDS:
+        assert words in block, words
+    for must in ("Not a trial", "CONFIRMED", "DISAGREE", "UNCONFIRMED", "0.5%", "RAISED only on a CONFIRMED close",
+                 "A stop HIT is never suppressed", "append-only journal", "10 minutes after"):
         assert must in block, must
