@@ -25,7 +25,7 @@ from typing import Any
 
 import pandas as pd
 
-from qb2.advisor import daily, live, page, scorecard, skips, state
+from qb2.advisor import daily, live, page, price_check, scorecard, skips, state
 from qb2.data import clean_step, universe
 from qb2.execution.safety import BOT, Blocked
 from qb2.guard import brakes, stops
@@ -121,16 +121,16 @@ def run(now: datetime, paths: state.Paths, advisor: state.Paths, *, clean_root: 
         close, held = float(bars["close"].iloc[k]), held_stop(ledger)
         day = scorecard.day(bars, sessions, fills, income, instrument, k, POT_GBP)
         brake = brake_log.update(BOT, day.value[1.0], at=scorecard.xlon(d, "close"))
-        mine, low = last(state.rows(paths.log("signals"))), None
+        mine, low, check = last(state.rows(paths.log("signals"))), None, price_check.day(paths, TICKER, d, close, now, held)
         side, say = mine["action"] if mine else None, {"paths": paths, "d": d, "close": close, "brake": brake, "now": now}
         if held is not None and side != SELL:
             if not follow:
                 issue(**say, action=SELL, kind=FOLLOW, reason="the advisor is out of VWRL: the bot pot sells "
                       "VWRP at the next open, as if")
-            elif close <= held.level:
-                issue(**say, action=SELL, kind=STOP, reason=f"VWRP closed at £{close:,.2f} on {d}, at or below "
-                      f"its stop of £{held.level:,.2f}: the bot sells at the next open, as if")
-            else:
+            elif check.hit(held.level):                                  # P22: a hit is never suppressed
+                issue(**say, action=SELL, kind=STOP, reason=f"VWRP {check.crossed(held.level, 'stop')}: the bot sells "
+                      f"at the next open, as if.{check.flag}")
+            elif check.may_raise:                                        # P22: only on a CONFIRMED close
                 ledger.trail(held.position_id, close, None, unsettled=uns, reason=f"close of {d}")
         elif held is None and side != BUY and follow:
             if mine is not None and mine["kind"] == STOP and not bought_since(adv0, str(mine["at"])):
@@ -180,7 +180,7 @@ def today(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd.Data
 def write_page(now: datetime, paths: state.Paths, arm: date | None, lines: Sequence[str]) -> None:
     paths.page.parent.mkdir(parents=True, exist_ok=True)
     days = state.rows(paths.log("days")) if arm else []
-    paths.page.write_text(page.bot_block(arm, days, lines), encoding="utf-8", newline="\n")
+    paths.page.write_text(page.bot_block(arm, days, [*lines, *price_check.page_lines(paths, TICKER)]), encoding="utf-8", newline="\n")
 
 
 def step(now: datetime, clean_root: Path | None, advisor: state.Paths) -> str:

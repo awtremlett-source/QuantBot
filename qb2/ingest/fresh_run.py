@@ -26,7 +26,7 @@ from typing import Any
 from qb2.data import clean_step, universe
 from qb2.data.front_door import CLEAN
 from qb2.execution import ledger_backup
-from qb2.ingest import recorder, t212_fresh, xcheck_shadow
+from qb2.ingest import close_feeds, news_record, recorder, t212_fresh, xcheck_shadow
 
 Say = Callable[[str], None]
 Read = Callable[[], Sequence[Mapping[str, Any]]]
@@ -97,6 +97,10 @@ def around_clean(clean: Callable[..., list[str]], *, after_hours: bool,
                  say: Say) -> list[str]:
     """record_now's one hook: measurements before and after the after-hours step."""
     try:
+        close_feeds.gather(_utcnow(), _positions, say)          # P22: the second prices, first
+    except Exception as exc:              # noqa: BLE001 - said, never fatal
+        say(f"  Price check failed: {type(exc).__name__}: {exc}")
+    try:
         before_clean(say)
     except Exception as exc:              # noqa: BLE001 - said, never fatal
         say(f"  S4 measurements (before) failed: {type(exc).__name__}: {exc}")
@@ -105,4 +109,8 @@ def around_clean(clean: Callable[..., list[str]], *, after_hours: bool,
         after_clean(say)
     except Exception as exc:              # noqa: BLE001 - said, never fatal
         say(f"  S4 measurements (after) failed: {type(exc).__name__}: {exc}")
+    try:
+        news_record.step(_utcnow(), say)                     # QT-30 D: recording only
+    except Exception as exc:              # noqa: BLE001 - said, never fatal
+        say(f"  News recording failed: {type(exc).__name__}: {exc}")
     return complaints

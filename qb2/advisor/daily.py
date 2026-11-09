@@ -32,7 +32,7 @@ from typing import Any
 
 import pandas as pd
 
-from qb2.advisor import engine, live, page, scorecard, shadow, skips, state
+from qb2.advisor import engine, live, page, price_check, scorecard, shadow, skips, state
 from qb2.data import clean_step, universe
 from qb2.execution.safety import ADVISOR, Blocked
 from qb2.guard import brakes, stops
@@ -110,15 +110,15 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
         day = scorecard.day(bars, sessions, fills, income, instrument, k)
         brake = brake_log.update(ADVISOR, day.value[1.0], at=scorecard.xlon(d, "close"))
         ctx = engine.Context(d, close, uns, brake, day.value[1.0], held)
-        low = None
+        low, check = None, price_check.day(paths, engine.TICKER, d, close, now, held)     # P22
         if held is not None and engine.pending(paths) != scorecard.SELL:   # b. the stop
-            if close <= held.level:
+            if check.hit(held.level):
                 engine.issue(paths, ctx, action=scorecard.SELL, kind="urgent-exit", stop=held.level,
-                             now=now, reason=(f"SELL VWRL at the next open: it closed at £{close:,.2f} on "
-                                              f"{d}, at or below its safety stop of £{held.level:,.2f} -- "
+                             now=now, reason=(f"SELL VWRL at the next open: it {check.crossed(held.level)} -- "
                                               "the big-fall rule says get out. The advisor will suggest "
-                                              "buying back once it closes 10% above its lowest close."))
-            else:
+                                              "buying back once it closes 10% above its lowest close."
+                                              + check.flag))
+            elif check.may_raise:                                          # P22: only on a CONFIRMED close
                 ledger.trail(held.position_id, close, None, unsettled=uns, reason=f"close of {d}")
         elif held is None and fills and fills[-1].side == scorecard.SELL:   # d. the re-buy watch
             since = sessions.index(fills[-1].session)
@@ -218,7 +218,7 @@ def today_line(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd
 
 def write_page(now: datetime, paths: state.Paths, arm: date, lines: Sequence[str]) -> None:
     status = {"line": next((x for x in reversed(lines) if x.startswith(("holding", "in cash"))), "no line"),
-              "warnings": [x for x in lines if x.startswith(("UNCHECKED", "SKIPPED", "RED", "the weekly"))],
+              "warnings": [x for x in lines if x.startswith(("UNCHECKED", "SKIPPED", "RED", "the weekly"))] + price_check.page_lines(paths, engine.TICKER),
               "reconciled": "OK" if "reconciled: OK" in lines else "RED"}
     text = page.build(now, arm=arm, days=state.rows(paths.log("days")),
                       suggestions=state.rows(paths.log("suggestions")), runs=state.rows(paths.log("runs")),

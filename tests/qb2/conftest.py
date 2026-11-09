@@ -155,3 +155,20 @@ def _no_real_data_writes(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         yield
     finally:
         _guard_on = False
+
+
+@pytest.fixture(autouse=True)
+def second_price_agrees(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """P22 (QT-30): the older advisor tests are about other rules, so every close is CONFIRMED for them.
+    Its own tests, tests/qb2/test_qt30_price_check.py, run the real path."""
+    if "test_qt30" in request.node.nodeid:
+        yield
+        return
+    from qb2.advisor import price_check
+    from qb2.ingest import close_feeds, news_record
+
+    monkeypatch.setattr(price_check, "check_of", lambda paths, ticker, session, store: price_check.judge(
+        ticker, session, store, backup=(store, "planted by conftest")))
+    monkeypatch.setattr(close_feeds, "gather", lambda *a, **k: None)      # no network in a test
+    monkeypatch.setattr(news_record, "step", lambda *a, **k: None)
+    yield
