@@ -1,13 +1,13 @@
 # MANIFEST — QuantBot system inventory (single page)
 
-Updated: 2026-10-29 (QT-29). What exists, what is proven, and what must be true before
+Updated: 2026-11-09 (QT-30). What exists, what is proven, and what must be true before
 this logic leaves NVDA or this laptop.
 
 ## ENVIRONMENT
 - Python 3.13.7 in .venv; 12 pinned deps (requirements.txt).
 - Windows 10 laptop, sometimes-off → every loop is catch-up-safe by design.
 
-## ARCHITECTURE MAP (moved here from CLAUDE.md 2026-09-27 to keep it small)
+## ARCHITECTURE MAP
 - ingest/ ONLY writer to the data store (front door, §5); unit/scale checks here
 - data_store/ storage API; SQLite(WAL) system-of-record; RAW vs CLEAN (parquet deferred)
 - research/ §7 firewall, backtester, labelers, feature builders
@@ -52,7 +52,8 @@ this logic leaves NVDA or this laptop.
     · (QT-26) ingest/refetch.py (re-fetch vs store) · advisor/skips.py · (QT-27/28)
     model/ + cm_*.py (S6 batch 2, the combined model) · tools/run_window.py · (QT-29)
     advisor/bot_pot.py (P21: the bot's 30% as if in the index) · `capped
-    --clear-of-schedule -- <runner>` · the holdout opens on his GO words only
+    --clear-of-schedule -- <runner>` · the holdout opens on his GO words only · (QT-30)
+    advisor/price_check.py · ingest/close_feeds.py, news_record.py
   - qb2/tools/ build_universe.py (writes docs/universe/) · first_light.py (charts
     from CLEAN only) · sample_delay.py (measures FACTS row o) · delay_count.py
     (which samples count; red under 3 a session) · status_push.py (QB2-StatusPush
@@ -60,9 +61,9 @@ this logic leaves NVDA or this laptop.
     vs after-hours catch-up, under a single-writer lock, with a per-name ledger) ·
     run_recorder.bat (one log per run, kept 30 days) · fingerprint.py · clear_pause.py
     (his words clear a pause)
-- logs/recorder/ one log per recorder run, gitignored, rotated after 30 days
+- logs/recorder/ one log per recorder run, gitignored, 30 days
 - docs/universe/ the versioned universes + README (start here for what we trade)
-- reports/first_light/ dated charts from the clean store
+- reports/first_light/ dated charts
 
 ## DATA
 - NVDA: 2,898 CLEAN daily bars, 2015-01-02 → present. Splits pass continuity
