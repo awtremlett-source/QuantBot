@@ -481,6 +481,34 @@ error, not a drift, so they stay on the strict side. Built in
 in **SHADOW** in every in-session recorder run (`data/raw/xcheck/`) so the false
 alarm rate is measured before the check guards a trade.
 
+*Addendum, 2026-11-10 — one more anchor, VWRL, on its own pinned list (QT-31).*
+The operator's words, verbatim, 2026-11-09: *"Yes, write it"* (his answer to "Shall
+I write the box for a VWRL anchor at a London session?"); *"change this for 6am"*;
+and *"Do not ask for permission to do things, i will be gone after i paste it"*.
+Those asked for this box, its timing and its running alone. **None of them is the
+GO for the buy**, which reads: *"GO on VWRL anchor: add VWRL to a separate pinned
+anchor list and buy one practice-account anchor of about £1 through the anchor
+buyer, inside the £100 cap."* It was not typed when QT-31 was pasted (Tue 10 Nov,
+06:05 UK), so it is still needed. So:
+
+- **VWRL is the ADVISOR's fund (ADV-0), not one of the bot's 50**, so it cannot go
+  in the agreed 50-name file, whose bytes, hash and exactly-50 check do not change.
+  It gets its own list, `docs/universe/anchor-extras-v1-2026-11.json`: exactly one
+  entry, copied from the advisor list (VWRL.L, VWRLl_EQ, ISIN IE00B3RBWM25, London
+  Stock Exchange, GBP), its bytes pinned by hash in `qb2/execution/anchor_extras.py`.
+  A changed file, or any name but that one, is refused. A second name is a new
+  decision.
+- **It serves P22.** Trading 212 prices only what we hold (FACTS row h), so until
+  VWRL is held its stop-driving close is checked by the backup feed alone.
+- **Unchanged:** the caps (£1 target, £3 an order, £100 lifetime for every anchor
+  together, 50 orders a day), the practice-only host, and every fence F1–F13; only
+  F4's wording changes, to name both files. Like every anchor, VWRL's sits outside
+  both pots and every result, and flatten leaves it alone.
+- **The order is his own command**, typed by him in his own terminal
+  (`python -m qb2.execution.anchors --live`, inside the cap) on a weekday during
+  London's session. No session places it, and nothing is scheduled to place it.
+  **Not a trial; the trial count N is unchanged.**
+
 **P21 — Until a bot strategy survives, the bot's 30% follows the index fund, as if
 (G3, option (c); QT-29).** The operator's decision of 2026-10-29 07:42 UK. He
 CHOSE it from a question, he did not type the GO line. The mentor asked "what
