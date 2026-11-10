@@ -16,8 +16,8 @@ F1  practice only -- the host is a constant; any other host, or any T212_* setti
 F2  its own key -- orders use T212_ORDER_KEY / T212_ORDER_SECRET and nothing else
     in the repo may name them; reads keep using the read-only key.
 F3  buy only -- there is no sell function; a quantity that is not positive raises.
-F4  names only from the agreed 50-name file, whose bytes are pinned by hash, each
-    resolved through the verified instrument list on ticker + ISIN + exchange.
+F4  names only from the agreed 50-name file plus anchor_extras.py's one name (VWRL),
+    each hash-pinned and resolved via the verified instrument list: ticker+ISIN+exchange.
 F5  caps -- GBP 1 target, GBP 3 per order, GBP 100 lifetime, 50 orders a day. A cap
     is never raised without the operator's GO (PLAN_V3 P20 addendum).
 F6  units -- sized in pounds from the clean daily close (its own unit column), and
@@ -61,7 +61,7 @@ from typing import IO, Any, Protocol
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
-from qb2.execution import costs, ledger_backup, safety
+from qb2.execution import anchor_extras, costs, ledger_backup, safety
 from qb2.execution.anchor_ledger import (ACCEPTED, BLOCKING, FILLED, INTENT,
                                          NOT_FILLED, NOT_PLACED, OUTCOME,
                                          RECONCILED, REFUSED, UNRESOLVED,
@@ -1126,11 +1126,11 @@ class Inputs:
 
 
 def load_inputs(*, universe_path: Path | None = None,
+                extras_path: Path | None = None,
                 instruments_file: Path | None = None,
                 exchanges_file: Path | None = None,
-                clean_root: Path | None = None,
-                raw_root: Path | None = None) -> Inputs:
-    entries = load_universe(universe_path)
+                clean_root: Path | None = None, raw_root: Path | None = None) -> Inputs:
+    entries = load_universe(universe_path) + anchor_extras.load(extras_path)  # F4
     instruments, names = load_verified_lists(instruments_file, exchanges_file)
     identities = resolve_identities(entries, instruments, names)
     quotes = {str(e["yfinance"]): Quotes(clean_close(str(e["yfinance"]), clean_root),
@@ -1413,7 +1413,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(render(report.plan))
         print("\n".join(report.lines + [ledger_backup.backup()]))
         return 1 if report.halted else 0
-    except (AnchorRefused, LedgerCorrupt) as exc:
+    except (AnchorRefused, LedgerCorrupt, anchor_extras.ExtrasRefused) as exc:
         print(f"REFUSED: {exc}")
         return 2
 

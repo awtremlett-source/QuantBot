@@ -1,0 +1,31 @@
+{
+  "list": "anchor-extras",
+  "version": "v1",
+  "built": "2026-11-10",
+  "status": "AGREED",
+  "status_means": "AGREED means the operator asked for this list, and the anchor buyer (qb2/execution/anchors.py) may read it beside the agreed 50. It buys nothing by itself: an anchor buy is the operator's own command, and every fence (F1-F13) and every cap applies to this name unchanged. Changing this list is a new decision, recorded the same way.",
+  "why": "VWRL is the ADVISOR's fund (ADV-0), not one of the bot's 50, so it cannot join the agreed 50-name file. Trading 212 prices only what we hold (FACTS row h), so the second price check on VWRL's stop-driving close (PLAN_V3 P22) needs a small anchor of it.",
+  "plan": "PLAN_V3 P20, addendum of 2026-11-10 (QT-31)",
+  "agreed_on": "2026-11-09",
+  "agreed_by": "operator",
+  "agreed_words_verbatim": "Yes, write it",
+  "agreed_note": "His answer to \"Shall I write the box for a VWRL anchor at a London session?\". That asked for this list and the box that builds it. It is not the GO for the buy, whose words are: \"GO on VWRL anchor: add VWRL to a separate pinned anchor list and buy one practice-account anchor of about £1 through the anchor buyer, inside the £100 cap.\"",
+  "copied_from": "docs/universe/advisor-universe-v1-2026-10-01.json",
+  "entries": [
+    {
+      "yfinance": "VWRL.L",
+      "t212_ticker": "VWRLl_EQ",
+      "isin": "IE00B3RBWM25",
+      "exchange": "London Stock Exchange",
+      "quote_currency": "GBP",
+      "kind": "ETF",
+      "name": "Vanguard FTSE All-World (Dist)",
+      "aim": false,
+      "sleeve": "uk_etf",
+      "selected_because": "sterling London ETF trading >= GBP 6m/day (GBP 10.85m)",
+      "measured_daily_value": 10853510.36,
+      "measured_days": 65,
+      "flags": []
+    }
+  ]
+}
