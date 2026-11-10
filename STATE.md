@@ -1,7 +1,7 @@
 # STATE.md — resume in seconds (current only; ≤6k chars, tested)
 
-Updated: 2026-11-09 (QT-30). History → docs/archive/STATE_2026-11-09_QT30.md (verbatim). Box done: QT-30 →
-docs/reports/QT-30.md.
+Updated: 2026-11-10 (QT-31). History → docs/archive/STATE_2026-11-10_QT31.md (verbatim). Box done: QT-31 →
+docs/reports/QT-31.md.
 
 Phase: v2 BUILDING. **S0–S5 DONE; S6 OPEN; S9 OPEN — the advisor is LIVE (armed 2026-10-20)**
 (S3 close = QT-13 + QT-13b). No pick has survived (S6 0/30, S9 0/12, P19 0/18).
@@ -20,45 +20,46 @@ Never on the recorder (default OFF).
 ## The advisor and the bot pot, live
 - **ADV-0 = hold VWRL**, stop 15% below the highest close (10% when unsettled), raise-only; crossed =
   URGENT-EXIT alert, never a sale. Fri 6 Nov: £6,749.24 at 1x, stop £118.23.
-- **Bot pot** (P21) follows ADV-0 with VWRP as if, notional £3,000, its own 15% stop; a crossed stop =
-  as-if SELL at the next open. Fri 6 Nov: £2,925.10 at 1x, stop £120.41. Paper only; NOT a trial.
-- **Price check (P22, QT-30):** every stop-driving close gets a second price: Trading 212's (read after
-  the close), else CNBC's. CONFIRMED within 0.5%; the stop rises only when CONFIRMED; a hit is never
-  suppressed. Journal: data/qb2/price_check/journal.jsonl. **First real line: Tue 10 Nov 07:00.**
-- **VWRL anchor: NOT SET UP** (no buying step exists; needs his words). VWRL is on the backup feed only.
-  VWRP is anchored. £46.59 of the £100 anchor cap committed.
-- **News, step 1 (QT-30 D):** US 8-K filings recorded once a UK day (data/raw/news/sec_8k.jsonl); nothing
-  reads them. UK: no permitted free source. First trial is an unregistered DRAFT
-  (docs/research/news_sources_2026-11-09_QT30.md).
-- **Clock:** recorder runs 07:00–20:00 UK, pushes at :50. A session is final once London AND New York have
-  closed, 21:00 UK, after the last run, so each day is processed at the next morning's 07:00 run.
+- **Bot pot** (P21) follows ADV-0 with VWRP as if, notional £3,000, its own 15% stop. Fri 6 Nov:
+  £2,925.10 at 1x, stop £120.41. Paper only; NOT a trial.
+- **Price check (P22):** each stop-driving close gets Trading 212's price (after the close), else CNBC's;
+  CONFIRMED within 0.5%; the stop rises only when CONFIRMED; a hit is never suppressed. **No real line yet:**
+  Tue 10 Nov 07:00 processed no session (Yahoo gave Monday's London close blank; the daily step retries only
+  at Wed 07:00 — QT-31 PROPOSE 1). Journal: data/qb2/price_check/journal.jsonl (not yet created).
+- **VWRL anchor: built, not bought.** VWRL is on its own one-name pinned list (qb2/execution/anchor_extras.py,
+  P20 addendum 2026-11-10). The dry run shows one BUY (VWRLl_EQ, £1.07), but **--live halts at F13**: Trading
+  212 booked CSH2's 27 Oct split as two orders the anchor ledger lacks. £46.59 of the £100 cap committed.
+- **News, step 1:** US 8-K filings recorded once a UK day; nothing reads them. No trial.
+- **Clock:** recorder runs 07:00–20:00 UK, pushes at :50. A session is final at 21:00 UK, so it is processed
+  at the next morning's 07:00 run.
 - Brakes: advisor after an URGENT-EXIT — `python -m qb2.tools.clear_pause --pot advisor --words "..."`;
   bot pot's 15% pause — `--pot bot`.
 
 ## NEXT
-1. **QT-31 Part A, by hand:** Tue 10 Nov 07:00 (or the first run after): Monday's close, the first real
-   price-check lines, Trading 212 vs the store for VWRP.
-2. OPERATOR: **keep the PC on or asleep, plugged in**. It has been sleeping about 03:00–18:00 and the 07:00
-   wake is not working: 58 of 84 weekday runs missed since 30 Oct (QT-30 A1). Power settings are his.
+1. **QT-32 Part A, read-only:** Wed 11 Nov 07:00: did London's Mon and Tue closes arrive, and the first real
+   price-check lines (Trading 212 vs the store for VWRP)?
+2. **VWRL buy: do not run --live yet.** First the CSH2 split (DECISION 1); then the buy is his own command,
+   dry run first (QT-31 report, Part D). Never run it twice.
+3. PROPOSE 1 (QT-31): the daily step must retry a market whose newest close is missing.
 
 ## DECISION REQUESTED (open)
-- **VWRL anchor.** Default: none. GO words: "GO on VWRL anchor: add VWRL to a separate pinned anchor list and
-  buy one practice-account anchor of about £1 through the anchor buyer, inside the £100 cap."
+- **CSH2 split (blocks every --live).** Default: wait. GO words: "GO on the CSH2 split: record Trading 212's
+  27 Oct CSH2 split bookings in the anchor ledger from its order history, so the stale check passes and
+  CSH2's anchor reads 0.2."
+- **VWRL anchor.** Default: not bought. GO words (not yet typed): "GO on VWRL anchor: add VWRL to a separate
+  pinned anchor list and buy one practice-account anchor of about £1 through the anchor buyer, inside the £100 cap."
 - **SEC contact address.** Default: a plain name, no address.
-- **D1 advisor risk rule.** Default: the 1% rule stays. GO words: "GO on D1: for the advisor,
-  replace the 1% rule with a cap on how much the account can lose if the stop is hit, figure chosen
-  by S5's crash tests."
-- **Bot's brake.** Default: as built. GO words: "GO on the bot's brake: the 10% brake clears itself after 5
-  sessions and restarts from there; the 15% pause stays measured from the true peak and only my words clear it."
+- **D1 advisor risk rule.** Default: the 1% rule stays. GO words in docs/reports/QT-31.md.
+- **Bot's brake.** Default: as built. GO words in docs/reports/QT-31.md.
 - Holdout WAITING: none. v1's QuantBot-Daily/-Monthly run outside the cap (frozen): leave, report.
 
 ## Standing GOs (operator words, verbatim)
-- 2026-11-08 (QT-30, accepted by reply): *"Alright give me QT-30, and tell me when to paste it"* (P22).
-- 2026-11-08: *"GO with defaults"* = CLAUDE.md limit 4,100; any order still needs the operator's words; P10 stands until S10.
-- 2026-10-29 (G3, chosen from a question): *"(c) Follow index (Recommended)"* = QT-28's (c), PLAN_V3 P21.
-- 2026-10-23: *"Keep ADV-0's stop as the default for now; S-07 stays a shadow."* · *"GO on the
-  advisor's 10% brake: after an urgent exit, my own words also clear the advisor's 10% brake and
-  restart its peak from that day."*
+- 2026-11-09 (QT-31, asked for the box, not the buy): *"Yes, write it"* · *"change this for 6am"* · *"Do not
+  ask for permission to do things, i will be gone after i paste it"*.
+- 2026-11-08 (QT-30): *"Alright give me QT-30, and tell me when to paste it"* (P22). *"GO with defaults"* =
+  CLAUDE.md limit 4,100; any order still needs the operator's words; P10 stands until S10.
+- 2026-10-29 (G3): *"(c) Follow index (Recommended)"* = PLAN_V3 P21.
+- 2026-10-23: *"Keep ADV-0's stop as the default for now; S-07 stays a shadow."* · the advisor's 10% brake GO.
 - 2026-10-20, a FENCE: *"I stopped QT23 halfway through, there needs to be a limit on the amount of
   memory and CPU it takes up. like 80% limit for each. otherwise the PC cannot take it and will
   crash."*
@@ -74,11 +75,11 @@ Never on the recorder (default OFF).
 - Parked: v1 revive-or-retire. 5m known-null to re-prove. QT-23 stash "QT-23-interrupted" kept.
 
 ## Open flags
-- Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned). At 250 lines:
-  clean_step.py, ingest/daily.py, advisor/daily.py, guard/stops.py, s6_run.py, advisor_run.py,
+- Thin London ETF quotes (SSLN.L, ACWI.L, SMEA.L). anchors.py 1,422 lines (pinned); anchor_extras.py 83.
+  At 250 lines: clean_step.py, ingest/daily.py, advisor/daily.py, guard/stops.py, s6_run.py, advisor_run.py,
   p19_run.py, status_push.py; bot_pot.py, price_check.py 198; cm_drills.py 247. 52 mypy errors silenced in 5
-  inherited modules; 4 known Qt-stub errors.
+  inherited modules; 4 known Qt-stub errors. CSH2's anchor: broker 0.2, ledger 0.0008 (split).
 
 ## Fingerprints
 v1 4add56ec…743b6. Advisor daily (a) 6883791f…97b1, (b) f7aae670…768e. Batch 2 trial data (a)
-ad36150c…8781, (b) 14a454fb…90dc (QT-30, unchanged).
+ad36150c…8781, (b) 14a454fb…90dc (QT-31, unchanged).

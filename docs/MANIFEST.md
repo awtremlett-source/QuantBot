@@ -1,6 +1,6 @@
 # MANIFEST — QuantBot system inventory (single page)
 
-Updated: 2026-11-09 (QT-30). What exists, what is proven, and what must be true before
+Updated: 2026-11-10 (QT-31). What exists, what is proven, and what must be true before
 this logic leaves NVDA or this laptop.
 
 ## ENVIRONMENT
@@ -37,8 +37,8 @@ this logic leaves NVDA or this laptop.
     safety.py (killswitch, P14 checks, flatten = position − anchor) · sender.py
     (ARMED = False) · anchors.py (QT-12: P20 anchor buyer — the ONE order path,
     practice-only, buy-only, own key, capped; nothing in qb2 may import it) ·
-    anchor_ledger.py (its append-only ledger, data/anchors/ledger.jsonl; the bot
-    reads anchor quantities from here, never from anchors.py)
+    anchor_extras.py (QT-31: VWRL's pinned one-name list beside the 50) ·
+    anchor_ledger.py (its append-only ledger; the bot reads anchor amounts here)
   - qb2/guard/ (QT-16, S5) stops.py (stop ledger, raise-only) · brakes.py (10/15%)
     · pots.py (30/70) · age.py (12 months) · earnings_window.py · suggestion.py
     (the advisor's front door); sender.py runs checks 6–9 on every buy
