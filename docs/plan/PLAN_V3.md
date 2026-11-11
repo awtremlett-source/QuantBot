@@ -774,6 +774,34 @@ reasons, and the scorecard of P9.
 - Exit gate: every suggestion carries a reason a beginner can read and a stop level; the scorecard reproduces a known week by hand; the weekly and daily jobs both proven red-on-broken.
 - Enforcer: the scorecard reconciliation and the two scheduled jobs.
 - Built/Wired/Armed: engine and scorecard written · wired to the universes and the journal · armed on the weekly and daily schedules.
+
+*Note, 2026-11-11 — the daily store never calls a day done while a close is missing (QT-32).*
+The operator's words, verbatim: 2026-11-10 18:08 *"QT-32, no GO"* (his answer to "type the
+CSH2 GO and/or the VWRL GO, or say 'QT-32, no GO' and the box will only fix the blank-price
+bug": neither GO is given, so the CSH2 split is not recorded and VWRL is not bought); and
+2026-11-10 19:27 *"give me a time and day to paste QT-32, also make sure it doesnt ask anything
+during the day and is ready to be pasted at 6:00 am"*. Why: on Tue 10 Nov Yahoo served
+Monday's London closes blank, the store rightly refused them, and the daily step still wrote
+`fetched_through: 2026-11-09`, so nothing retried until Wednesday and at 08:00 the line read
+"fresh to 2026-11-06 · OK" while London was a day behind (QT-31 A2, PROPOSE 1). The rule:
+
+- After any top-up, each market (London, US) is compared with its last finished session on
+  its real calendar (a holiday is never missing), and so is each stop-driving name, VWRL.L and
+  VWRP.L (^VIX keeps its QT-24/QT-29 rules). One that is behind is **BEHIND**: named in the
+  marker by name and session with when it was first seen; retried on every recorder run (the
+  behind names only, at most once a run, inside the cap); and the "Daily store:" line is RED
+  and names it on every run until it arrives.
+- `fetched_through` never lets the advisor or the bot pot treat a session as final for a
+  stop-driving name, or a market, whose close for it is missing. When the close arrives, each
+  session is processed exactly once, in date order, never skipped, and a stop hit on it is
+  never suppressed. A single minor name's blank is named but does not hold back the stop path.
+- A close that never arrives stays RED and BEHIND; once the next session has arrived, the line
+  says "gap: <name> <date> never delivered". It is never filled from another feed or invented;
+  what to do with it is the operator's decision.
+
+This changes no stop formula, no brake, no threshold, and no trial: N stays 62. It decides only
+when a stored session counts as final. Work item QT-32 (S9).
+
 - **QT-19 (2026-10-16): S9 begun — advisor signals batch 1 registered (6332880; A-01..A-06, six slow monthly stock-picking rules × one arm, the 171-name list, out of sample 2014-03-31 → 2025-10-09) and built, but NOT run: the known-null gate on this monthly book went RED (docs/research/known_null_2026-10-16_QT19_advisor.md).** Gate 1 GREEN (random picks and an un-catchable jump both rejected) but its red-first did not show; Gate 2 RED: a planted edge of +33,655% after 2× costs (D3 +265%) FAILED on the Deflated Sharpe alone (0.000) — on this fully-invested slot book the coin-flip null's per-bar Sharpe spread (0.071 at 1×, 0.151 at 2×, vs ~0.013 sampling noise) lifts SR0 to 0.16 / 0.34, above any edge. A DEFECT in the bench for this set-up: STOP (box rule). Daily store now from 2010-01-01; bench extended (slots, dividends, D3 before VWRP, daily fingerprints). Trial count stays N = 42. **S9 stays OPEN.**
 - **QT-20 (2026-10-16): STOPPED in Part A on a DATA DEFECT (box rule) — nothing built or run, N stays 42 (docs/reports/QT-20.md; docs/research/coin_spread_2026-10-16_QT20.md).** The coin-flip null's wide spread is not cost noise (< 1%): the coin ignores the book's eligibility, and SMEA.L's stored open on 2023-11-27 is ×114.6 its previous close (a unit break); the 102 of 200 coins that held it into that open booked +344% of the pot in one bar — 99.9% of the spread. Random-rank books built by the book's own rules (the box's fix (i), measured as a description) never touch it (SMEA.L fails the 90% coverage test all through 2023): spread 0.005 at 1× and 2×, SR0 ≈ 0.012, far below the planted book. STOP because the census found broken rows a real book can hold (EDV.L's pre-listing filler ending in a fake −41% day). QT-21: front-door quarantine + a unit-break check first, then (i), re-prove both gates both ways, then A-01..A-06. **S9 stays OPEN.**
 - **QT-21 (2026-10-17): S9 batch 1 RUN — none of 6 survived; N = 48 (docs/reports/QT-21.md; docs/research/A_batch1_results_2026-10.md).** Data first: the daily front door now quarantines unit breaks (open ≥ 3× or ≤ ⅓ the previous close) and filler (rows before a line's first traded bar), sticky, on every write (qb2/data/cross_bar.py): 6,685 rows, 27 names, reconciled, real moves kept; the coin spread fell to 0.0028 / 0.0039 as projected. Bench: one bar > 25% of the variance = INSUFFICIENT; the advisor's luck bar from random-rank books built by each trial's own rules (rank_null.py; S6/P19 keep the coin, their 42 verdicts unchanged); both gates proved both ways (docs/research/known_null_2026-10-17_QT21_advisor.md). A-01..A-06 exactly as registered, net 2× vs D3 +265.1%: +24.7%, +12.4%, +34.8%, +5.4%, +2.1%, +19.5% — all FAIL (luck p 1.000, DSR 0.26–0.57); no holdout opened. The advisor's default stays "hold the index fund". **S9 stays OPEN.**
