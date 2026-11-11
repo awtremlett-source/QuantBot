@@ -195,4 +195,4 @@ def page_lines(paths: state.Paths, ticker: str) -> list[str]:
     if _name(ticker) != "VWRL":
         return out
     return [*out, "VWRL anchor: in place — Trading 212 prices it" if anchored
-            else "VWRL anchor: not set up — see the QT-30 report"]
+            else "VWRL anchor: not set up — see the QT-32 report"]

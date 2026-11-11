@@ -82,10 +82,10 @@ def test_a_broken_top_up_never_stops_the_recorder(
 
 def test_stale_is_red_on_the_digest_and_the_status_page(tmp_path: Path) -> None:
     line = _run(tmp_path, _Fetch(last="2026-10-08"))
-    assert "RED" in line and "US ends 2026-10-08, 2026-10-09 has finished" in line
+    assert "RED" in line and "BEHIND, retried every run: US 2026-10-09, LSE 2026-10-09" in line   # QT-32
     page = status_push.build_status(tmp_path / "none.jsonl", tmp_path, SATURDAY,
                                     clean_root=tmp_path / "clean")
-    assert "- Daily store: fresh to 2026-10-08 · OK" in page     # Friday not overdue yet
+    assert "- Daily store: fresh to 2026-10-08 · RED (BEHIND" in page   # QT-32: RED until it arrives, strict or not
     page = status_push.build_status(tmp_path / "none.jsonl", tmp_path, MONDAY,
                                     clean_root=tmp_path / "clean")
     assert "- Daily store: fresh to 2026-10-08 · RED" in page

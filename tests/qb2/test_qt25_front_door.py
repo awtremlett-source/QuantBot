@@ -116,10 +116,11 @@ def test_a_refused_row_is_fetched_again_and_accepted_once_its_session_has_closed
 def test_a_name_whose_newest_row_was_refused_shows_behind_never_current(tmp_path: Path) -> None:
     _top_up(tmp_path, FRI_1410_UK, _Fetch("2026-10-23", SNAPSHOT))     # London mid-session
     line = _top_up(tmp_path, MON_0611_UK, _Fetch("2026-10-23", FINAL, fail=("VWRL.L",)))
-    assert line == ("Daily store: fresh to 2026-10-22 · RED (LSE ends 2026-10-22, 2026-10-23 has "
-                    "finished) · 1 not fetched, retrying: VWRL.L")
+    assert line == ("Daily store: fresh to 2026-10-22 · RED (BEHIND, retried every run: LSE 2026-10-23, VWRL.L "
+                    "2026-10-23 -- missing since 2026-10-26 06:11 UTC; the advisor and the bot pot are held at "
+                    "2026-10-22) · 1 not fetched, retrying: VWRL.L")      # QT-32: behind, so held
     through = live.final_through(tmp_path / "clean", MON_0611_UK)
-    assert through is not None and str(through) == "2026-10-23"
+    assert through is not None and str(through) == "2026-10-22"         # QT-32 C1 d: never past a missing close
     bars = live.bars("VWRL.L", "LSE", through, clean_root=tmp_path / "clean")
     assert (str(live.days_of(bars.index, "LSE")[-1]), float(bars["close"].iloc[-1])) == ("2026-10-22", 100.0)
 

@@ -111,7 +111,7 @@ def test_the_museum_sequence_ends_with_friday_sane_and_its_broken_bar_still_set_
     """Mon 06:17 broken (nothing sane stored: as live, since QT-25's door), then Mon 20:11 sane: the
     sane row is stored, and the broken bar is STILL in the quarantine (it vanished, live)."""
     line = _top_up(tmp_path, MON_0617_UK, _rows(FRIDAY, BROKEN), FRIDAY)
-    assert _stored(tmp_path, FRIDAY) is None and "RED (LSE ends 2026-10-22" in line
+    assert _stored(tmp_path, FRIDAY) is None and "RED (BEHIND, retried every run: LSE 2026-10-23, VWRL.L 2026-10-23" in line   # QT-32
     _top_up(tmp_path, MON_2011_UK, _rows("2026-10-26"), "2026-10-26")
     assert _stored(tmp_path, FRIDAY) == SANE[FRIDAY] and _stored(tmp_path, "2026-10-26") == SANE["2026-10-26"]
     assert len(quarantined := _quarantined(tmp_path, FRIDAY)) == 1 and _same(quarantined[0], BROKEN)

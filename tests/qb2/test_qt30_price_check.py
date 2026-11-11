@@ -258,7 +258,7 @@ def test_the_page_is_red_when_not_confirmed_and_names_the_pending_anchor(tmp_pat
     assert "Price check: 🔴" not in page.split(f"close of {DAYS[2]}")[1][:10]
     assert f"VWRL close of {DAYS[2]} CONFIRMED — our store £104.00, the backup feed, gap 0.00%; backup feed only — " \
            "Trading 212 anchor pending" in page
-    assert "VWRL anchor: not set up — see the QT-30 report" in page
+    assert "VWRL anchor: not set up — see the QT-32 report" in page
 
 
 def test_vwrp_is_never_called_anchor_pending_it_already_has_one(tmp_path: Path) -> None:
