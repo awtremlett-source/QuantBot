@@ -7,7 +7,7 @@ point: the bot's flatten has to know how much of a position is anchor (so it nev
 sells one), but the bot must never be able to import the module that can place an
 order. So the bot imports this, and only this.
 
-One JSON object per line in ``data/anchors/ledger.jsonl``, append-only, five kinds:
+One JSON object per line in ``data/anchors/ledger.jsonl``, append-only, six kinds:
 
 * ``INTENT``     -- written BEFORE an order is sent. A crash after this line and
   before the next leaves an intent with no outcome, which reads as UNRESOLVED,
@@ -21,8 +21,9 @@ One JSON object per line in ``data/anchors/ledger.jsonl``, append-only, five kin
 * ``PRE_EXISTING`` -- a holding that was already in the account, bought by hand,
   NOT by the program. Fenced like an anchor (never in the bot's pot, never sold by
   flatten) but it spends nothing from the anchor caps and is not an order.
-
 * ``RETRY_AUTHORISED`` -- the operator's words lifting ONE refusal, once.
+* ``SPLIT`` -- Trading 212's own booking of a share split, signed, on its order id (QT-32D): not an
+  order, nothing spent. Only qb2/tools/record_split.py appends one, on the operator's words.
 
 An OUTCOME may also be REFUSED: the broker definitely rejected the order and
 created nothing. That name is never retried automatically -- a person decides,
@@ -50,7 +51,8 @@ RECONCILED = "RECONCILED"
 PRE_EXISTING = "PRE_EXISTING"
 # The operator's recorded words lifting ONE refusal, once (QT-12 fix, 2026-10-05).
 RETRY_AUTHORISED = "RETRY_AUTHORISED"
-KINDS = frozenset({INTENT, OUTCOME, RECONCILED, PRE_EXISTING, RETRY_AUTHORISED})
+SPLIT = "SPLIT"
+KINDS = frozenset({INTENT, OUTCOME, RECONCILED, PRE_EXISTING, RETRY_AUTHORISED, SPLIT})
 
 ACCEPTED = "ACCEPTED"
 UNRESOLVED = "UNRESOLVED"
@@ -64,7 +66,7 @@ BLOCKING = frozenset({ACCEPTED, UNRESOLVED})
 # These are settled as "no money left the account".
 SETTLED_EMPTY = frozenset({NOT_FILLED, NOT_PLACED, REFUSED})
 # Not orders the program made, so not counted against the caps or the day.
-NOT_AN_ORDER = frozenset({PRE_EXISTING})
+NOT_AN_ORDER = frozenset({PRE_EXISTING, SPLIT})
 
 
 class LedgerCorrupt(RuntimeError):
@@ -97,15 +99,12 @@ class IntentState:
 
         FILLED counts what filled. ACCEPTED and UNRESOLVED count what was ASKED
         for, because the order may exist: over-protecting an anchor costs the bot
-        a sliver it could have sold, under-protecting it sells measuring kit.
+        a sliver it could have sold, under-protecting it sells measuring kit. A
+        SPLIT counts its signed booking.
         """
         if self.state == FILLED:
             return self.filled_quantity
-        if self.state == PRE_EXISTING:
-            return self.quantity
-        if self.state in BLOCKING:
-            return self.quantity
-        return 0.0
+        return self.quantity if self.state in NOT_AN_ORDER | BLOCKING else 0.0
 
 
 def _float(value: object) -> float:
@@ -180,15 +179,16 @@ class AnchorLedger:
         for row in self.records():
             intent_id = str(row["intent_id"])
             kind = row["kind"]
-            if kind in (PRE_EXISTING, INTENT):
-                pre = kind == PRE_EXISTING        # a holding, not an order
+            if kind in (PRE_EXISTING, INTENT, SPLIT):
+                pre, order_id = kind != INTENT, row.get("order_id")    # pre: not an order
                 folded[intent_id] = IntentState(
                     intent_id=intent_id,
                     ticker=str(row.get("ticker", "")),
                     at_utc=str(row.get("at_utc", "")),
                     quantity=_float(row.get("quantity")),
                     est_gbp=0.0 if pre else _float(row.get("est_gbp")),
-                    state=PRE_EXISTING if pre else UNRESOLVED,
+                    state=str(kind) if pre else UNRESOLVED,
+                    order_id=order_id if kind == SPLIT and type(order_id) is int else None,
                     detail=str(row.get("detail", "")) if pre else "")
                 continue
             known = folded.get(intent_id)
@@ -251,11 +251,9 @@ class AnchorLedger:
 
     def anchor_quantities(self) -> dict[str, float]:
         quantities: dict[str, float] = {}
-        for state in self.states().values():
-            amount = state.anchor_quantity
-            if amount > 0:
-                quantities[state.ticker] = quantities.get(state.ticker, 0.0) + amount
-        return quantities
+        for state in self.states().values():                # a SPLIT's booking is signed
+            quantities[state.ticker] = quantities.get(state.ticker, 0.0) + state.anchor_quantity
+        return {ticker: amount for ticker, amount in quantities.items() if amount > 0}
 
 
 def pre_existing_record(ticker: str, quantity: float, at: datetime,

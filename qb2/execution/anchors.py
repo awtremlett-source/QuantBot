@@ -65,7 +65,7 @@ from qb2.execution import anchor_extras, costs, ledger_backup, safety
 from qb2.execution.anchor_ledger import (ACCEPTED, BLOCKING, FILLED, INTENT,
                                          NOT_FILLED, NOT_PLACED, OUTCOME,
                                          RECONCILED, REFUSED, UNRESOLVED,
-                                         AnchorLedger, IntentState, LedgerCorrupt,
+                                         AnchorLedger, LedgerCorrupt,
                                          _float, retry_record)
 from qb2.execution.t212_client import (KEY_VARIABLE, BrokerError, Credentials,
                                        CredentialsMissing, Endpoint, Response,
@@ -1034,27 +1034,7 @@ class AnchorOrderClient:
 
 # ======================================================= reconciliation ===
 
-def _parse_moment(text: object) -> datetime | None:
-    try:
-        moment = datetime.fromisoformat(str(text).replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    return moment if moment.tzinfo is not None else None
-
-
-def _matches(order: Mapping[str, Any], state: IntentState) -> bool:
-    if state.order_id is not None:
-        return order.get("id") == state.order_id
-    created = _parse_moment(order.get("createdAt"))
-    intended = _parse_moment(state.at_utc)
-    quantity = order.get("quantity")
-    return (str(order.get("ticker", "")) == state.ticker
-            and order.get("side") == "BUY"
-            and order.get("initiatedFrom", "API") == "API"
-            and isinstance(quantity, (int, float))
-            and abs(float(quantity) - state.quantity) < 1e-9
-            and created is not None and intended is not None
-            and created >= intended - timedelta(minutes=2))
+_parse_moment, _matches = ledger_backup.parse_moment, ledger_backup.matches   # QT-32D: one owner, F13's
 
 
 def reconcile(ledger: AnchorLedger, reader: Reader, now: datetime) -> list[str]:

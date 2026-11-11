@@ -332,7 +332,8 @@ def test_flatten_leaves_vwrl_alone(tmp_path: Path) -> None:
 
 ANCHOR_BOOKS = ("qb2/execution/anchors.py", "qb2/execution/anchor_extras.py",
                 "qb2/execution/anchor_ledger.py", "qb2/execution/ledger_backup.py",
-                "qb2/execution/safety.py")
+                "qb2/execution/safety.py",
+                "qb2/tools/record_split.py")    # QT-32D: appends split lines on his words; no order client
 
 
 def test_only_the_anchor_books_can_see_vwrls_anchor_and_nothing_imports_the_buyer() -> None:

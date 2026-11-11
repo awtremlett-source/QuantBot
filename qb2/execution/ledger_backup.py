@@ -10,7 +10,8 @@ trusting the ledger:
   is never deleted. v1's tools/backup.py is frozen, so this is not a variant of it.
 * ``refusal`` / ``unrecorded`` -- why --live must not trust the ledger: missing,
   empty or unreadable; or STALE, i.e. the broker holds an API order no ledger
-  intent matches -- what a restored backup looks like. Hand orders (WEB, IOS) are
+  intent matches (``matches``, here so record_split reads the very same check
+  without the order doorway, QT-32D) -- what a restored backup looks like. Hand orders (WEB, IOS) are
   the operator's, not anchors, and are ignored. Only the newest page of history
   (50 orders) is checked: a stale copy lacks the NEWEST orders, which are there.
 
@@ -23,7 +24,7 @@ import hashlib
 import os
 import shutil
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,31 @@ def refusal(book: AnchorLedger) -> str:
     """Missing, empty or unreadable: --live refuses before touching the broker."""
     why = book.unusable()
     return f"anchor ledger {why} -- --live refuses; {REBUILD}" if why else ""
+
+
+def parse_moment(text: object) -> datetime | None:
+    try:
+        moment = datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment if moment.tzinfo is not None else None
+
+
+def matches(order: Mapping[str, Any], state: IntentState) -> bool:
+    """Is this broker order the ledger's intent? By its order id once known (a SPLIT always has
+    one), else ticker, side, quantity and a creation time no earlier than two minutes before."""
+    if state.order_id is not None:
+        return order.get("id") == state.order_id
+    created = parse_moment(order.get("createdAt"))
+    intended = parse_moment(state.at_utc)
+    quantity = order.get("quantity")
+    return (str(order.get("ticker", "")) == state.ticker
+            and order.get("side") == "BUY"
+            and order.get("initiatedFrom", "API") == "API"
+            and isinstance(quantity, (int, float))
+            and abs(float(quantity) - state.quantity) < 1e-9
+            and created is not None and intended is not None
+            and created >= intended - timedelta(minutes=2))
 
 
 def unrecorded(book: AnchorLedger, history: Sequence[Mapping[str, Any]],
