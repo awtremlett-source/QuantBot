@@ -40,7 +40,7 @@ from zoneinfo import ZoneInfo
 import exchange_calendars as xcals  # type: ignore[import-untyped]
 import pandas as pd
 
-from qb2.data import behind, universe
+from qb2.data import arrival, behind, universe
 from qb2.data.front_door import CLEAN, REPO_ROOT
 from qb2.ingest import daily
 
@@ -201,6 +201,7 @@ def run_if_due(now: datetime, *, clean_root: Path | None = None,
         seen, target = _read(marker), clean_step.target_session(now)
         topped = str(seen.get("topped_up") or seen.get("fetched_through") or "")   # QT-32: or an older marker
         lost, again, did = list(seen.get("lost") or []), set(seen.get("retry") or []), False
+        watch = arrival.Watch()                                # QT-33 C: what each fetch sent
         names = list(entries) if entries is not None else wanted()
         if target is not None and (topped < target.isoformat() or lost or again or "topped_up" not in seen):
             fresh_day = topped < target.isoformat()
@@ -209,7 +210,7 @@ def run_if_due(now: datetime, *, clean_root: Path | None = None,
             todo = names if fresh_day else [e for e in names if e["yfinance"] in {*lost, *again}]
             start, outcome = clock.monotonic(), daily.DailyOutcome()
             if todo:
-                outcome = daily.ingest(todo, fetch=fetch, clean_root=clean_root, now=now,
+                outcome = daily.ingest(todo, fetch=watch.wrap(fetch or daily.fetch_daily), clean_root=clean_root, now=now,
                                        include_fx=fresh_day or daily.FX_PAIR in lost)
             took, topped = clock.monotonic() - start, target.isoformat() if fresh_day else topped
             found, dates = _scan(names, seen, target, topped, now, clean_root)
@@ -228,7 +229,7 @@ def run_if_due(now: datetime, *, clean_root: Path | None = None,
                 "newest": newest_by_market(names, dates)})
             did = True
         # strict right after a top-up; otherwise the overdue rule, as clean_step's view
-        line = status_line(now, clean_root=clean_root, strict=did)
+        line = status_line(now, clean_root=clean_root, strict=did) + arrival.note(now, target, names, watch, marker)
     except Exception as exc:                  # noqa: BLE001 - said, never fatal
         line = f"{PREFIX} top-up failed ({type(exc).__name__}: {exc}) · RED"
     try:

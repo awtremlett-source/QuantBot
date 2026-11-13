@@ -33,6 +33,8 @@ from qb2.data import universe
 
 STOP_DRIVING = ("VWRL.L", "VWRP.L")      # the advisor's and the bot pot's stop closes
 OWN_RULES = ("^VIX",)                    # QT-24/QT-29: judged by daily_step.gauge_lag
+ACCEPTED = frozenset({("SMEA.L", "2023-11-27")})   # QT-33 E: known holes, accepted in writing (PLAN_V3 S9,
+                                                   # note 2026-11-13); still named and retried, marked so
 MARKETS = (universe.US, universe.LONDON)
 Entry = dict[str, Any]                   # {"session", "since", "later"}: the marker's shape
 
@@ -117,7 +119,8 @@ def words(seen: Mapping[str, Any]) -> tuple[list[str], str]:
         since = min(str(e["since"]) for e in behind.values())[:16].replace("T", " ")
         red = [f"BEHIND, retried every run: {', '.join(red)} -- missing since {since} UTC; the advisor and "
                f"the bot pot are held at {seen.get('fetched_through')}"]
-    short = [f"{k} {e['session']}" for k, e in dict(seen.get("short") or {}).items()]
+    short = [f"{k} {e['session']}" + (" (accepted)" if (k, str(e['session'])) in ACCEPTED else "")
+             for k, e in dict(seen.get("short") or {}).items()]
     tail = (f" · {len(short)} name{'s' if len(short) > 1 else ''} short of a session (named, retried, not "
             f"holding the stops back): {', '.join(short[:6])}") if short else ""
     if (red or short) and (n := int(seen.get("retried") or 0)):      # while anything is still missing

@@ -32,7 +32,7 @@ from typing import Any
 
 import pandas as pd
 
-from qb2.advisor import engine, live, page, price_check, scorecard, shadow, skips, state
+from qb2.advisor import engine, held_back, live, page, price_check, scorecard, shadow, skips, state
 from qb2.data import clean_step, universe
 from qb2.execution.safety import ADVISOR, Blocked
 from qb2.guard import brakes, stops
@@ -141,7 +141,7 @@ def run(now: datetime, paths: state.Paths, *, clean_root: Path | None = None,
                              income, instrument)
     red = scorecard.reconcile([r for r in written if not skips.is_skip(r)], fresh)
     lines += [f"RED: the scorecard does not reconcile -- {x}" for x in red]
-    lines += skips.lines(state.rows(paths.log("days")), late) + today_line(now, paths, ledger, bars, through, red)
+    lines += skips.lines(state.rows(paths.log("days")), late) + today_line(now, paths, ledger, bars, through, red, clean_root)
     write_page(now, paths, arm, lines)
     return lines
 
@@ -197,7 +197,7 @@ def weekly(paths: state.Paths, now: datetime, arm: date, through: date, ledger: 
 
 
 def today_line(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd.DataFrame,
-               through: date, red: Sequence[str]) -> list[str]:
+               through: date, red: Sequence[str], clean_root: Path | None = None) -> list[str]:
     rows, stop = [r for r in state.rows(paths.log("days")) if not skips.is_skip(r)], advisor_stop(ledger)
     have: date = min(through, live.days_of(bars.index, "LSE")[-1]) if len(bars) else through   # QT-25: VWRL's own
     out = []
@@ -205,7 +205,7 @@ def today_line(now: datetime, paths: state.Paths, ledger: stops.Ledger, bars: pd
         out.append(f"UNCHECKED: the newest final close is from {have} -- the stop was NOT checked "
                    f"against {last}'s close or any later price. Look at VWRL yourself if markets moved.")
         if now > (due := clean_step.due_by(lse_sessions(have + timedelta(days=1), last)[0])):   # oldest missing
-            cause = "the daily top-up is overdue" if have == through else "VWRL's daily close is missing"
+            cause = held_back.cause(have, through, clean_root)                      # QT-33 F: the real cause
             out.append(f"RED: {cause} (due {due:%a %d %b %H:%M} UK): the stop has been unchecked since {have}")
     if rows:
         r = rows[-1]
