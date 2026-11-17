@@ -40,7 +40,8 @@ Fri 13 Nov 19:09 and 20:21: its memory guard stopped two recorder runs (the PC 9
 1. **His words on QT-34 PROPOSE 1** (WAITING, not RED, before 10:00). No change before.
 2. **CSH2 split, only after his GO words:** QT-32 DECISION 1 (ledger), command in docs/reports/QT-34.md.
    Then the VWRL buy (QT-31 Part D). Never run either twice. The daily store's CSH2: QT-34 DECISION 3.
-3. The evening "Daily store" RED (PROPOSE 2); the morning wake (PROPOSE 3).
+3. The morning wake (PROPOSE 3). QT-35 (Tue 17): evening "Daily store" false RED fixed (strict only after a
+   new-day top-up); news trial DRAFT docs/research/news_trial_prereg_DRAFT.md awaits his GO (docs/reports/QT-35.md).
 
 ## DECISION REQUESTED (open; words in docs/reports/QT-34.md)
 - **CSH2 split in the anchor ledger (blocks every --live).** Default: wait. GO words: "GO on the CSH2 split:
