@@ -227,8 +227,8 @@ def run_if_due(now: datetime, *, clean_root: Path | None = None,
                 "behind": found.behind, "short": found.short, "retry": found.retry,
                 "retried": 0 if fresh_day else len(todo), "retry_s": round(took, 1),
                 "newest": newest_by_market(names, dates)})
-            did = True
-        # strict right after a top-up; otherwise the overdue rule, as clean_step's view
+            did = fresh_day                                    # QT-35: a retry alone never judges strictly
+        # strict right after a new-day top-up; otherwise the overdue rule, as clean_step's view
         line = status_line(now, clean_root=clean_root, strict=did) + arrival.note(now, target, names, watch, marker)
     except Exception as exc:                  # noqa: BLE001 - said, never fatal
         line = f"{PREFIX} top-up failed ({type(exc).__name__}: {exc}) · RED"
